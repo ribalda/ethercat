@@ -1,6 +1,6 @@
 /**
     Network Driver for Beckhoff CCAT communication controller
-    Copyright (C) 2014  Beckhoff Automation GmbH
+    Copyright (C) 2014-2015  Beckhoff Automation GmbH
     Author: Patrick Bruenn <p.bruenn@beckhoff.com>
 
     This program is free software; you can redistribute it and/or modify
@@ -18,131 +18,196 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include <asm/dma.h>
 #include <linux/etherdevice.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/platform_device.h>
 #include <linux/version.h>
+
 #include "module.h"
-#include "netdev.h"
-#include "update.h"
 
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
 MODULE_AUTHOR("Patrick Bruenn <p.bruenn@beckhoff.com>");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRV_VERSION);
 
-static void ccat_bar_free(struct ccat_bar *bar)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,12,27))
+/*
+ * Set both the DMA mask and the coherent DMA mask to the same thing.
+ * Note that we don't check the return value from dma_set_coherent_mask()
+ * as the DMA API guarantees that the coherent DMA mask can be set to
+ * the same or smaller than the streaming DMA mask.
+ */
+static inline int dma_set_mask_and_coherent(struct device *dev, u64 mask)
 {
-	if (bar->ioaddr) {
-		const struct ccat_bar tmp = *bar;
-		memset(bar, 0, sizeof(*bar));
-		iounmap(tmp.ioaddr);
-		release_mem_region(tmp.start, tmp.len);
-	} else {
-		pr_warn("%s(): %p was already done.\n", __FUNCTION__, bar);
-	}
+	int rc = dma_set_mask(dev, mask);
+	if (rc == 0)
+		dma_set_coherent_mask(dev, mask);
+	return rc;
 }
+#endif
 
 /**
- * ccat_bar_init() - Initialize a CCAT pci bar
- * @bar object which should be initialized
- * @index 0 and 2 are valid for CCAT, meaning pci bar0 or pci bar2
- * @pdev the pci device as which the CCAT was recognized before
- *
- * Reading PCI config space; request and map memory region.
+ * configure the drivers capabilities here
  */
-static int ccat_bar_init(struct ccat_bar *bar, size_t index,
-			 struct pci_dev *pdev)
+static const struct ccat_driver *const drivers[] = {
+#ifdef CONFIG_PCI
+	&eth_dma_driver,	/* load Ethernet MAC/EtherCAT Master driver with DMA support from netdev.c */
+#endif
+	&eth_eim_driver,	/* load Ethernet MAC/EtherCAT Master driver without DMA support from */
+	&gpio_driver,		/* load GPIO driver from gpio.c */
+	&sram_driver,		/* load SRAM driver from sram.c */
+	&update_driver,		/* load Update driver from update.c */
+};
+
+static int __init ccat_class_init(struct ccat_class *base)
 {
-	struct resource *res;
+	if (1 == atomic_inc_return(&base->instances)) {
+		if (alloc_chrdev_region
+		    (&base->dev, 0, base->count, KBUILD_MODNAME)) {
+			pr_warn("alloc_chrdev_region() for '%s' failed\n",
+				base->name);
+			return -1;
+		}
 
-	bar->start = pci_resource_start(pdev, index);
-	bar->end = pci_resource_end(pdev, index);
-	bar->len = pci_resource_len(pdev, index);
-	bar->flags = pci_resource_flags(pdev, index);
-	if (!(IORESOURCE_MEM & bar->flags)) {
-		pr_info("bar%llu is no mem_region -> abort.\n", (u64) index);
-		return -EIO;
+		base->class = class_create(THIS_MODULE, base->name);
+		if (!base->class) {
+			pr_warn("Create device class '%s' failed\n",
+				base->name);
+			unregister_chrdev_region(base->dev, base->count);
+			return -1;
+		}
 	}
-
-	res = request_mem_region(bar->start, bar->len, KBUILD_MODNAME);
-	if (!res) {
-		pr_info("allocate mem_region failed.\n");
-		return -EIO;
-	}
-	pr_debug("bar%llu at [%lx,%lx] len=%lu res: %p.\n", (u64) index,
-		 bar->start, bar->end, bar->len, res);
-
-	bar->ioaddr = ioremap(bar->start, bar->len);
-	if (!bar->ioaddr) {
-		pr_info("bar%llu ioremap failed.\n", (u64) index);
-		release_mem_region(bar->start, bar->len);
-		return -EIO;
-	}
-	pr_debug("bar%llu I/O mem mapped to %p.\n", (u64) index, bar->ioaddr);
 	return 0;
 }
 
-void ccat_dma_free(struct ccat_dma *const dma)
+static void ccat_class_exit(struct ccat_class *base)
 {
-	const struct ccat_dma tmp = *dma;
-
-	free_dma(dma->channel);
-	memset(dma, 0, sizeof(*dma));
-	dma_free_coherent(tmp.dev, tmp.size, tmp.virt, tmp.phys);
+	if (!atomic_dec_return(&base->instances)) {
+		class_destroy(base->class);
+		unregister_chrdev_region(base->dev, base->count);
+	}
 }
 
-/**
- * ccat_dma_init() - Initialize CCAT and host memory for DMA transfer
- * @dma object for management data which will be initialized
- * @channel number of the DMA channel
- * @ioaddr of the pci bar2 configspace used to calculate the address of the pci dma configuration
- * @dev which should be configured for DMA
- */
-int ccat_dma_init(struct ccat_dma *const dma, size_t channel,
-		  void __iomem * const ioaddr, struct device *const dev)
+static void free_ccat_cdev(struct ccat_cdev *ccdev)
 {
-	void *frame;
-	u64 addr;
-	u32 translateAddr;
-	u32 memTranslate;
-	u32 memSize;
-	u32 data = 0xffffffff;
-	u32 offset = (sizeof(u64) * channel) + 0x1000;
+	ccat_class_exit(ccdev->class);
+	ccdev->dev = 0;
+}
 
-	dma->channel = channel;
-	dma->dev = dev;
+static struct ccat_cdev *alloc_ccat_cdev(struct ccat_class *base)
+{
+	int i = 0;
 
-	/* calculate size and alignments */
-	iowrite32(data, ioaddr + offset);
-	wmb();
-	data = ioread32(ioaddr + offset);
-	memTranslate = data & 0xfffffffc;
-	memSize = (~memTranslate) + 1;
-	dma->size = 2 * memSize - PAGE_SIZE;
-	dma->virt = dma_zalloc_coherent(dev, dma->size, &dma->phys, GFP_KERNEL);
-	if (!dma->virt || !dma->phys) {
-		pr_info("init DMA%llu memory failed.\n", (u64) channel);
+	ccat_class_init(base);
+	for (i = 0; i < base->count; ++i) {
+		if (base->devices[i].dev == 0) {
+			base->devices[i].dev = MKDEV(MAJOR(base->dev), i);
+			return &base->devices[i];
+		}
+	}
+	pr_warn("exceeding max. number of '%s' devices (%d)\n",
+		base->class->name, base->count);
+	atomic_dec_return(&base->instances);
+	return NULL;
+}
+
+static int ccat_cdev_init(struct cdev *cdev, dev_t dev, struct class *class,
+			  struct file_operations *fops)
+{
+	if (!device_create
+	    (class, NULL, dev, NULL, "%s%d", class->name, MINOR(dev))) {
+		pr_warn("device_create() failed\n");
 		return -1;
 	}
 
-	if (request_dma(channel, KBUILD_MODNAME)) {
-		pr_info("request dma channel %llu failed\n", (u64) channel);
-		ccat_dma_free(dma);
+	cdev_init(cdev, fops);
+	cdev->owner = fops->owner;
+	if (cdev_add(cdev, dev, 1)) {
+		pr_warn("add update device failed\n");
+		device_destroy(class, dev);
 		return -1;
 	}
 
-	translateAddr = (dma->phys + memSize - PAGE_SIZE) & memTranslate;
-	addr = translateAddr;
-	memcpy_toio(ioaddr + offset, &addr, sizeof(addr));
-	frame = dma->virt + translateAddr - dma->phys;
-	pr_debug
-	    ("DMA%llu mem initialized\n virt:         0x%p\n phys:         0x%llx\n translated:   0x%llx\n pci addr:     0x%08x%x\n memTranslate: 0x%x\n size:         %llu bytes.\n",
-	     (u64) channel, dma->virt, (u64) (dma->phys), addr,
-	     ioread32(ioaddr + offset + 4), ioread32(ioaddr + offset),
-	     memTranslate, (u64) dma->size);
+	pr_info("registered %s%d.\n", class->name, MINOR(dev));
 	return 0;
+}
+
+int ccat_cdev_open(struct inode *const i, struct file *const f)
+{
+	struct ccat_cdev *ccdev =
+	    container_of(i->i_cdev, struct ccat_cdev, cdev);
+	struct cdev_buffer *buf;
+
+	if (!atomic_dec_and_test(&ccdev->in_use)) {
+		atomic_inc(&ccdev->in_use);
+		return -EBUSY;
+	}
+
+	buf = kzalloc(sizeof(*buf) + ccdev->iosize, GFP_KERNEL);
+	if (!buf) {
+		atomic_inc(&ccdev->in_use);
+		return -ENOMEM;
+	}
+
+	buf->ccdev = ccdev;
+	f->private_data = buf;
+	return 0;
+}
+
+int ccat_cdev_probe(struct ccat_function *func, struct ccat_class *cdev_class,
+		    size_t iosize)
+{
+	struct ccat_cdev *const ccdev = alloc_ccat_cdev(cdev_class);
+	if (!ccdev) {
+		return -ENOMEM;
+	}
+
+	ccdev->ioaddr = func->ccat->bar_0 + func->info.addr;
+	ccdev->iosize = iosize;
+	atomic_set(&ccdev->in_use, 1);
+
+	if (ccat_cdev_init
+	    (&ccdev->cdev, ccdev->dev, cdev_class->class, &cdev_class->fops)) {
+		pr_warn("ccat_cdev_probe() failed\n");
+		free_ccat_cdev(ccdev);
+		return -1;
+	}
+	ccdev->class = cdev_class;
+	func->private_data = ccdev;
+	return 0;
+}
+
+int ccat_cdev_release(struct inode *const i, struct file *const f)
+{
+	const struct cdev_buffer *const buf = f->private_data;
+	struct ccat_cdev *const ccdev = buf->ccdev;
+
+	kfree(f->private_data);
+	atomic_inc(&ccdev->in_use);
+	return 0;
+}
+
+void ccat_cdev_remove(struct ccat_function *func)
+{
+	struct ccat_cdev *const ccdev = func->private_data;
+
+	cdev_del(&ccdev->cdev);
+	device_destroy(ccdev->class->class, ccdev->dev);
+	free_ccat_cdev(ccdev);
+}
+
+static const struct ccat_driver *ccat_function_connect(struct ccat_function
+						       *const func)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(drivers); ++i) {
+		if (func->info.type == drivers[i]->type) {
+			return drivers[i]->probe(func) ? NULL : drivers[i];
+		}
+	}
+	return NULL;
 }
 
 /**
@@ -153,83 +218,76 @@ int ccat_dma_init(struct ccat_dma *const dma, size_t channel,
 static int ccat_functions_init(struct ccat_device *const ccatdev)
 {
 	static const size_t block_size = sizeof(struct ccat_info_block);
-	void __iomem *addr = ccatdev->bar[0].ioaddr; /** first block is the CCAT information block entry */
+	struct ccat_function *next = kzalloc(sizeof(*next), GFP_KERNEL);
+	void __iomem *addr = ccatdev->bar_0; /** first block is the CCAT information block entry */
 	const u8 num_func = ioread8(addr + 4); /** number of CCAT function blocks is at offset 0x4 */
 	const void __iomem *end = addr + (block_size * num_func);
-	int status = 0;	/** count init function failures */
 
-	while (addr < end) {
-		const u8 type = ioread16(addr);
-		switch (type) {
-		case CCATINFO_NOTUSED:
-			break;
-		case CCATINFO_EPCS_PROM:
-			pr_info("Found: CCAT update(EPCS_PROM) -> init()\n");
-			ccatdev->update = ccat_update_init(ccatdev, addr);
-			status += (NULL == ccatdev->update);
-			break;
-		case CCATINFO_ETHERCAT_MASTER_DMA:
-			pr_info("Found: ETHERCAT_MASTER_DMA -> init()\n");
-			ccatdev->ethdev = ccat_eth_init(ccatdev, addr);
-			status += (NULL == ccatdev->ethdev);
-			break;
-		default:
-			pr_info("Found: 0x%04x not supported\n", type);
-			break;
+	INIT_LIST_HEAD(&ccatdev->functions);
+	for (; addr < end && next; addr += block_size) {
+		memcpy_fromio(&next->info, addr, sizeof(next->info));
+		if (CCATINFO_NOTUSED != next->info.type) {
+			next->ccat = ccatdev;
+			next->drv = ccat_function_connect(next);
+			if (next->drv) {
+				list_add(&next->list, &ccatdev->functions);
+				next = kzalloc(sizeof(*next), GFP_KERNEL);
+			}
 		}
-		addr += block_size;
 	}
-	return status;
+	kfree(next);
+	return list_empty(&ccatdev->functions);
 }
 
 /**
  * Destroy all previously initialized CCAT functions
  */
-static void ccat_functions_remove(struct ccat_device *const ccatdev)
+static void ccat_functions_remove(struct ccat_device *const dev)
 {
-	if (!ccatdev->ethdev) {
-		pr_warn("%s(): 'ethdev' was not initialized.\n", __FUNCTION__);
-	} else {
-		struct ccat_eth_priv *const ethdev = ccatdev->ethdev;
-		ccatdev->ethdev = NULL;
-		ccat_eth_remove(ethdev);
-	}
-	if (!ccatdev->update) {
-		pr_warn("%s(): 'update' was not initialized.\n", __FUNCTION__);
-	} else {
-		struct ccat_update *const update = ccatdev->update;
-		ccatdev->update = NULL;
-		ccat_update_remove(update);
+	struct ccat_function *func;
+	struct ccat_function *tmp;
+	list_for_each_entry_safe(func, tmp, &dev->functions, list) {
+		if (func->drv) {
+			func->drv->remove(func);
+			func->drv = NULL;
+		}
+		list_del(&func->list);
+		kfree(func);
 	}
 }
 
-static int ccat_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+#ifdef CONFIG_PCI
+static int ccat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	int status;
+	struct ccat_device *ccatdev;
 	u8 revision;
-	struct ccat_device *ccatdev = kmalloc(sizeof(*ccatdev), GFP_KERNEL);
+	int status;
 
+	ccatdev = devm_kzalloc(&pdev->dev, sizeof(*ccatdev), GFP_KERNEL);
 	if (!ccatdev) {
 		pr_err("%s() out of memory.\n", __FUNCTION__);
 		return -ENOMEM;
 	}
-	memset(ccatdev, 0, sizeof(*ccatdev));
 	ccatdev->pdev = pdev;
 	pci_set_drvdata(pdev, ccatdev);
 
 	status = pci_enable_device_mem(pdev);
 	if (status) {
 		pr_info("enable %s failed: %d\n", pdev->dev.kobj.name, status);
-		return status;
+		goto cleanup_pci_device;
 	}
 
 	status = pci_read_config_byte(pdev, PCI_REVISION_ID, &revision);
 	if (status) {
 		pr_warn("read CCAT pci revision failed with %d\n", status);
-		return status;
+		goto cleanup_pci_device;
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+	if ((status = pci_request_regions(pdev, KBUILD_MODNAME))) {
+		pr_info("allocate mem_regions failed.\n");
+		goto cleanup_pci_device;
+	}
+
 	if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64))) {
 		pr_debug("64 bit DMA supported, pci rev: %u\n", revision);
 	} else if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32))) {
@@ -237,24 +295,15 @@ static int ccat_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	} else {
 		pr_warn("No suitable DMA available, pci rev: %u\n", revision);
 	}
-#else
-	if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64))) {
-		pr_debug("64 bit DMA supported, pci rev: %u\n", revision);
-	} else if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) {
-		pr_debug("32 bit DMA supported, pci rev: %u\n", revision);
-	} else {
-		pr_warn("No suitable DMA available, pci rev: %u\n", revision);
-	}
-#endif
 
-	if (ccat_bar_init(&ccatdev->bar[0], 0, pdev)) {
+	if (!(ccatdev->bar_0 = pci_iomap(pdev, 0, 0))) {
 		pr_warn("initialization of bar0 failed.\n");
-		return -EIO;
+		status = -EIO;
+		goto cleanup_pci_device;
 	}
 
-	if (ccat_bar_init(&ccatdev->bar[2], 2, pdev)) {
-		pr_warn("initialization of bar2 failed.\n");
-		return -EIO;
+	if (!(ccatdev->bar_2 = pci_iomap(pdev, 2, 0))) {
+		pr_warn("initialization of optional bar2 failed.\n");
 	}
 
 	pci_set_master(pdev);
@@ -262,21 +311,23 @@ static int ccat_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		pr_warn("some functions couldn't be initialized\n");
 	}
 	return 0;
+cleanup_pci_device:
+	pci_disable_device(pdev);
+	return status;
 }
 
-static void ccat_remove(struct pci_dev *pdev)
+static void ccat_pci_remove(struct pci_dev *pdev)
 {
 	struct ccat_device *ccatdev = pci_get_drvdata(pdev);
 
 	if (ccatdev) {
 		ccat_functions_remove(ccatdev);
-		ccat_bar_free(&ccatdev->bar[2]);
-		ccat_bar_free(&ccatdev->bar[0]);
+		if (ccatdev->bar_2)
+			pci_iounmap(pdev, ccatdev->bar_2);
+		pci_iounmap(pdev, ccatdev->bar_0);
+		pci_release_regions(pdev);
 		pci_disable_device(pdev);
-		pci_set_drvdata(pdev, NULL);
-		kfree(ccatdev);
 	}
-	pr_debug("%s() done.\n", __FUNCTION__);
 }
 
 #define PCI_DEVICE_ID_BECKHOFF_CCAT 0x5000
@@ -287,27 +338,76 @@ static const struct pci_device_id pci_ids[] = {
 	{0,},
 };
 
-#if 0 /* prevent auto-loading */
 MODULE_DEVICE_TABLE(pci, pci_ids);
-#endif
 
-static struct pci_driver pci_driver = {
+static struct pci_driver ccat_pci_driver = {
 	.name = KBUILD_MODNAME,
 	.id_table = pci_ids,
-	.probe = ccat_probe,
-	.remove = ccat_remove,
+	.probe = ccat_pci_probe,
+	.remove = ccat_pci_remove,
 };
 
-static void __exit ccat_exit_module(void)
+module_pci_driver(ccat_pci_driver);
+
+#else /* #ifdef CONFIG_PCI */
+
+static int ccat_eim_probe(struct platform_device *pdev)
 {
-	pci_unregister_driver(&pci_driver);
+	struct ccat_device *ccatdev;
+
+	ccatdev = devm_kzalloc(&pdev->dev, sizeof(*ccatdev), GFP_KERNEL);
+	if (!ccatdev) {
+		pr_err("%s() out of memory.\n", __FUNCTION__);
+		return -ENOMEM;
+	}
+	ccatdev->pdev = pdev;
+	platform_set_drvdata(pdev, ccatdev);
+
+	if (!request_mem_region(0xf0000000, 0x02000000, pdev->name)) {
+		pr_warn("request mem region failed.\n");
+		return -EIO;
+	}
+
+	if (!(ccatdev->bar_0 = ioremap(0xf0000000, 0x02000000))) {
+		pr_warn("initialization of bar0 failed.\n");
+		return -EIO;
+	}
+
+	ccatdev->bar_2 = NULL;
+
+	if (ccat_functions_init(ccatdev)) {
+		pr_warn("some functions couldn't be initialized\n");
+	}
+	return 0;
 }
 
-static int __init ccat_init_module(void)
+static int ccat_eim_remove(struct platform_device *pdev)
 {
-	pr_info("%s, %s\n", DRV_DESCRIPTION, DRV_VERSION);
-	return pci_register_driver(&pci_driver);
+	struct ccat_device *ccatdev = platform_get_drvdata(pdev);
+
+	if (ccatdev) {
+		ccat_functions_remove(ccatdev);
+		iounmap(ccatdev->bar_0);
+		release_mem_region(0xf0000000, 0x02000000);
+	}
+	return 0;
 }
 
-module_exit(ccat_exit_module);
-module_init(ccat_init_module);
+static const struct of_device_id bhf_eim_ccat_ids[] = {
+	{.compatible = "bhf,emi-ccat",},
+	{}
+};
+
+MODULE_DEVICE_TABLE(of, bhf_eim_ccat_ids);
+
+static struct platform_driver ccat_eim_driver = {
+	.driver = {
+		   .name = KBUILD_MODNAME,
+		   .of_match_table = bhf_eim_ccat_ids,
+		   },
+	.probe = ccat_eim_probe,
+	.remove = ccat_eim_remove,
+};
+
+module_platform_driver(ccat_eim_driver);
+#endif /* #ifdef CONFIG_PCI */
