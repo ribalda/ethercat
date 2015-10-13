@@ -18,14 +18,13 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/uaccess.h>
 #include "module.h"
-#include "update.h"
 
+#define CCAT_DEVICES_MAX 5
 #define CCAT_DATA_IN_4 0x038
 #define CCAT_DATA_IN_N 0x7F0
 #define CCAT_DATA_OUT_4 0x030
@@ -44,18 +43,6 @@
 /* from http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith32Bits */
 #define SWAP_BITS(B) \
 	((((B) * 0x0802LU & 0x22110LU) | ((B) * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16)
-
-/**
- * struct update_buffer - keep track of a CCAT FPGA update
- * @update: pointer to a valid ccat_update object
- * @data: buffer used for write operations
- * @size: number of bytes written to the data buffer, if 0 on ccat_update_release() no data will be written to FPGA
- */
-struct update_buffer {
-	struct ccat_update *update;
-	char data[CCAT_FLASH_SIZE];
-	size_t size;
-};
 
 /**
  * wait_until_busy_reset() - wait until the busy flag was reset
@@ -243,78 +230,34 @@ static int ccat_write_flash_block(void __iomem * const ioaddr,
  * ccat_write_flash() - Write a new CCAT configuration to FPGA's flash
  * @update: a CCAT Update buffer containing the new FPGA configuration
  */
-static void ccat_write_flash(const struct update_buffer *const update)
+static void ccat_write_flash(const struct cdev_buffer *const buffer)
 {
-	const char *buf = update->data;
+	const char *buf = buffer->data;
 	u32 off = 0;
-	size_t len = update->size;
+	size_t len = buffer->size;
 
 	while (len > CCAT_WRITE_BLOCK_SIZE) {
-		ccat_write_flash_block(update->update->ioaddr, off,
+		ccat_write_flash_block(buffer->ccdev->ioaddr, off,
 				       (u16) CCAT_WRITE_BLOCK_SIZE, buf);
 		off += CCAT_WRITE_BLOCK_SIZE;
 		buf += CCAT_WRITE_BLOCK_SIZE;
 		len -= CCAT_WRITE_BLOCK_SIZE;
 	}
-	ccat_write_flash_block(update->update->ioaddr, off, (u16) len, buf);
-}
-
-/**
- * ccat_update_destroy() - Cleanup the CCAT Update function
- * @ref: pointer to a struct kref embedded into a struct ccat_update, which we intend to destroy
- *
- * Retrieves the parent struct ccat_update and destroys it.
- */
-static void ccat_update_destroy(struct kref *ref)
-{
-	struct ccat_update *update =
-	    container_of(ref, struct ccat_update, refcount);
-
-	cdev_del(&update->cdev);
-	device_destroy(update->class, update->dev);
-	class_destroy(update->class);
-	unregister_chrdev_region(update->dev, 1);
-	kfree(update);
-	pr_debug("%s(): done\n", __FUNCTION__);
-}
-
-static int ccat_update_open(struct inode *const i, struct file *const f)
-{
-	struct ccat_update *update =
-	    container_of(i->i_cdev, struct ccat_update, cdev);
-	struct update_buffer *buf;
-
-	kref_get(&update->refcount);
-	if (atomic_read(&update->refcount.refcount) > 2) {
-		kref_put(&update->refcount, ccat_update_destroy);
-		return -EBUSY;
-	}
-
-	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
-	if (!buf) {
-		kref_put(&update->refcount, ccat_update_destroy);
-		return -ENOMEM;
-	}
-
-	buf->update = update;
-	f->private_data = buf;
-	return 0;
+	ccat_write_flash_block(buffer->ccdev->ioaddr, off, (u16) len, buf);
 }
 
 static int ccat_update_release(struct inode *const i, struct file *const f)
 {
-	const struct update_buffer *const buf = f->private_data;
-	struct ccat_update *const update = buf->update;
+	const struct cdev_buffer *const buf = f->private_data;
+	void __iomem *ioaddr = buf->ccdev->ioaddr;
 
 	if (buf->size > 0) {
-		ccat_update_cmd(update->ioaddr, CCAT_WRITE_ENABLE);
-		ccat_update_cmd(update->ioaddr, CCAT_BULK_ERASE);
-		ccat_wait_status_cleared(update->ioaddr);
+		ccat_update_cmd(ioaddr, CCAT_WRITE_ENABLE);
+		ccat_update_cmd(ioaddr, CCAT_BULK_ERASE);
+		ccat_wait_status_cleared(ioaddr);
 		ccat_write_flash(buf);
 	}
-	kfree(f->private_data);
-	kref_put(&update->refcount, ccat_update_destroy);
-	return 0;
+	return ccat_cdev_release(i, f);
 }
 
 /**
@@ -333,18 +276,16 @@ static int ccat_update_release(struct inode *const i, struct file *const f)
 static ssize_t ccat_update_read(struct file *const f, char __user * buf,
 				size_t len, loff_t * off)
 {
-	struct update_buffer *update = f->private_data;
+	struct cdev_buffer *buffer = f->private_data;
+	const size_t iosize = buffer->ccdev->iosize;
 
-	if (!buf || !off) {
-		return -EINVAL;
-	}
-	if (*off >= CCAT_FLASH_SIZE) {
+	if (*off >= iosize) {
 		return 0;
 	}
-	if (*off + len >= CCAT_FLASH_SIZE) {
-		len = CCAT_FLASH_SIZE - *off;
-	}
-	return ccat_read_flash(update->update->ioaddr, buf, len, off);
+
+	len = min(len, (size_t) (iosize - *off));
+
+	return ccat_read_flash(buffer->ccdev->ioaddr, buf, len, off);
 }
 
 /**
@@ -355,105 +296,56 @@ static ssize_t ccat_update_read(struct file *const f, char __user * buf,
  * @off: current offset in the configuration data
  *
  * Copies data from user space (possibly a *.rbf) to the CCAT FPGA's
- * configuration flash to user space.
+ * configuration flash.
  *
  * Return: the number of bytes written, or 0 if flash end is reached
  */
-
 static ssize_t ccat_update_write(struct file *const f, const char __user * buf,
 				 size_t len, loff_t * off)
 {
-	struct update_buffer *const update = f->private_data;
+	struct cdev_buffer *const buffer = f->private_data;
 
-	if (*off + len > sizeof(update->data))
+	if (*off + len > buffer->ccdev->iosize) {
 		return 0;
+	}
 
-	if (copy_from_user(update->data + *off, buf, len)) {
+	if (copy_from_user(buffer->data + *off, buf, len)) {
 		return -EFAULT;
 	}
 
 	*off += len;
-	update->size = *off;
+	buffer->size = *off;
 	return len;
 }
 
-static struct file_operations update_ops = {
-	.owner = THIS_MODULE,
-	.open = ccat_update_open,
-	.release = ccat_update_release,
-	.read = ccat_update_read,
-	.write = ccat_update_write,
+static struct ccat_cdev dev_table[CCAT_DEVICES_MAX];
+static struct ccat_class cdev_class = {
+	.count = CCAT_DEVICES_MAX,
+	.devices = dev_table,
+	.name = "ccat_update",
+	.fops = {
+		 .owner = THIS_MODULE,
+		 .open = ccat_cdev_open,
+		 .release = ccat_update_release,
+		 .read = ccat_update_read,
+		 .write = ccat_update_write,
+		 },
 };
 
-/**
- * ccat_get_prom_id() - Read CCAT PROM ID
- * @ioaddr: address of the CCAT Update function in PCI config space
- *
- * Return: the CCAT FPGA's PROM identifier
- */
-u8 ccat_get_prom_id(void __iomem * const ioaddr)
+static int ccat_update_probe(struct ccat_function *func)
 {
-	ccat_update_cmd(ioaddr, CCAT_GET_PROM_ID);
-	return ioread8(ioaddr + 0x38);
+	static const u16 SUPPORTED_REVISION = 0x00;
+
+	if (SUPPORTED_REVISION != func->info.rev) {
+		pr_warn("CCAT Update rev. %d not supported\n", func->info.rev);
+		return -ENODEV;
+	}
+	return ccat_cdev_probe(func, &cdev_class, CCAT_FLASH_SIZE);
 }
 
-/**
- * ccat_update_init() - Initialize the CCAT Update function
- */
-struct ccat_update *ccat_update_init(const struct ccat_device *const ccatdev,
-				     void __iomem * const addr)
-{
-	struct ccat_update *const update = kzalloc(sizeof(*update), GFP_KERNEL);
-
-	if (!update) {
-		return NULL;
-	}
-	kref_init(&update->refcount);
-	update->ioaddr = ccatdev->bar[0].ioaddr + ioread32(addr + 0x8);
-	memcpy_fromio(&update->info, addr, sizeof(update->info));
-
-	if (0x00 != update->info.rev) {
-		pr_warn("CCAT Update rev. %d not supported\n",
-			update->info.rev);
-		goto cleanup;
-	}
-
-	if (alloc_chrdev_region(&update->dev, 0, 1, KBUILD_MODNAME)) {
-		pr_warn("alloc_chrdev_region() failed\n");
-		goto cleanup;
-	}
-
-	update->class = class_create(THIS_MODULE, "ccat_update");
-	if (NULL == update->class) {
-		pr_warn("Create device class failed\n");
-		goto cleanup;
-	}
-
-	if (NULL ==
-	    device_create(update->class, NULL, update->dev, NULL,
-			  "ccat_update")) {
-		pr_warn("device_create() failed\n");
-		goto cleanup;
-	}
-
-	cdev_init(&update->cdev, &update_ops);
-	update->cdev.owner = THIS_MODULE;
-	update->cdev.ops = &update_ops;
-	if (cdev_add(&update->cdev, update->dev, 1)) {
-		pr_warn("add update device failed\n");
-		goto cleanup;
-	}
-	return update;
-cleanup:
-	kref_put(&update->refcount, ccat_update_destroy);
-	return NULL;
-}
-
-/**
- * ccat_update_remove() - Prepare the CCAT Update function for removal
- */
-void ccat_update_remove(struct ccat_update *update)
-{
-	kref_put(&update->refcount, ccat_update_destroy);
-	pr_debug("%s(): done\n", __FUNCTION__);
-}
+struct ccat_driver update_driver = {
+	.type = CCATINFO_EPCS_PROM,
+	.probe = ccat_update_probe,
+	.remove = ccat_cdev_remove,
+	.cdev_class = &cdev_class,
+};
