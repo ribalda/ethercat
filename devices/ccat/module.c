@@ -288,9 +288,8 @@ static int ccat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto cleanup_pci_device;
 	}
 
-	if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64))) {
-		pr_debug("64 bit DMA supported, pci rev: %u\n", revision);
-	} else if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32))) {
+	/* CCAT is unable to access memory above 4 GB */
+	if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32))) {
 		pr_debug("32 bit DMA supported, pci rev: %u\n", revision);
 	} else {
 		pr_warn("No suitable DMA available, pci rev: %u\n", revision);
