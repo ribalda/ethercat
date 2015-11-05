@@ -343,7 +343,7 @@ static int ccat_update_probe(struct ccat_function *func)
 	return ccat_cdev_probe(func, &cdev_class, CCAT_FLASH_SIZE);
 }
 
-struct ccat_driver update_driver = {
+const struct ccat_driver update_driver = {
 	.type = CCATINFO_EPCS_PROM,
 	.probe = ccat_update_probe,
 	.remove = ccat_cdev_remove,

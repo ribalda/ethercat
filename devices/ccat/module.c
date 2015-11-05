@@ -23,7 +23,6 @@
 #include <linux/netdevice.h>
 #include <linux/platform_device.h>
 #include <linux/version.h>
-
 #include "module.h"
 
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
@@ -260,7 +259,7 @@ static void ccat_functions_remove(struct ccat_device *const dev)
 static int ccat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct ccat_device *ccatdev;
-	u8 revision;
+	u8 rev;
 	int status;
 
 	ccatdev = devm_kzalloc(&pdev->dev, sizeof(*ccatdev), GFP_KERNEL);
@@ -273,35 +272,44 @@ static int ccat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	status = pci_enable_device_mem(pdev);
 	if (status) {
-		pr_info("enable %s failed: %d\n", pdev->dev.kobj.name, status);
-		goto cleanup_pci_device;
+		pr_err("enable %s failed: %d\n", pdev->dev.kobj.name, status);
+		return status;
 	}
 
-	status = pci_read_config_byte(pdev, PCI_REVISION_ID, &revision);
+	status = pci_read_config_byte(pdev, PCI_REVISION_ID, &rev);
 	if (status) {
-		pr_warn("read CCAT pci revision failed with %d\n", status);
-		goto cleanup_pci_device;
+		pr_err("read CCAT pci revision failed with %d\n", status);
+		goto disable_device;
 	}
 
-	if ((status = pci_request_regions(pdev, KBUILD_MODNAME))) {
-		pr_info("allocate mem_regions failed.\n");
-		goto cleanup_pci_device;
+	status = pci_request_regions(pdev, KBUILD_MODNAME);
+	if (status) {
+		pr_err("allocate mem_regions failed.\n");
+		goto disable_device;
 	}
 
-	/* CCAT is unable to access memory above 4 GB */
-	if (!dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32))) {
-		pr_debug("32 bit DMA supported, pci rev: %u\n", revision);
+	status = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (status) {
+		status =
+		    dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+		if (status) {
+			pr_err("No suitable DMA available, pci rev: %u\n", rev);
+			goto release_regions;
+		}
+		pr_debug("32 bit DMA supported, pci rev: %u\n", rev);
 	} else {
-		pr_warn("No suitable DMA available, pci rev: %u\n", revision);
+		pr_debug("64 bit DMA supported, pci rev: %u\n", rev);
 	}
 
-	if (!(ccatdev->bar_0 = pci_iomap(pdev, 0, 0))) {
-		pr_warn("initialization of bar0 failed.\n");
+	ccatdev->bar_0 = pci_iomap(pdev, 0, 0);
+	if (!ccatdev->bar_0) {
+		pr_err("initialization of bar0 failed.\n");
 		status = -EIO;
-		goto cleanup_pci_device;
+		goto release_regions;
 	}
 
-	if (!(ccatdev->bar_2 = pci_iomap(pdev, 2, 0))) {
+	ccatdev->bar_2 = pci_iomap(pdev, 2, 0);
+	if (!ccatdev->bar_2) {
 		pr_warn("initialization of optional bar2 failed.\n");
 	}
 
@@ -310,7 +318,10 @@ static int ccat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		pr_warn("some functions couldn't be initialized\n");
 	}
 	return 0;
-cleanup_pci_device:
+
+release_regions:
+	pci_release_regions(pdev);
+disable_device:
 	pci_disable_device(pdev);
 	return status;
 }

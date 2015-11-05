@@ -100,7 +100,7 @@ static int ccat_sram_probe(struct ccat_function *func)
 	return ccat_cdev_probe(func, &cdev_class, iosize);
 }
 
-struct ccat_driver sram_driver = {
+const struct ccat_driver sram_driver = {
 	.type = CCATINFO_SRAM,
 	.probe = ccat_sram_probe,
 	.remove = ccat_cdev_remove,
