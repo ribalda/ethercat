@@ -111,6 +111,7 @@ examples/user/Makefile
 examples/user/Makefile.in
 examples/user/TAGS
 examples/user/ec_user_example
+examples/user_ccat/
 examples/xenomai/.libs
 examples/xenomai/ec_xenomai_example
 examples/xenomai_posix/.libs

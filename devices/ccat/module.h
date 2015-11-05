@@ -29,17 +29,17 @@
 #include "../ecdev.h"
 
 #define DRV_EXTRAVERSION "-ec"
-#define DRV_VERSION      "0.13" DRV_EXTRAVERSION
+#define DRV_VERSION      "0.14" DRV_EXTRAVERSION
 #define DRV_DESCRIPTION  "Beckhoff CCAT Ethernet/EtherCAT Network Driver"
 
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-extern struct ccat_driver eth_eim_driver;
-extern struct ccat_driver eth_dma_driver;
-extern struct ccat_driver gpio_driver;
-extern struct ccat_driver sram_driver;
-extern struct ccat_driver update_driver;
+extern const struct ccat_driver eth_eim_driver;
+extern const struct ccat_driver eth_dma_driver;
+extern const struct ccat_driver gpio_driver;
+extern const struct ccat_driver sram_driver;
+extern const struct ccat_driver update_driver;
 
 /**
  * CCAT function type identifiers (u16)

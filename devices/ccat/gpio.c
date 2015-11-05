@@ -144,8 +144,8 @@ static int ccat_gpio_probe(struct ccat_function *func)
 		kfree(gpio);
 		return ret;
 	}
-	pr_info("registered %s as gpio chip with #%d GPIOs.\n",
-		gpio->chip.label, gpio->chip.ngpio);
+	pr_info("registered %s as gpiochip%d with #%d GPIOs.\n",
+		gpio->chip.label, gpio->chip.base, gpio->chip.ngpio);
 	func->private_data = gpio;
 	return 0;
 }
@@ -157,7 +157,7 @@ static void ccat_gpio_remove(struct ccat_function *func)
 	gpiochip_remove(&gpio->chip);
 };
 
-struct ccat_driver gpio_driver = {
+const struct ccat_driver gpio_driver = {
 	.type = CCATINFO_GPIO,
 	.probe = ccat_gpio_probe,
 	.remove = ccat_gpio_remove,
