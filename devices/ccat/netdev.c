@@ -51,6 +51,8 @@ static const u8 frameForwardEthernetFrames[] = {
 
 #define FIFO_LENGTH 64
 #define POLL_TIME ktime_set(0, 50 * NSEC_PER_USEC)
+#define CCAT_ALIGNMENT ((size_t)(128 * 1024))
+#define CCAT_ALIGN_CHANNEL(x, c) ((typeof(x))(ALIGN((size_t)((x) + ((c) * CCAT_ALIGNMENT)), CCAT_ALIGNMENT)))
 
 struct ccat_dma_frame_hdr {
 	__le32 reserved1;
@@ -92,8 +94,6 @@ struct ccat_eim_frame {
 /**
  * struct ccat_eth_register - CCAT register addresses in the PCI BAR
  * @mii: address of the CCAT management interface register
- * @tx_fifo: address of the CCAT TX DMA fifo register
- * @rx_fifo: address of the CCAT RX DMA fifo register
  * @mac: address of the CCAT media access control register
  * @rx_mem: address of the CCAT register holding the RX DMA address
  * @tx_mem: address of the CCAT register holding the TX DMA address
@@ -101,8 +101,6 @@ struct ccat_eim_frame {
  */
 struct ccat_eth_register {
 	void __iomem *mii;
-	void __iomem *tx_fifo;
-	void __iomem *rx_fifo;
 	void __iomem *mac;
 	void __iomem *rx_mem;
 	void __iomem *tx_mem;
@@ -110,26 +108,34 @@ struct ccat_eth_register {
 };
 
 /**
- * struct ccat_dma - CCAT DMA channel configuration
- * @phys: device-viewed address(physical) of the associated DMA memory
- * @start: CPU-viewed address(virtual) of the associated DMA memory
+ * struct ccat_dma_mem - CCAT DMA channel configuration
  * @size: number of bytes in the associated DMA memory
+ * @phys: device-viewed address(physical) of the associated DMA memory
  * @channel: CCAT DMA channel number
  * @dev: valid struct device pointer
+ * @base: CPU-viewed address(virtual) of the associated DMA memory
  */
-struct ccat_dma {
-	struct ccat_dma_frame *next;
-	void *start;
+struct ccat_dma_mem {
 	size_t size;
 	dma_addr_t phys;
 	size_t channel;
 	struct device *dev;
+	void *base;
+};
+
+/**
+ * struct ccat_dma/eim/mem
+ * @next: pointer to the next frame in fifo ring buffer
+ * @start: aligned CPU-viewed address(virtual) of the associated memory
+ */
+struct ccat_dma {
+	struct ccat_dma_frame *next;
+	void *start;
 };
 
 struct ccat_eim {
 	struct ccat_eim_frame __iomem *next;
 	void __iomem *start;
-	size_t size;
 };
 
 struct ccat_mem {
@@ -138,22 +144,41 @@ struct ccat_mem {
 };
 
 /**
- * struct ccat_eth_fifo - CCAT RX or TX DMA fifo
- * @add: callback used to add a frame to this fifo
- * @reg: PCI register address of this DMA fifo
- * @dma: information about the associated DMA memory
+ * struct ccat_eth_fifo - CCAT RX or TX fifo
+ * @ops: function pointer table for dma/eim and rx/tx specific fifo functions
+ * @reg: PCI register address of this fifo
+ * @rx_bytes: number of bytes processed -> reported with ndo_get_stats64()
+ * @rx_dropped: number of dropped frames -> reported with ndo_get_stats64()
+ * @mem/dma/eim: information about the associated memory
  */
 struct ccat_eth_fifo {
-	void (*add) (struct ccat_eth_fifo *);
-	void (*copy_to_skb) (struct ccat_eth_fifo *, struct sk_buff *, size_t);
-	void (*queue_skb) (struct ccat_eth_fifo * const, struct sk_buff *);
-	void __iomem *reg;
+	const struct ccat_eth_fifo_operations *ops;
 	const struct ccat_eth_frame *end;
+	void __iomem *reg;
+	atomic64_t bytes;
+	atomic64_t dropped;
 	union {
 		struct ccat_mem mem;
 		struct ccat_dma dma;
 		struct ccat_eim eim;
 	};
+};
+
+/**
+ * struct ccat_eth_fifo_operations
+ * @ready: callback used to test the next frames ready bit
+ * @add: callback used to add a frame to this fifo
+ * @copy_to_skb: callback used to copy from rx fifos to skbs
+ * @skb: callback used to queue skbs into tx fifos
+ */
+struct ccat_eth_fifo_operations {
+	size_t(*ready) (struct ccat_eth_fifo *);
+	void (*add) (struct ccat_eth_fifo *);
+	union {
+		void (*copy_to_skb) (struct ccat_eth_fifo *, struct sk_buff *,
+				     size_t);
+		void (*skb) (struct ccat_eth_fifo *, struct sk_buff *);
+	} queue;
 };
 
 /**
@@ -173,30 +198,19 @@ struct ccat_mac_infoblock {
  * struct ccat_eth_priv - CCAT Ethernet/EtherCAT Master function (netdev)
  * @func: pointer to the parent struct ccat_function
  * @netdev: the net_device structure used by the kernel networking stack
- * @info: holds a copy of the CCAT Ethernet/EtherCAT Master function information block (read from PCI config space)
  * @reg: register addresses in PCI config space of the Ethernet/EtherCAT Master function
- * @rx_fifo: DMA fifo used for RX DMA descriptors
- * @tx_fifo: DMA fifo used for TX DMA descriptors
+ * @rx_fifo: fifo used for RX descriptors
+ * @tx_fifo: fifo used for TX descriptors
  * @poll_timer: interval timer used to poll CCAT for events like link changed, rx done, tx done
- * @rx_bytes: number of bytes received -> reported with ndo_get_stats64()
- * @rx_dropped: number of received frames, which were dropped -> reported with ndo_get_stats64()
- * @tx_bytes: number of bytes send -> reported with ndo_get_stats64()
- * @tx_dropped: number of frames requested to send, which were dropped -> reported with ndo_get_stats64()
  */
 struct ccat_eth_priv {
-	void (*free) (struct ccat_eth_priv *);
-	 bool(*tx_ready) (const struct ccat_eth_priv *);
-	 size_t(*rx_ready) (struct ccat_eth_fifo *);
 	struct ccat_function *func;
 	struct net_device *netdev;
 	struct ccat_eth_register reg;
 	struct ccat_eth_fifo rx_fifo;
 	struct ccat_eth_fifo tx_fifo;
 	struct hrtimer poll_timer;
-	atomic64_t rx_bytes;
-	atomic64_t rx_dropped;
-	atomic64_t tx_bytes;
-	atomic64_t tx_dropped;
+	struct ccat_dma_mem dma_mem;
 	ec_device_t *ecdev;
 	void (*carrier_off) (struct net_device * netdev);
 	 bool(*carrier_ok) (const struct net_device * netdev);
@@ -234,13 +248,21 @@ struct ccat_mac_register {
 	u8 mii_connected;
 };
 
-static void ccat_dma_free(struct ccat_dma *const dma)
+static void fifo_set_end(struct ccat_eth_fifo *const fifo, size_t size)
 {
-	const struct ccat_dma tmp = *dma;
+	fifo->end = fifo->mem.start + size - sizeof(struct ccat_eth_frame);
+}
 
-	free_dma(dma->channel);
-	memset(dma, 0, sizeof(*dma));
-	dma_free_coherent(tmp.dev, tmp.size, tmp.start, tmp.phys);
+static void ccat_dma_free(struct ccat_eth_priv *const priv)
+{
+	if (priv->dma_mem.base) {
+		const struct ccat_dma_mem tmp = priv->dma_mem;
+
+		memset(&priv->dma_mem, 0, sizeof(priv->dma_mem));
+		dma_free_coherent(tmp.dev, tmp.size, tmp.base, tmp.phys);
+		free_dma(priv->func->info.tx_dma_chan);
+		free_dma(priv->func->info.rx_dma_chan);
+	}
 }
 
 /**
@@ -250,49 +272,30 @@ static void ccat_dma_free(struct ccat_dma *const dma)
  * @ioaddr of the pci bar2 configspace used to calculate the address of the pci dma configuration
  * @dev which should be configured for DMA
  */
-static int ccat_dma_init(struct ccat_dma *const dma, size_t channel,
-			 void __iomem * const ioaddr, struct device *const dev)
+static int ccat_dma_init(struct ccat_dma_mem *const dma, size_t channel,
+			 void __iomem * const bar2,
+			 struct ccat_eth_fifo *const fifo)
 {
-	void *frame;
-	u64 addr;
-	u32 translateAddr;
-	u32 memTranslate;
-	u32 memSize;
-	u32 data = 0xffffffff;
-	u32 offset = (sizeof(u64) * channel) + 0x1000;
+	void __iomem *const ioaddr = bar2 + 0x1000 + (sizeof(u64) * channel);
+	const dma_addr_t phys = CCAT_ALIGN_CHANNEL(dma->phys, channel);
+	const u32 phys_hi = (sizeof(phys) > sizeof(u32)) ? phys >> 32 : 0;
+	fifo->dma.start = CCAT_ALIGN_CHANNEL(dma->base, channel);
 
-	dma->channel = channel;
-	dma->dev = dev;
-
-	/* calculate size and alignments */
-	iowrite32(data, ioaddr + offset);
-	wmb();
-	data = ioread32(ioaddr + offset);
-	memTranslate = data & 0xfffffffc;
-	memSize = (~memTranslate) + 1;
-	dma->size = 2 * memSize - PAGE_SIZE;
-	dma->start =
-	    dma_zalloc_coherent(dev, dma->size, &dma->phys, GFP_KERNEL);
-	if (!dma->start || !dma->phys) {
-		pr_info("init DMA%llu memory failed.\n", (u64) channel);
-		return -ENOMEM;
-	}
-
+	fifo_set_end(fifo, CCAT_ALIGNMENT);
 	if (request_dma(channel, KBUILD_MODNAME)) {
 		pr_info("request dma channel %llu failed\n", (u64) channel);
-		ccat_dma_free(dma);
 		return -EINVAL;
 	}
 
-	translateAddr = (dma->phys + memSize - PAGE_SIZE) & memTranslate;
-	addr = translateAddr;
-	memcpy_toio(ioaddr + offset, &addr, sizeof(addr));
-	frame = dma->start + translateAddr - dma->phys;
+	/** bit 0 enables 64 bit mode on ccat */
+	iowrite32((u32) phys | ((phys_hi) > 0), ioaddr);
+	iowrite32(phys_hi, ioaddr + 4);
+
 	pr_debug
-	    ("DMA%llu mem initialized\n start:         0x%p\n phys:         0x%llx\n translated:   0x%llx\n pci addr:     0x%08x%x\n memTranslate: 0x%x\n size:         %llu bytes.\n",
-	     (u64) channel, dma->start, (u64) (dma->phys), addr,
-	     ioread32(ioaddr + offset + 4), ioread32(ioaddr + offset),
-	     memTranslate, (u64) dma->size);
+	    ("DMA%llu mem initialized\n base:         0x%p\n start:        0x%p\n phys:         0x%09llx\n pci addr:     0x%01x%08x\n size:         %llu |%llx bytes.\n",
+	     (u64) channel, dma->base, fifo->dma.start, (u64) dma->phys,
+	     ioread32(ioaddr + 4), ioread32(ioaddr),
+	     (u64) dma->size, (u64) dma->size);
 	return 0;
 }
 
@@ -341,8 +344,10 @@ static void unregister_ecdev(struct net_device *const netdev)
 	ecdev_withdraw(priv->ecdev);
 }
 
-static inline bool fifo_eim_tx_ready(const struct ccat_eth_priv *const priv)
+static inline size_t fifo_eim_tx_ready(struct ccat_eth_fifo *const fifo)
 {
+	struct ccat_eth_priv *const priv =
+	    container_of(fifo, struct ccat_eth_priv, tx_fifo);
 	static const size_t TX_FIFO_LEVEL_OFFSET = 0x20;
 	static const u8 TX_FIFO_LEVEL_MASK = 0x3F;
 	void __iomem *addr = priv->reg.mac + TX_FIFO_LEVEL_OFFSET;
@@ -396,33 +401,30 @@ static void fifo_eim_queue_skb(struct ccat_eth_fifo *const fifo,
 	iowrite32(addr_and_length, fifo->reg);
 }
 
-static void ccat_eth_priv_free_eim(struct ccat_eth_priv *priv)
+static void ccat_eth_fifo_hw_reset(struct ccat_eth_fifo *const fifo)
 {
-	/* reset hw fifo's */
-	iowrite32(0, priv->tx_fifo.reg + 0x8);
-	wmb();
-}
-
-static void ccat_eth_fifo_reset(struct ccat_eth_fifo *const fifo)
-{
-	/* reset hw fifo */
 	if (fifo->reg) {
 		iowrite32(0, fifo->reg + 0x8);
 		wmb();
 	}
+}
 
-	if (fifo->add) {
+static void ccat_eth_fifo_reset(struct ccat_eth_fifo *const fifo)
+{
+	ccat_eth_fifo_hw_reset(fifo);
+
+	if (fifo->ops->add) {
 		fifo->mem.next = fifo->mem.start;
 		do {
-			fifo->add(fifo);
+			fifo->ops->add(fifo);
 			ccat_eth_fifo_inc(fifo);
 		} while (fifo->mem.next != fifo->mem.start);
 	}
 }
 
-static inline bool fifo_dma_tx_ready(const struct ccat_eth_priv *const priv)
+static inline size_t fifo_dma_tx_ready(struct ccat_eth_fifo *const fifo)
 {
-	const struct ccat_dma_frame *frame = priv->tx_fifo.dma.next;
+	const struct ccat_dma_frame *frame = fifo->dma.next;
 	return le32_to_cpu(frame->hdr.tx_flags) & CCAT_FRAME_SENT;
 }
 
@@ -480,16 +482,45 @@ static void fifo_dma_queue_skb(struct ccat_eth_fifo *const fifo,
 	iowrite32(addr_and_length, fifo->reg);
 }
 
-static void ccat_eth_priv_free_dma(struct ccat_eth_priv *priv)
+static const struct ccat_eth_fifo_operations dma_rx_fifo_ops = {
+	.add = ccat_eth_rx_fifo_dma_add,
+	.ready = fifo_dma_rx_ready,
+	.queue.copy_to_skb = fifo_dma_copy_to_linear_skb,
+};
+
+static const struct ccat_eth_fifo_operations dma_tx_fifo_ops = {
+	.add = ccat_eth_tx_fifo_dma_add_free,
+	.ready = fifo_dma_tx_ready,
+	.queue.skb = fifo_dma_queue_skb,
+};
+
+static const struct ccat_eth_fifo_operations eim_rx_fifo_ops = {
+	.add = fifo_eim_rx_add,
+	.queue.copy_to_skb = fifo_eim_copy_to_linear_skb,
+	.ready = fifo_eim_rx_ready,
+};
+
+static const struct ccat_eth_fifo_operations eim_tx_fifo_ops = {
+	.add = fifo_eim_tx_add,
+	.queue.skb = fifo_eim_queue_skb,
+	.ready = fifo_eim_tx_ready,
+};
+
+static void ccat_eth_priv_free(struct ccat_eth_priv *priv)
 {
 	/* reset hw fifo's */
-	iowrite32(0, priv->rx_fifo.reg + 0x8);
-	iowrite32(0, priv->tx_fifo.reg + 0x8);
-	wmb();
+	ccat_eth_fifo_hw_reset(&priv->rx_fifo);
+	ccat_eth_fifo_hw_reset(&priv->tx_fifo);
 
 	/* release dma */
-	ccat_dma_free(&priv->rx_fifo.dma);
-	ccat_dma_free(&priv->tx_fifo.dma);
+	ccat_dma_free(priv);
+}
+
+static int ccat_hw_disable_mac_filter(struct ccat_eth_priv *priv)
+{
+	iowrite8(0, priv->reg.mii + 0x8 + 6);
+	wmb();
+	return 0;
 }
 
 /**
@@ -497,100 +528,66 @@ static void ccat_eth_priv_free_dma(struct ccat_eth_priv *priv)
  */
 static int ccat_eth_priv_init_dma(struct ccat_eth_priv *priv)
 {
-	struct ccat_function *const func = priv->func;
-	struct pci_dev *pdev = func->ccat->pdev;
+	struct ccat_dma_mem *const dma = &priv->dma_mem;
+	struct pci_dev *const pdev = priv->func->ccat->pdev;
+	void __iomem *const bar_2 = priv->func->ccat->bar_2;
+	const u8 rx_chan = priv->func->info.rx_dma_chan;
+	const u8 tx_chan = priv->func->info.tx_dma_chan;
 	int status = 0;
-	priv->rx_ready = fifo_dma_rx_ready;
-	priv->tx_ready = fifo_dma_tx_ready;
-	priv->free = ccat_eth_priv_free_dma;
 
-	status =
-	    ccat_dma_init(&priv->rx_fifo.dma, func->info.rx_dma_chan,
-			  func->ccat->bar_2, &pdev->dev);
+	dma->dev = &pdev->dev;
+	dma->size = CCAT_ALIGNMENT * 3;
+	dma->base =
+	    dma_zalloc_coherent(dma->dev, dma->size, &dma->phys, GFP_KERNEL);
+	if (!dma->base || !dma->phys) {
+		pr_err("init DMA memory failed.\n");
+		return -ENOMEM;
+	}
+
+	priv->rx_fifo.ops = &dma_rx_fifo_ops;
+	status = ccat_dma_init(dma, rx_chan, bar_2, &priv->rx_fifo);
 	if (status) {
 		pr_info("init RX DMA memory failed.\n");
+		ccat_dma_free(priv);
 		return status;
 	}
 
-	status =
-	    ccat_dma_init(&priv->tx_fifo.dma, func->info.tx_dma_chan,
-			  func->ccat->bar_2, &pdev->dev);
+	priv->tx_fifo.ops = &dma_tx_fifo_ops;
+	status = ccat_dma_init(dma, tx_chan, bar_2, &priv->tx_fifo);
 	if (status) {
 		pr_info("init TX DMA memory failed.\n");
-		ccat_dma_free(&priv->rx_fifo.dma);
+		ccat_dma_free(priv);
 		return status;
 	}
-
-	priv->rx_fifo.add = ccat_eth_rx_fifo_dma_add;
-	priv->rx_fifo.copy_to_skb = fifo_dma_copy_to_linear_skb;
-	priv->rx_fifo.queue_skb = NULL;
-	priv->rx_fifo.end =
-	    ((struct ccat_eth_frame *)priv->rx_fifo.dma.start) + FIFO_LENGTH -
-	    1;
-	priv->rx_fifo.reg = priv->reg.rx_fifo;
-	ccat_eth_fifo_reset(&priv->rx_fifo);
-
-	priv->tx_fifo.add = ccat_eth_tx_fifo_dma_add_free;
-	priv->tx_fifo.copy_to_skb = NULL;
-	priv->tx_fifo.queue_skb = fifo_dma_queue_skb;
-	priv->tx_fifo.end =
-	    ((struct ccat_eth_frame *)priv->tx_fifo.dma.start) + FIFO_LENGTH -
-	    1;
-	priv->tx_fifo.reg = priv->reg.tx_fifo;
-	ccat_eth_fifo_reset(&priv->tx_fifo);
-
-	/* disable MAC filter */
-	iowrite8(0, priv->reg.mii + 0x8 + 6);
-	wmb();
-	return 0;
+	return ccat_hw_disable_mac_filter(priv);
 }
 
 static int ccat_eth_priv_init_eim(struct ccat_eth_priv *priv)
 {
-	priv->rx_ready = fifo_eim_rx_ready;
-	priv->tx_ready = fifo_eim_tx_ready;
-	priv->free = ccat_eth_priv_free_eim;
-
 	priv->rx_fifo.eim.start = priv->reg.rx_mem;
-	priv->rx_fifo.eim.size = priv->func->info.rx_size;
-
-	priv->rx_fifo.add = fifo_eim_rx_add;
-	priv->rx_fifo.copy_to_skb = fifo_eim_copy_to_linear_skb;
-	priv->rx_fifo.queue_skb = NULL;
-	priv->rx_fifo.end = priv->rx_fifo.dma.start;
-	priv->rx_fifo.reg = NULL;
-	ccat_eth_fifo_reset(&priv->rx_fifo);
+	priv->rx_fifo.ops = &eim_rx_fifo_ops;
+	fifo_set_end(&priv->rx_fifo, sizeof(struct ccat_eth_frame));
 
 	priv->tx_fifo.eim.start = priv->reg.tx_mem;
-	priv->tx_fifo.eim.size = priv->func->info.tx_size;
+	priv->tx_fifo.ops = &eim_tx_fifo_ops;
+	fifo_set_end(&priv->tx_fifo, priv->func->info.tx_size);
 
-	priv->tx_fifo.add = fifo_eim_tx_add;
-	priv->tx_fifo.copy_to_skb = NULL;
-	priv->tx_fifo.queue_skb = fifo_eim_queue_skb;
-	priv->tx_fifo.end =
-	    priv->tx_fifo.dma.start + priv->tx_fifo.dma.size -
-	    sizeof(struct ccat_eth_frame);
-	priv->tx_fifo.reg = priv->reg.tx_fifo;
-	ccat_eth_fifo_reset(&priv->tx_fifo);
-
-	/* disable MAC filter */
-	iowrite8(0, priv->reg.mii + 0x8 + 6);
-	wmb();
-	return 0;
+	return ccat_hw_disable_mac_filter(priv);
 }
 
 /**
  * Initializes a struct ccat_eth_register with data from a corresponding
  * CCAT function.
  */
-static void ccat_eth_priv_init_reg(struct ccat_eth_register *const reg,
-				   const struct ccat_function *const func)
+static void ccat_eth_priv_init_reg(struct ccat_eth_priv *const priv)
 {
 	struct ccat_mac_infoblock offsets;
+	struct ccat_eth_register *const reg = &priv->reg;
+	const struct ccat_function *const func = priv->func;
 	void __iomem *const func_base = func->ccat->bar_0 + func->info.addr;
 
 	/* struct ccat_eth_fifo contains a union of ccat_dma, ccat_eim and ccat_mem
-	 * the members next, start and size have to overlay the exact same memory,
+	 * the members next and start have to overlay the exact same memory,
 	 * to support 'polymorphic' usage of them */
 	BUILD_BUG_ON(offsetof(struct ccat_dma, next) !=
 		     offsetof(struct ccat_mem, next));
@@ -600,13 +597,11 @@ static void ccat_eth_priv_init_reg(struct ccat_eth_register *const reg,
 		     offsetof(struct ccat_eim, next));
 	BUILD_BUG_ON(offsetof(struct ccat_dma, start) !=
 		     offsetof(struct ccat_eim, start));
-	BUILD_BUG_ON(offsetof(struct ccat_dma, size) !=
-		     offsetof(struct ccat_eim, size));
 
 	memcpy_fromio(&offsets, func_base, sizeof(offsets));
 	reg->mii = func_base + offsets.mii;
-	reg->tx_fifo = func_base + offsets.tx_fifo;
-	reg->rx_fifo = func_base + offsets.tx_fifo + 0x10;
+	priv->tx_fifo.reg = func_base + offsets.tx_fifo;
+	priv->rx_fifo.reg = func_base + offsets.tx_fifo + 0x10;
 	reg->mac = func_base + offsets.mac;
 	reg->rx_mem = func_base + offsets.rx_mem;
 	reg->tx_mem = func_base + offsets.tx_mem;
@@ -621,7 +616,7 @@ static netdev_tx_t ccat_eth_start_xmit(struct sk_buff *skb,
 
 	if (skb_is_nonlinear(skb)) {
 		pr_warn("Non linear skb not supported -> drop frame.\n");
-		atomic64_inc(&priv->tx_dropped);
+		atomic64_inc(&fifo->dropped);
 		priv->kfree_skb_any(skb);
 		return NETDEV_TX_OK;
 	}
@@ -629,29 +624,28 @@ static netdev_tx_t ccat_eth_start_xmit(struct sk_buff *skb,
 	if (skb->len > MAX_PAYLOAD_SIZE) {
 		pr_warn("skb.len %llu exceeds dma buffer %llu -> drop frame.\n",
 			(u64) skb->len, (u64) MAX_PAYLOAD_SIZE);
-		atomic64_inc(&priv->tx_dropped);
+		atomic64_inc(&fifo->dropped);
 		priv->kfree_skb_any(skb);
 		return NETDEV_TX_OK;
 	}
 
-	if (!priv->tx_ready(priv)) {
+	if (!fifo->ops->ready(fifo)) {
 		netdev_err(dev, "BUG! Tx Ring full when queue awake!\n");
 		priv->stop_queue(priv->netdev);
 		return NETDEV_TX_BUSY;
 	}
 
 	/* prepare frame in DMA memory */
-	fifo->queue_skb(fifo, skb);
+	fifo->ops->queue.skb(fifo, skb);
 
 	/* update stats */
-	atomic64_add(skb->len, &priv->tx_bytes);
+	atomic64_add(skb->len, &fifo->bytes);
 
 	priv->kfree_skb_any(skb);
 
 	ccat_eth_fifo_inc(fifo);
 	/* stop queue if tx ring is full */
-
-	if (!priv->tx_ready(priv)) {
+	if (!fifo->ops->ready(fifo)) {
 		priv->stop_queue(priv->netdev);
 	}
 	return NETDEV_TX_OK;
@@ -677,20 +671,21 @@ static void ccat_eth_xmit_raw(struct net_device *dev, const char *const data,
 static void ccat_eth_receive(struct ccat_eth_priv *const priv, const size_t len)
 {
 	struct sk_buff *const skb = dev_alloc_skb(len + NET_IP_ALIGN);
+	struct ccat_eth_fifo *const fifo = &priv->rx_fifo;
 	struct net_device *const dev = priv->netdev;
 
 	if (!skb) {
 		pr_info("%s() out of memory :-(\n", __FUNCTION__);
-		atomic64_inc(&priv->rx_dropped);
+		atomic64_inc(&fifo->dropped);
 		return;
 	}
 	skb->dev = dev;
 	skb_reserve(skb, NET_IP_ALIGN);
-	priv->rx_fifo.copy_to_skb(&priv->rx_fifo, skb, len);
+	fifo->ops->queue.copy_to_skb(fifo, skb, len);
 	skb_put(skb, len);
 	skb->protocol = eth_type_trans(skb, dev);
 	skb->ip_summed = CHECKSUM_UNNECESSARY;
-	atomic64_add(len, &priv->rx_bytes);
+	atomic64_add(len, &fifo->bytes);
 	netif_rx(skb);
 }
 
@@ -730,7 +725,7 @@ static void ccat_eth_link_up(struct net_device *const dev)
 inline static size_t ccat_eth_priv_read_link_state(const struct ccat_eth_priv
 						   *const priv)
 {
-	return (1 << 24) == (ioread32(priv->reg.mii + 0x8 + 4) & (1 << 24));
+	return ! !(ioread32(priv->reg.mii + 0x8 + 4) & (1 << 24));
 }
 
 /**
@@ -754,20 +749,19 @@ static void poll_link(struct ccat_eth_priv *const priv)
 static void poll_rx(struct ccat_eth_priv *const priv)
 {
 	struct ccat_eth_fifo *const fifo = &priv->rx_fifo;
-	size_t rx_per_poll = FIFO_LENGTH / 2;
-	size_t len = priv->rx_ready(fifo);
+	const size_t len = fifo->ops->ready(fifo);
 
-	while (len && --rx_per_poll) {
+	if (len) {
 		priv->receive(priv, len);
-		fifo->add(fifo);
+		fifo->ops->add(fifo);
 		ccat_eth_fifo_inc(fifo);
-		len = priv->rx_ready(fifo);
 	}
 }
 
-static void ec_poll_rx(struct net_device *dev)
+static void ec_poll(struct net_device *dev)
 {
 	struct ccat_eth_priv *const priv = netdev_priv(dev);
+	poll_link(priv);
 	poll_rx(priv);
 }
 
@@ -776,7 +770,7 @@ static void ec_poll_rx(struct net_device *dev)
  */
 static void poll_tx(struct ccat_eth_priv *const priv)
 {
-	if (priv->tx_ready(priv)) {
+	if (priv->tx_fifo.ops->ready(&priv->tx_fifo)) {
 		netif_wake_queue(priv->netdev);
 	}
 }
@@ -791,10 +785,8 @@ static enum hrtimer_restart poll_timer_callback(struct hrtimer *timer)
 	    container_of(timer, struct ccat_eth_priv, poll_timer);
 
 	poll_link(priv);
-	if (!priv->ecdev) {
-		poll_rx(priv);
-		poll_tx(priv);
-	}
+	poll_rx(priv);
+	poll_tx(priv);
 	hrtimer_forward_now(timer, POLL_TIME);
 	return HRTIMER_RESTART;
 }
@@ -804,15 +796,16 @@ static struct rtnl_link_stats64 *ccat_eth_get_stats64(struct net_device *dev, st
 {
 	struct ccat_eth_priv *const priv = netdev_priv(dev);
 	struct ccat_mac_register mac;
+
 	memcpy_fromio(&mac, priv->reg.mac, sizeof(mac));
 	storage->rx_packets = mac.rx_frames;	/* total packets received       */
 	storage->tx_packets = mac.tx_frames;	/* total packets transmitted    */
-	storage->rx_bytes = atomic64_read(&priv->rx_bytes);	/* total bytes received         */
-	storage->tx_bytes = atomic64_read(&priv->tx_bytes);	/* total bytes transmitted      */
+	storage->rx_bytes = atomic64_read(&priv->rx_fifo.bytes);	/* total bytes received         */
+	storage->tx_bytes = atomic64_read(&priv->tx_fifo.bytes);	/* total bytes transmitted      */
 	storage->rx_errors = mac.frame_len_err + mac.rx_mem_full + mac.crc_err + mac.rx_err;	/* bad packets received         */
 	storage->tx_errors = mac.tx_mem_full;	/* packet transmit problems     */
-	storage->rx_dropped = atomic64_read(&priv->rx_dropped);	/* no space in linux buffers    */
-	storage->tx_dropped = atomic64_read(&priv->tx_dropped);	/* no space available in linux  */
+	storage->rx_dropped = atomic64_read(&priv->rx_fifo.dropped);	/* no space in linux buffers    */
+	storage->tx_dropped = atomic64_read(&priv->tx_fifo.dropped);	/* no space available in linux  */
 	//TODO __u64    multicast;              /* multicast packets received   */
 	//TODO __u64    collisions;
 
@@ -841,9 +834,11 @@ static int ccat_eth_open(struct net_device *dev)
 {
 	struct ccat_eth_priv *const priv = netdev_priv(dev);
 
-	hrtimer_init(&priv->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	priv->poll_timer.function = poll_timer_callback;
-	hrtimer_start(&priv->poll_timer, POLL_TIME, HRTIMER_MODE_REL);
+	if (!priv->ecdev) {
+		hrtimer_init(&priv->poll_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+		priv->poll_timer.function = poll_timer_callback;
+		hrtimer_start(&priv->poll_timer, POLL_TIME, HRTIMER_MODE_REL);
+	}
 	return 0;
 }
 
@@ -852,7 +847,9 @@ static int ccat_eth_stop(struct net_device *dev)
 	struct ccat_eth_priv *const priv = netdev_priv(dev);
 
 	priv->stop_queue(dev);
-	hrtimer_cancel(&priv->poll_timer);
+	if (!priv->ecdev) {
+		hrtimer_cancel(&priv->poll_timer);
+	}
 	return 0;
 }
 
@@ -873,7 +870,7 @@ static struct ccat_eth_priv *ccat_eth_alloc_netdev(struct ccat_function *func)
 		memset(priv, 0, sizeof(*priv));
 		priv->netdev = netdev;
 		priv->func = func;
-		ccat_eth_priv_init_reg(&priv->reg, func);
+		ccat_eth_priv_init_reg(priv);
 	}
 	return priv;
 }
@@ -897,7 +894,7 @@ static int ccat_eth_init_netdev(struct ccat_eth_priv *priv)
 	 * if (priv->func->drv->type == CCATINFO_ETHERCAT_MASTER_DMA) {
 	 * unfortunately priv->func->drv is not initialized until probe() returns.
 	 * So we check if there is a rx dma fifo registered to determine dma/io mode */
-	if (priv->rx_fifo.reg) {
+	if (&dma_rx_fifo_ops == priv->rx_fifo.ops) {
 		priv->receive = ecdev_receive_dma;
 	} else {
 		priv->receive = ecdev_receive_eim;
@@ -905,13 +902,13 @@ static int ccat_eth_init_netdev(struct ccat_eth_priv *priv)
 	priv->start_queue = ecdev_nop;
 	priv->stop_queue = ecdev_nop;
 	priv->unregister = unregister_ecdev;
-	priv->ecdev = ecdev_offer(priv->netdev, ec_poll_rx, THIS_MODULE);
+	priv->ecdev = ecdev_offer(priv->netdev, ec_poll, THIS_MODULE);
 	if (priv->ecdev) {
 		priv->carrier_off(priv->netdev);
 		if (ecdev_open(priv->ecdev)) {
 			pr_info("unable to register network device.\n");
 			ecdev_withdraw(priv->ecdev);
-			priv->free(priv);
+			ccat_eth_priv_free(priv);
 			free_netdev(priv->netdev);
 			return -1;	// TODO return better error code
 		}
@@ -933,7 +930,7 @@ static int ccat_eth_init_netdev(struct ccat_eth_priv *priv)
 	status = register_netdev(priv->netdev);
 	if (status) {
 		pr_info("unable to register network device.\n");
-		priv->free(priv);
+		ccat_eth_priv_free(priv);
 		free_netdev(priv->netdev);
 		return status;
 	}
@@ -963,11 +960,11 @@ static void ccat_eth_dma_remove(struct ccat_function *func)
 {
 	struct ccat_eth_priv *const eth = func->private_data;
 	eth->unregister(eth->netdev);
-	eth->free(eth);
+	ccat_eth_priv_free(eth);
 	free_netdev(eth->netdev);
 }
 
-struct ccat_driver eth_dma_driver = {
+const struct ccat_driver eth_dma_driver = {
 	.type = CCATINFO_ETHERCAT_MASTER_DMA,
 	.probe = ccat_eth_dma_probe,
 	.remove = ccat_eth_dma_remove,
@@ -994,11 +991,11 @@ static void ccat_eth_eim_remove(struct ccat_function *func)
 {
 	struct ccat_eth_priv *const eth = func->private_data;
 	eth->unregister(eth->netdev);
-	eth->free(eth);
+	ccat_eth_priv_free(eth);
 	free_netdev(eth->netdev);
 }
 
-struct ccat_driver eth_eim_driver = {
+const struct ccat_driver eth_eim_driver = {
 	.type = CCATINFO_ETHERCAT_NODMA,
 	.probe = ccat_eth_eim_probe,
 	.remove = ccat_eth_eim_remove,
