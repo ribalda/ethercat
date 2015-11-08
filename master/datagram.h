@@ -102,6 +102,7 @@ typedef struct {
     cycles_t cycles_sent; /**< Time, when the datagram was sent. */
 #endif
     unsigned long jiffies_sent; /**< Jiffies, when the datagram was sent. */
+    uint64_t app_time_sent; /**< App time, when the datagram was sent. */
 #ifdef EC_HAVE_CYCLES
     cycles_t cycles_received; /**< Time, when the datagram was received. */
 #endif
