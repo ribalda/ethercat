@@ -102,6 +102,7 @@ void ec_datagram_init(ec_datagram_t *datagram /**< EtherCAT datagram. */)
     datagram->cycles_sent = 0;
 #endif
     datagram->jiffies_sent = 0;
+    datagram->app_time_sent = 0;
 #ifdef EC_HAVE_CYCLES
     datagram->cycles_received = 0;
 #endif

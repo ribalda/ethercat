@@ -186,6 +186,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->app_time = 0ULL;
     master->dc_ref_time = 0ULL;
+    master->dc_offset_valid = 0;
 
     master->scan_busy = 0;
     master->allow_scan = 1;
@@ -1090,6 +1091,7 @@ size_t ec_master_send_datagrams(
             datagram->cycles_sent = cycles_sent;
 #endif
             datagram->jiffies_sent = jiffies_sent;
+            datagram->app_time_sent = master->app_time;
             list_del_init(&datagram->sent); // empty list of sent datagrams
         }
 
@@ -1235,14 +1237,17 @@ void ec_master_receive_datagrams(
         datagram->working_counter = EC_READ_U16(cur_data);
         cur_data += EC_DATAGRAM_FOOTER_SIZE;
 
-        // dequeue the received datagram
-        datagram->state = EC_DATAGRAM_RECEIVED;
 #ifdef EC_HAVE_CYCLES
         datagram->cycles_received =
             master->devices[EC_DEVICE_MAIN].cycles_poll;
 #endif
         datagram->jiffies_received =
             master->devices[EC_DEVICE_MAIN].jiffies_poll;
+
+        barrier(); /* reordering might lead to races */
+
+        // dequeue the received datagram
+        datagram->state = EC_DATAGRAM_RECEIVED;
         list_del_init(&datagram->queue);
     }
 }
@@ -2381,6 +2386,7 @@ int ecrt_master_activate(ec_master_t *master)
 
     // notify state machine, that the configuration shall now be applied
     master->config_changed = 1;
+    master->dc_offset_valid = 0;
 
     return 0;
 }
@@ -2485,6 +2491,13 @@ void ecrt_master_deactivate(ec_master_t *master)
 
     master->app_time = 0ULL;
     master->dc_ref_time = 0ULL;
+    master->dc_offset_valid = 0;
+
+    /* Disallow scanning to get into the same state like after a master
+     * request (after ec_master_enter_operation_phase() is called). */
+    master->allow_scan = 0;
+
+    master->active = 0;
 
 #ifdef EC_EOE
     if (eoe_was_running) {
@@ -2495,12 +2508,6 @@ void ecrt_master_deactivate(ec_master_t *master)
                 "EtherCAT-IDLE")) {
         EC_MASTER_WARN(master, "Failed to restart master thread!\n");
     }
-
-    /* Disallow scanning to get into the same state like after a master
-     * request (after ec_master_enter_operation_phase() is called). */
-    master->allow_scan = 0;
-
-    master->active = 0;
 }
 
 /*****************************************************************************/
@@ -2866,6 +2873,10 @@ int ecrt_master_reference_clock_time(ec_master_t *master, uint32_t *time)
         return -EIO;
     }
 
+    if (!master->dc_offset_valid) {
+        return -EAGAIN;
+    }
+
     // Get returned datagram time, transmission delay removed.
     *time = EC_READ_U32(master->sync_datagram.data) -
         master->dc_ref_clock->transmission_delay;
@@ -2877,7 +2888,7 @@ int ecrt_master_reference_clock_time(ec_master_t *master, uint32_t *time)
 
 void ecrt_master_sync_reference_clock(ec_master_t *master)
 {
-    if (master->dc_ref_clock) {
+    if (master->dc_ref_clock && master->dc_offset_valid) {
         EC_WRITE_U32(master->ref_sync_datagram.data, master->app_time);
         ec_master_queue_datagram(master, &master->ref_sync_datagram);
     }
@@ -2900,7 +2911,7 @@ void ecrt_master_sync_reference_clock_to(
 
 void ecrt_master_sync_slave_clocks(ec_master_t *master)
 {
-    if (master->dc_ref_clock) {
+    if (master->dc_ref_clock && master->dc_offset_valid) {
         ec_datagram_zero(&master->sync_datagram);
         ec_master_queue_datagram(master, &master->sync_datagram);
     }

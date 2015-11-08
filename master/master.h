@@ -237,6 +237,7 @@ struct ec_master {
 
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
     u64 dc_ref_time; /**< Common reference timestamp for DC start times. */
+    u8 dc_offset_valid; /**< DC slaves have valid system time offsets*/
     ec_datagram_t ref_sync_datagram; /**< Datagram used for synchronizing the
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
