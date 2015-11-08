@@ -1346,6 +1346,7 @@ void ec_fsm_slave_config_state_dc_cycle(
 
     fsm->jiffies_start = jiffies;
     ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
+    ec_datagram_zero(datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_config_state_dc_sync_check;
 }
@@ -1404,11 +1405,12 @@ void ec_fsm_slave_config_state_dc_sync_check(
             if ((diff_ms < last_diff_ms) || (diff_ms >= (last_diff_ms + 100))) {
                 last_diff_ms = diff_ms;
                 EC_SLAVE_DBG(slave, 1, "Sync after %4lu ms: %10u ns\n",
-                        diff_ms, abs_sync_diff);
+                        diff_ms, EC_READ_U32(datagram->data) & 0x80000000 ? -abs_sync_diff: abs_sync_diff);
             }
 
             // check synchrony again
             ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
+            ec_datagram_zero(datagram);
             fsm->retries = EC_FSM_RETRIES;
             return;
         }

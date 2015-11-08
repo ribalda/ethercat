@@ -885,6 +885,7 @@ void ec_fsm_slave_scan_enter_preop(
          * sizes. */
         ec_datagram_fprd(fsm->datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
+        ec_datagram_zero(fsm->datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_scan_state_sync;
     }

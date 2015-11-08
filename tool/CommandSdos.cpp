@@ -145,7 +145,13 @@ void CommandSdos::listSlaveSdos(
             continue;
 
         for (j = 0; j <= sdo.max_subindex; j++) {
-            m.getSdoEntry(&entry, slave.position, -i, j);
+            try {
+                m.getSdoEntry(&entry, slave.position, -i, j);
+            } catch (MasterDeviceException &e) {
+                /* There may be gaps in the subindices, so try to continue with next
+                 * subindex. */
+                continue;
+            }
 
             cout << "  0x" << hex << setfill('0')
                 << setw(4) << sdo.sdo_index << ":"
