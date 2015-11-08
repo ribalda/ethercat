@@ -155,6 +155,8 @@
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x59, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x5a, size_t)
 #define EC_IOCTL_SC_OVERLAPPING_IO     EC_IOW(0x5b, ec_ioctl_config_t)
+#define EC_IOCTL_SETUP_DOMAIN_MEMORY   EC_IOR(0x60, ec_ioctl_master_activate_t)
+#define EC_IOCTL_DEACTIVATE_SLAVES      EC_IO(0x61)
 
 /*****************************************************************************/
 

@@ -2064,25 +2064,29 @@ void ec_master_find_dc_ref_clock(
     ec_slave_t *slave, *ref = NULL;
 
     if (master->dc_ref_config) {
-        // Use application-selected reference clock
+        // Check application-selected reference clock
         slave = master->dc_ref_config->slave;
 
         if (slave) {
             if (slave->base_dc_supported && slave->has_dc_system_time) {
                 ref = slave;
+                EC_MASTER_INFO(master, "Using slave %u as application selected"
+                        " DC reference clock.\n", ref->ring_position);
             }
             else {
-                EC_MASTER_WARN(master, "Slave %u can not act as a"
-                        " DC reference clock!", slave->ring_position);
+                EC_MASTER_WARN(master, "Application selected slave %u can not"
+                        " act as a DC reference clock!", slave->ring_position);
             }
         }
         else {
-            EC_MASTER_WARN(master, "DC reference clock config (%u-%u)"
-                    " has no slave attached!\n", master->dc_ref_config->alias,
+            EC_MASTER_WARN(master, "Application selected DC reference clock"
+                    " config (%u-%u) has no slave attached!\n",
+                    master->dc_ref_config->alias,
                     master->dc_ref_config->position);
         }
     }
-    else {
+
+    if (!ref) {
         // Use first slave with DC support as reference clock
         for (slave = master->slaves;
                 slave < master->slaves + master->slave_count;
@@ -2301,6 +2305,14 @@ ec_domain_t *ecrt_master_create_domain(
 
 /*****************************************************************************/
 
+int ecrt_master_setup_domain_memory(ec_master_t *master)
+{
+	// not currently supported
+    return -ENOMEM;  // FIXME
+}
+
+/*****************************************************************************/
+
 int ecrt_master_activate(ec_master_t *master)
 {
     uint32_t domain_offset;
@@ -2371,6 +2383,54 @@ int ecrt_master_activate(ec_master_t *master)
     master->config_changed = 1;
 
     return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_master_deactivate_slaves(ec_master_t *master)
+{
+    ec_slave_t *slave;
+    ec_slave_config_t *sc, *next;
+#ifdef EC_EOE
+    ec_eoe_t *eoe;
+#endif
+
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
+
+    if (!master->active) {
+        EC_MASTER_WARN(master, "%s: Master not active.\n", __func__);
+        return;
+    }
+
+
+    // clear dc settings on all slaves
+    list_for_each_entry_safe(sc, next, &master->configs, list) {
+        if (sc->dc_assign_activate) {
+            ecrt_slave_config_dc(sc, 0x0000, 0, 0, 0, 0);
+        }
+    }
+
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+
+        // set states for all slaves
+        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+
+        // mark for reconfiguration, because the master could have no
+        // possibility for a reconfiguration between two sequential operation
+        // phases.
+        slave->force_config = 1;
+    }
+
+#ifdef EC_EOE
+    // ... but leave EoE slaves in OP
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (ec_eoe_is_open(eoe))
+            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
+    }
+#endif
 }
 
 /*****************************************************************************/
@@ -2635,18 +2695,22 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 int ecrt_master_select_reference_clock(ec_master_t *master,
         ec_slave_config_t *sc)
 {
-    if (sc) {
-        ec_slave_t *slave = sc->slave;
+    master->dc_ref_config = sc;
 
-        // output an early warning
-        if (slave &&
-                (!slave->base_dc_supported || !slave->has_dc_system_time)) {
-            EC_MASTER_WARN(master, "Slave %u can not act as"
-                    " a reference clock!", slave->ring_position);
-        }
+    if (master->dc_ref_config) {
+        EC_MASTER_INFO(master, "Application selected DC reference clock"
+                " config (%u-%u) set by application.\n",
+                master->dc_ref_config->alias,
+                master->dc_ref_config->position);
+    }
+    else {
+        EC_MASTER_INFO(master, "Application selected DC reference clock"
+                " config cleared by application.\n");
     }
 
-    master->dc_ref_config = sc;
+    // update dc datagrams
+    ec_master_find_dc_ref_clock(master);
+
     return 0;
 }
 
@@ -3292,7 +3356,9 @@ void ecrt_master_reset(ec_master_t *master)
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_master_create_domain);
+EXPORT_SYMBOL(ecrt_master_setup_domain_memory);
 EXPORT_SYMBOL(ecrt_master_activate);
+EXPORT_SYMBOL(ecrt_master_deactivate_slaves);
 EXPORT_SYMBOL(ecrt_master_deactivate);
 EXPORT_SYMBOL(ecrt_master_send);
 EXPORT_SYMBOL(ecrt_master_send_ext);

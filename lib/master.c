@@ -540,6 +540,48 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
 
 /****************************************************************************/
 
+int ecrt_master_setup_domain_memory(ec_master_t *master)
+{
+    ec_ioctl_master_activate_t io;
+    int ret;
+
+    ret = ioctl(master->fd, EC_IOCTL_SETUP_DOMAIN_MEMORY, &io);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to activate master: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    // will return 0 process_data_size if domain data has already been set up
+    if (io.process_data_size) {
+        master->process_data_size = io.process_data_size;
+
+#ifdef USE_RTDM
+        /* memory-mapping was already done in kernel. The user-space addess is
+         * provided in the ioctl data.
+         */
+        master->process_data = io.process_data;
+#else
+        master->process_data = mmap(0, master->process_data_size,
+                PROT_READ | PROT_WRITE, MAP_SHARED, master->fd, 0);
+        if (master->process_data == MAP_FAILED) {
+            fprintf(stderr, "Failed to map process data: %s\n",
+                    strerror(errno));
+            master->process_data = NULL;
+            master->process_data_size = 0;
+            return -errno;
+        }
+#endif
+
+        // Access the mapped region to cause the initial page fault
+        master->process_data[0] = 0x00;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 int ecrt_master_activate(ec_master_t *master)
 {
     ec_ioctl_master_activate_t io;
@@ -552,9 +594,10 @@ int ecrt_master_activate(ec_master_t *master)
         return -EC_IOCTL_ERRNO(ret);
     }
 
-    master->process_data_size = io.process_data_size;
+    // will return 0 process_data_size if domain data has already been set up
+    if (io.process_data_size) {
+        master->process_data_size = io.process_data_size;
 
-    if (master->process_data_size) {
 #ifdef USE_RTDM
         /* memory-mapping was already done in kernel. The user-space addess is
          * provided in the ioctl data.
@@ -580,6 +623,20 @@ int ecrt_master_activate(ec_master_t *master)
 }
 
 /****************************************************************************/
+
+void ecrt_master_deactivate_slaves(ec_master_t *master)
+{
+    int ret;
+
+    ret = ioctl(master->fd, EC_IOCTL_DEACTIVATE_SLAVES, NULL);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to deactivate slaves: %s\n",
+                strerror(EC_IOCTL_IS_ERROR(ret)));
+        return;
+    }
+}
+
+/*****************************************************************************/
 
 void ecrt_master_deactivate(ec_master_t *master)
 {

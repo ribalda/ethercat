@@ -48,7 +48,7 @@
 
 /** Time difference [ns] to tolerate without setting a new system time offset.
  */
-#define EC_SYSTEM_TIME_TOLERANCE_NS 1000000
+#define EC_SYSTEM_TIME_TOLERANCE_NS 10000
 
 /*****************************************************************************/
 
@@ -1133,10 +1133,13 @@ void ec_fsm_master_state_scan_slave(
     master->scan_busy = 0;
     wake_up_interruptible(&master->scan_queue);
 
-    ec_master_calc_dc(master);
-
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
+
+    // Set DC ref slave and clac topology and transmission delays
+    // Note: must come after attach_slave_configs for application
+    //       selected dc_ref_config to return its slave
+    ec_master_calc_dc(master);
 
 #ifdef EC_EOE
     // check if EoE processing has to be started

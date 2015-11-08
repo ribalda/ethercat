@@ -1770,6 +1770,92 @@ out_return:
 
 /*****************************************************************************/
 
+/** Sets up domain memory.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_setup_domain_memory(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_master_activate_t io;
+    ec_domain_t *domain;
+    off_t offset;
+#ifdef EC_IOCTL_RTDM
+    int ret;
+#endif
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+
+    if (!ctx->process_data)
+    {
+        io.process_data = NULL;
+
+        /* Get the sum of the domains' process data sizes. */
+
+        ctx->process_data_size = 0;
+
+        if (down_interruptible(&master->master_sem))
+            return -EINTR;
+
+        list_for_each_entry(domain, &master->domains, list) {
+            ctx->process_data_size += ecrt_domain_size(domain);
+        }
+
+        up(&master->master_sem);
+
+        if (ctx->process_data_size) {
+            ctx->process_data = vmalloc(ctx->process_data_size);
+            if (!ctx->process_data) {
+                ctx->process_data_size = 0;
+                return -ENOMEM;
+            }
+
+            /* Set the memory as external process data memory for the
+             * domains.
+             */
+            offset = 0;
+            list_for_each_entry(domain, &master->domains, list) {
+                ecrt_domain_external_memory(domain,
+                        ctx->process_data + offset);
+                offset += ecrt_domain_size(domain);
+            }
+
+#ifdef EC_IOCTL_RTDM
+            /* RTDM uses a different approach for memory-mapping, which has to be
+             * initiated by the kernel.
+             */
+            ret = ec_rtdm_mmap(ctx, &io.process_data);
+            if (ret < 0) {
+                EC_MASTER_ERR(master, "Failed to map process data"
+                        " memory to user space (code %i).\n", ret);
+                return ret;
+            }
+#endif
+        }
+
+        io.process_data_size = ctx->process_data_size;
+    }
+    else
+    {
+        io.process_data = NULL;
+        io.process_data_size = 0;
+    }
+
+
+    if (copy_to_user((void __user *) arg, &io,
+                sizeof(ec_ioctl_master_activate_t)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Activates the master.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -1788,52 +1874,61 @@ static ATTRIBUTES int ec_ioctl_activate(
     if (unlikely(!ctx->requested))
         return -EPERM;
 
-    io.process_data = NULL;
 
-    /* Get the sum of the domains' process data sizes. */
+    if (!ctx->process_data)
+    {
+        io.process_data = NULL;
 
-    ctx->process_data_size = 0;
+        /* Get the sum of the domains' process data sizes. */
 
-    if (down_interruptible(&master->master_sem))
-        return -EINTR;
+        ctx->process_data_size = 0;
 
-    list_for_each_entry(domain, &master->domains, list) {
-        ctx->process_data_size += ecrt_domain_size(domain);
-    }
+        if (down_interruptible(&master->master_sem))
+            return -EINTR;
 
-    up(&master->master_sem);
-
-    if (ctx->process_data_size) {
-        ctx->process_data = vmalloc(ctx->process_data_size);
-        if (!ctx->process_data) {
-            ctx->process_data_size = 0;
-            return -ENOMEM;
-        }
-
-        /* Set the memory as external process data memory for the
-         * domains.
-         */
-        offset = 0;
         list_for_each_entry(domain, &master->domains, list) {
-            ecrt_domain_external_memory(domain,
-                    ctx->process_data + offset);
-            offset += ecrt_domain_size(domain);
+            ctx->process_data_size += ecrt_domain_size(domain);
         }
+
+        up(&master->master_sem);
+
+        if (ctx->process_data_size) {
+            ctx->process_data = vmalloc(ctx->process_data_size);
+            if (!ctx->process_data) {
+                ctx->process_data_size = 0;
+                return -ENOMEM;
+            }
+
+            /* Set the memory as external process data memory for the
+             * domains.
+             */
+            offset = 0;
+            list_for_each_entry(domain, &master->domains, list) {
+                ecrt_domain_external_memory(domain,
+                        ctx->process_data + offset);
+                offset += ecrt_domain_size(domain);
+            }
 
 #ifdef EC_IOCTL_RTDM
-        /* RTDM uses a different approach for memory-mapping, which has to be
-         * initiated by the kernel.
-         */
-        ret = ec_rtdm_mmap(ctx, &io.process_data);
-        if (ret < 0) {
-            EC_MASTER_ERR(master, "Failed to map process data"
-                    " memory to user space (code %i).\n", ret);
-            return ret;
-        }
+            /* RTDM uses a different approach for memory-mapping, which has to be
+             * initiated by the kernel.
+             */
+            ret = ec_rtdm_mmap(ctx, &io.process_data);
+            if (ret < 0) {
+                EC_MASTER_ERR(master, "Failed to map process data"
+                        " memory to user space (code %i).\n", ret);
+                return ret;
+            }
 #endif
-    }
+        }
 
-    io.process_data_size = ctx->process_data_size;
+        io.process_data_size = ctx->process_data_size;
+    }
+    else
+    {
+        io.process_data = NULL;
+        io.process_data_size = 0;
+    }
 
 #ifndef EC_IOCTL_RTDM
     ecrt_master_callbacks(master, ec_master_internal_send_cb,
@@ -1848,6 +1943,25 @@ static ATTRIBUTES int ec_ioctl_activate(
                 sizeof(ec_ioctl_master_activate_t)))
         return -EFAULT;
 
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Deactivates the slaves.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_deactivate_slaves(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    ecrt_master_deactivate_slaves(master);
     return 0;
 }
 
@@ -4425,12 +4539,26 @@ long EC_IOCTL(
             }
             ret = ec_ioctl_select_ref_clock(master, arg, ctx);
             break;
+        case EC_IOCTL_SETUP_DOMAIN_MEMORY:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_setup_domain_memory(master, arg, ctx);
+            break;
         case EC_IOCTL_ACTIVATE:
             if (!ctx->writable) {
                 ret = -EPERM;
                 break;
             }
             ret = ec_ioctl_activate(master, arg, ctx);
+            break;
+        case EC_IOCTL_DEACTIVATE_SLAVES:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_deactivate_slaves(master, arg, ctx);
             break;
         case EC_IOCTL_DEACTIVATE:
             if (!ctx->writable) {

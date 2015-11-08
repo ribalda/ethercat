@@ -670,6 +670,20 @@ ec_domain_t *ecrt_master_create_domain(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** setup the domain's process data memory.
+ *
+ * Call this after all PDO entries have been registered and before activating
+ * the master.
+ *
+ * Call this if you need to access the domain memory before activating the
+ * master
+ *
+ * \return 0 on success, else non-zero.
+ */
+int ecrt_master_setup_domain_memory(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /** Obtains a slave configuration.
  *
  * Creates a slave configuration object for the given \a alias and \a position
@@ -925,6 +939,19 @@ int ecrt_master_read_idn(
  * \return 0 in case of success, else < 0
  */
 int ecrt_master_activate(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Deactivates the slaves distributed clocks and sends the slaves into PREOP.
+ *
+ * This can be called prior to ecrt_master_deactivate to avoid the slaves
+ * getting sync errors.
+ *
+ * This method should be called in realtime context.
+ *
+ * Note: EoE slaves will not be changed to PREOP.
+ */
+void ecrt_master_deactivate_slaves(
         ec_master_t *master /**< EtherCAT master. */
         );
 
