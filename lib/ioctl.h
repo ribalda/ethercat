@@ -53,6 +53,11 @@
 #define EC_IOCTL_IS_ERROR(X) ((X) < 0)
 #define EC_IOCTL_ERRNO(X) (-(X))
 
+/* print errors to syslog */
+#define	KERN_ERR	"<3>"
+#define EC_PRINT_ERR(fmt, args...) \
+    rt_printk(KERN_ERR "EtherCAT ERROR: " fmt, ##args) 
+
 #else
 
 #define ioctl ioctl
@@ -60,6 +65,10 @@
 /* libc's ioctl() always returns -1 on error and sets errno */
 #define EC_IOCTL_IS_ERROR(X) ((X) == -1)
 #define EC_IOCTL_ERRNO(X) (errno)
+
+/* print errors to stderr */
+#define EC_PRINT_ERR(fmt, args...) \
+    fprintf(stderr, fmt, ##args) 
 
 #include <errno.h>
 
