@@ -44,7 +44,7 @@ int ecrt_master_reserve(ec_master_t *master)
 {
     int ret = ioctl(master->fd, EC_IOCTL_REQUEST, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to reserve master: %s\n",
+        EC_PRINT_ERR("Failed to reserve master: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -128,13 +128,13 @@ ec_domain_t *ecrt_master_create_domain(ec_master_t *master)
 
     domain = malloc(sizeof(ec_domain_t));
     if (!domain) {
-        fprintf(stderr, "Failed to allocate memory.\n");
+        EC_PRINT_ERR("Failed to allocate memory.\n");
         return 0;
     }
 
     index = ioctl(master->fd, EC_IOCTL_CREATE_DOMAIN, NULL);
     if (EC_IOCTL_IS_ERROR(index)) {
-        fprintf(stderr, "Failed to create domain: %s\n",
+        EC_PRINT_ERR("Failed to create domain: %s\n",
                 strerror(EC_IOCTL_ERRNO(index)));
         free(domain);
         return 0;
@@ -177,7 +177,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
     sc = malloc(sizeof(ec_slave_config_t));
     if (!sc) {
-        fprintf(stderr, "Failed to allocate memory.\n");
+        EC_PRINT_ERR("Failed to allocate memory.\n");
         return 0;
     }
 
@@ -188,7 +188,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
 
     ret = ioctl(master->fd, EC_IOCTL_CREATE_SLAVE_CONFIG, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to create slave config: %s\n",
+        EC_PRINT_ERR("Failed to create slave config: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         free(sc);
         return 0;
@@ -225,7 +225,7 @@ int ecrt_master_select_reference_clock(ec_master_t *master,
 
     ret = ioctl(master->fd, EC_IOCTL_SELECT_REF_CLOCK, config_index);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to select reference clock: %s\n",
+        EC_PRINT_ERR("Failed to select reference clock: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -242,7 +242,7 @@ int ecrt_master(ec_master_t *master, ec_master_info_t *master_info)
 
     ret = ioctl(master->fd, EC_IOCTL_MASTER, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get master info: %s\n",
+        EC_PRINT_ERR("Failed to get master info: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -266,7 +266,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
 
     ret = ioctl(master->fd, EC_IOCTL_SLAVE, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get slave info: %s\n",
+        EC_PRINT_ERR("Failed to get slave info: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -316,7 +316,7 @@ int ecrt_master_get_sync_manager(ec_master_t *master, uint16_t slave_position,
 
     ret = ioctl(master->fd, EC_IOCTL_SLAVE_SYNC, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get sync manager information: %s\n",
+        EC_PRINT_ERR("Failed to get sync manager information: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -350,7 +350,7 @@ int ecrt_master_get_pdo(ec_master_t *master, uint16_t slave_position,
 
     ret = ioctl(master->fd, EC_IOCTL_SLAVE_SYNC_PDO, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get pdo information: %s\n",
+        EC_PRINT_ERR("Failed to get pdo information: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -382,7 +382,7 @@ int ecrt_master_get_pdo_entry(ec_master_t *master, uint16_t slave_position,
 
     ret = ioctl(master->fd, EC_IOCTL_SLAVE_SYNC_PDO_ENTRY, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get pdo entry information: %s\n",
+        EC_PRINT_ERR("Failed to get pdo entry information: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -415,7 +415,7 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
         if (EC_IOCTL_ERRNO(ret) == EIO && abort_code) {
             *abort_code = download.abort_code;
         }
-        fprintf(stderr, "Failed to execute SDO download: %s\n",
+        EC_PRINT_ERR("Failed to execute SDO download: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -444,7 +444,7 @@ int ecrt_master_sdo_download_complete(ec_master_t *master,
         if (EC_IOCTL_ERRNO(ret) == EIO && abort_code) {
             *abort_code = download.abort_code;
         }
-        fprintf(stderr, "Failed to execute SDO download: %s\n",
+        EC_PRINT_ERR("Failed to execute SDO download: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -472,7 +472,7 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
         if (EC_IOCTL_ERRNO(ret) == EIO && abort_code) {
             *abort_code = upload.abort_code;
         }
-        fprintf(stderr, "Failed to execute SDO upload: %s\n",
+        EC_PRINT_ERR("Failed to execute SDO upload: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -501,7 +501,7 @@ int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         if (EC_IOCTL_ERRNO(ret) == EIO && error_code) {
             *error_code = io.error_code;
         }
-        fprintf(stderr, "Failed to write IDN: %s\n",
+        EC_PRINT_ERR("Failed to write IDN: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -529,7 +529,7 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
         if (EC_IOCTL_ERRNO(ret) == EIO && error_code) {
             *error_code = io.error_code;
         }
-        fprintf(stderr, "Failed to read IDN: %s\n",
+        EC_PRINT_ERR("Failed to read IDN: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -547,7 +547,7 @@ int ecrt_master_setup_domain_memory(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_SETUP_DOMAIN_MEMORY, &io);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to activate master: %s\n",
+        EC_PRINT_ERR("Failed to activate master: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -565,7 +565,7 @@ int ecrt_master_setup_domain_memory(ec_master_t *master)
         master->process_data = mmap(0, master->process_data_size,
                 PROT_READ | PROT_WRITE, MAP_SHARED, master->fd, 0);
         if (master->process_data == MAP_FAILED) {
-            fprintf(stderr, "Failed to map process data: %s\n",
+            EC_PRINT_ERR("Failed to map process data: %s\n",
                     strerror(errno));
             master->process_data = NULL;
             master->process_data_size = 0;
@@ -589,7 +589,7 @@ int ecrt_master_activate(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_ACTIVATE, &io);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to activate master: %s\n",
+        EC_PRINT_ERR("Failed to activate master: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -607,7 +607,7 @@ int ecrt_master_activate(ec_master_t *master)
         master->process_data = mmap(0, master->process_data_size,
                 PROT_READ | PROT_WRITE, MAP_SHARED, master->fd, 0);
         if (master->process_data == MAP_FAILED) {
-            fprintf(stderr, "Failed to map process data: %s\n",
+            EC_PRINT_ERR("Failed to map process data: %s\n",
                     strerror(errno));
             master->process_data = NULL;
             master->process_data_size = 0;
@@ -630,7 +630,7 @@ void ecrt_master_deactivate_slaves(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_DEACTIVATE_SLAVES, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to deactivate slaves: %s\n",
+        EC_PRINT_ERR("Failed to deactivate slaves: %s\n",
                 strerror(EC_IOCTL_IS_ERROR(ret)));
         return;
     }
@@ -644,7 +644,7 @@ void ecrt_master_deactivate(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_DEACTIVATE, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to deactivate master: %s\n",
+        EC_PRINT_ERR("Failed to deactivate master: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return;
     }
@@ -661,7 +661,7 @@ int ecrt_master_set_send_interval(ec_master_t *master,
 
     ret = ioctl(master->fd, EC_IOCTL_SET_SEND_INTERVAL, &send_interval_us);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to set send interval: %s\n",
+        EC_PRINT_ERR("Failed to set send interval: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -678,7 +678,7 @@ size_t ecrt_master_send(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_SEND, &sent_bytes);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to send: %s\n",
+        EC_PRINT_ERR("Failed to send: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 
@@ -693,7 +693,7 @@ void ecrt_master_receive(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_RECEIVE, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to receive: %s\n",
+        EC_PRINT_ERR("Failed to receive: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -706,7 +706,7 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 
     ret = ioctl(master->fd, EC_IOCTL_MASTER_STATE, state);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get master state: %s\n",
+        EC_PRINT_ERR("Failed to get master state: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -724,7 +724,7 @@ int ecrt_master_link_state(const ec_master_t *master, unsigned int dev_idx,
 
     ret = ioctl(master->fd, EC_IOCTL_MASTER_LINK_STATE, &io);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get link state: %s\n",
+        EC_PRINT_ERR("Failed to get link state: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return -EC_IOCTL_ERRNO(ret);
     }
@@ -743,7 +743,7 @@ void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 
     ret = ioctl(master->fd, EC_IOCTL_APP_TIME, &time);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to set application time: %s\n",
+        EC_PRINT_ERR("Failed to set application time: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -756,7 +756,7 @@ void ecrt_master_sync_reference_clock(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_SYNC_REF, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to sync reference clock: %s\n",
+        EC_PRINT_ERR("Failed to sync reference clock: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -773,7 +773,7 @@ void ecrt_master_sync_reference_clock_to(ec_master_t *master,
 
     ret = ioctl(master->fd, EC_IOCTL_SYNC_REF_TO, &time);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to sync reference clock: %s\n",
+        EC_PRINT_ERR("Failed to sync reference clock: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -786,7 +786,7 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_SYNC_SLAVES, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to sync slave clocks: %s\n",
+        EC_PRINT_ERR("Failed to sync slave clocks: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -802,7 +802,7 @@ int ecrt_master_reference_clock_time(ec_master_t *master, uint32_t *time)
         ret = EC_IOCTL_ERRNO(ret);
         if (ret != EIO && ret != ENXIO && ret != EAGAIN) {
             // do not log if no refclk or no refclk time yet
-            fprintf(stderr, "Failed to get reference clock time: %s\n",
+            EC_PRINT_ERR("Failed to get reference clock time: %s\n",
                     strerror(ret));
         }
         return -ret;
@@ -819,7 +819,7 @@ void ecrt_master_sync_monitor_queue(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_SYNC_MON_QUEUE, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to queue sync monitor datagram: %s\n",
+        EC_PRINT_ERR("Failed to queue sync monitor datagram: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -834,7 +834,7 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
     ret = ioctl(master->fd, EC_IOCTL_SYNC_MON_PROCESS, &time_diff);
     if (EC_IOCTL_IS_ERROR(ret)) {
         time_diff = 0xffffffff;
-        fprintf(stderr, "Failed to process sync monitor datagram: %s\n",
+        EC_PRINT_ERR("Failed to process sync monitor datagram: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 
@@ -849,7 +849,7 @@ void ecrt_master_reset(ec_master_t *master)
 
     ret = ioctl(master->fd, EC_IOCTL_RESET, NULL);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to reset master: %s\n",
+        EC_PRINT_ERR("Failed to reset master: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }

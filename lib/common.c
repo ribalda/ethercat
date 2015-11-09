@@ -77,7 +77,7 @@ ec_master_t *ecrt_open_master(unsigned int master_index)
 
     master = malloc(sizeof(ec_master_t));
     if (!master) {
-        fprintf(stderr, "Failed to allocate memory.\n");
+        EC_PRINT_ERR("Failed to allocate memory.\n");
         return 0;
     }
 
@@ -100,20 +100,20 @@ ec_master_t *ecrt_open_master(unsigned int master_index)
     master->fd = open(path, O_RDWR);
 #endif
     if (EC_IOCTL_IS_ERROR(master->fd)) {
-        fprintf(stderr, "Failed to open %s: %s\n", path,
+        EC_PRINT_ERR("Failed to open %s: %s\n", path,
                 strerror(EC_IOCTL_ERRNO(master->fd)));
         goto out_clear;
     }
 
     ret = ioctl(master->fd, EC_IOCTL_MODULE, &module_data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get module information from %s: %s\n",
+        EC_PRINT_ERR("Failed to get module information from %s: %s\n",
                 path, strerror(EC_IOCTL_ERRNO(ret)));
         goto out_clear;
     }
 
     if (module_data.ioctl_version_magic != EC_IOCTL_VERSION_MAGIC) {
-        fprintf(stderr, "ioctl() version magic is differing:"
+        EC_PRINT_ERR("ioctl() version magic is differing:"
                 " %s: %u, libethercat: %u.\n",
                 path, module_data.ioctl_version_magic,
                 EC_IOCTL_VERSION_MAGIC);

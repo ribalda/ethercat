@@ -66,7 +66,7 @@ void ecrt_voe_handler_send_header(ec_voe_handler_t *voe, uint32_t vendor_id,
 
     ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_SEND_HEADER, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to set VoE send header: %s\n",
+        EC_PRINT_ERR("Failed to set VoE send header: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -86,7 +86,7 @@ void ecrt_voe_handler_received_header(const ec_voe_handler_t *voe,
 
     ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_REC_HEADER, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get received VoE header: %s\n",
+        EC_PRINT_ERR("Failed to get received VoE header: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -117,7 +117,7 @@ void ecrt_voe_handler_read(ec_voe_handler_t *voe)
 
     ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_READ, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to initiate VoE reading: %s\n",
+        EC_PRINT_ERR("Failed to initiate VoE reading: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -134,7 +134,7 @@ void ecrt_voe_handler_read_nosync(ec_voe_handler_t *voe)
 
     ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_READ_NOSYNC, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to initiate VoE reading: %s\n",
+        EC_PRINT_ERR("Failed to initiate VoE reading: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -153,7 +153,7 @@ void ecrt_voe_handler_write(ec_voe_handler_t *voe, size_t size)
 
     ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_WRITE, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to initiate VoE writing: %s\n",
+        EC_PRINT_ERR("Failed to initiate VoE writing: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }
@@ -170,14 +170,14 @@ ec_request_state_t ecrt_voe_handler_execute(ec_voe_handler_t *voe)
 
     ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_EXEC, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to execute VoE handler: %s\n",
+        EC_PRINT_ERR("Failed to execute VoE handler: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
         return EC_REQUEST_ERROR;
     }
 
     if (data.size) { // new data waiting to be copied
         if (voe->mem_size < data.size) {
-            fprintf(stderr, "Received %zu bytes do not fit info VoE data"
+            EC_PRINT_ERR("Received %zu bytes do not fit info VoE data"
                     " memory (%zu bytes)!\n", data.size, voe->mem_size);
             return EC_REQUEST_ERROR;
         }
@@ -186,7 +186,7 @@ ec_request_state_t ecrt_voe_handler_execute(ec_voe_handler_t *voe)
 
         ret = ioctl(voe->config->master->fd, EC_IOCTL_VOE_DATA, &data);
         if (EC_IOCTL_IS_ERROR(ret)) {
-            fprintf(stderr, "Failed to get VoE data: %s\n",
+            EC_PRINT_ERR("Failed to get VoE data: %s\n",
                     strerror(EC_IOCTL_ERRNO(ret)));
             return EC_REQUEST_ERROR;
         }
