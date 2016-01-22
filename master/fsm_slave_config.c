@@ -1129,7 +1129,7 @@ void ec_fsm_slave_config_enter_pdo_sync(
             size = ec_pdo_list_total_size(&sync_config->pdos);
 
             // determine, if PDOs shall be transferred via this SM
-            // inthat case, enable sync manager in every case
+            // in that case, enable sync manager in every case
             for (j = 0; j < sc->used_fmmus; j++) {
                 if (sc->fmmu_configs[j].sync_index == sync_index) {
                     pdo_xfer = 1;
