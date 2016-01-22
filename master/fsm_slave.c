@@ -201,6 +201,18 @@ void ec_fsm_slave_state_ready(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    ec_slave_t *slave = fsm->slave;
+    ec_sdo_request_t *req;
+
+    if (slave->config) {
+        list_for_each_entry(req, &slave->config->sdo_requests, list) {
+            if (req->state == EC_INT_REQUEST_QUEUED || req->state == EC_INT_REQUEST_BUSY) {
+                EC_SLAVE_DBG(slave, 1, "Busy - processing internal SDO request!\n");
+                return;
+            }
+        }
+    }
+
     // Check for pending external SDO requests
     if (ec_fsm_slave_action_process_sdo(fsm, datagram)) {
         return;

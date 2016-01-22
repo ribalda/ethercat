@@ -70,6 +70,7 @@ void ec_slave_config_init(
     sc->vendor_id = vendor_id;
     sc->product_code = product_code;
     sc->watchdog_divider = 0; // use default
+    sc->allow_overlapping_pdos = 0; // default not allowed
     sc->watchdog_intervals = 0; // use default
 
     sc->slave = NULL;
@@ -181,7 +182,7 @@ int ec_slave_config_prepare_fmmu(
     for (i = 0; i < sc->used_fmmus; i++) {
         fmmu = &sc->fmmu_configs[i];
         if (fmmu->domain == domain && fmmu->sync_index == sync_index)
-            return fmmu->logical_start_address;
+            return fmmu->logical_domain_offset;
     }
 
     if (sc->used_fmmus == EC_MAX_FMMUS) {
@@ -189,13 +190,44 @@ int ec_slave_config_prepare_fmmu(
         return -EOVERFLOW;
     }
 
-    fmmu = &sc->fmmu_configs[sc->used_fmmus++];
+    fmmu = &sc->fmmu_configs[sc->used_fmmus];
 
     down(&sc->master->master_sem);
     ec_fmmu_config_init(fmmu, sc, domain, sync_index, dir);
+
+#if 0 //TODO overlapping PDOs
+    // Overlapping PDO Support from 4751747d4e6d
+    // FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+    // parent code does not call ec_fmmu_config_domain
+    // FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+    fmmu_logical_start_address = domain->tx_size;
+    tx_size = fmmu->data_size;
+
+    // FIXME is it enough to take only the *previous* FMMU into account?
+
+    // FIXME Need to qualify allow_overlapping_pdos with slave->sii.general_flags.enable_not_lrw
+
+    if (sc->allow_overlapping_pdos && sc->used_fmmus > 0) {
+        prev_fmmu = &sc->fmmu_configs[sc->used_fmmus - 1];
+        if (fmmu->dir != prev_fmmu->dir && prev_fmmu->tx_size != 0) {
+            // prev fmmu has opposite direction
+            // and is not already paired with prev-prev fmmu
+            old_prev_tx_size = prev_fmmu->tx_size;
+            prev_fmmu->tx_size = max(fmmu->data_size, prev_fmmu->data_size);
+            domain->tx_size += prev_fmmu->tx_size - old_prev_tx_size;
+            tx_size = 0;
+            fmmu_logical_start_address = prev_fmmu->logical_domain_offset;
+        }
+    }
+
+    ec_fmmu_config_domain(fmmu, domain, fmmu_logical_start_address, tx_size);
+    // Overlapping PDO Support from 4751747d4e6d
+#endif
+
+    sc->used_fmmus++;
     up(&sc->master->master_sem);
 
-    return fmmu->logical_start_address;
+    return fmmu->logical_domain_offset;
 }
 
 /*****************************************************************************/
@@ -276,6 +308,10 @@ void ec_slave_config_detach(
         list_for_each_entry(reg, &sc->reg_requests, list) {
             if (sc->slave->fsm.reg_request == reg) {
                 sc->slave->fsm.reg_request = NULL;
+                EC_SLAVE_WARN(sc->slave, "Aborting register request,"
+                        " slave is detaching.\n");
+                reg->state = EC_INT_REQUEST_FAILURE;
+                wake_up_all(&sc->slave->master->request_queue);
                 break;
             }
         }
@@ -517,6 +553,36 @@ ec_voe_handler_t *ec_slave_config_find_voe_handler(
     return NULL;
 }
 
+/*****************************************************************************/
+
+/** Expires any requests that have been started on a detached slave.
+ */
+void ec_slave_config_expire_disconnected_requests(
+        ec_slave_config_t *sc /**< Slave configuration. */
+        )
+{
+    ec_sdo_request_t *sdo_req;
+    ec_reg_request_t *reg_req;
+
+    if (sc->slave) { return; }
+    
+    list_for_each_entry(sdo_req, &sc->sdo_requests, list) {
+        if (sdo_req->state == EC_INT_REQUEST_QUEUED ||
+                sdo_req->state == EC_INT_REQUEST_BUSY) {
+            EC_CONFIG_DBG(sc, 1, "Aborting SDO request; no slave attached.\n");
+            sdo_req->state = EC_INT_REQUEST_FAILURE;
+        }
+    }
+    
+    list_for_each_entry(reg_req, &sc->reg_requests, list) {
+        if (reg_req->state == EC_INT_REQUEST_QUEUED ||
+                reg_req->state == EC_INT_REQUEST_BUSY) {
+            EC_CONFIG_DBG(sc, 1, "Aborting register request; no slave attached.\n");
+            reg_req->state = EC_INT_REQUEST_FAILURE;
+        }
+    }
+}
+
 /******************************************************************************
  *  Application interface
  *****************************************************************************/
@@ -556,6 +622,17 @@ void ecrt_slave_config_watchdog(ec_slave_config_t *sc,
 
     sc->watchdog_divider = divider;
     sc->watchdog_intervals = intervals;
+}
+
+/*****************************************************************************/
+
+void ecrt_slave_config_overlapping_pdos(ec_slave_config_t *sc,
+        uint8_t allow_overlapping_pdos )
+{
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, allow_overlapping_pdos = %u)\n",
+                __func__, sc, allow_overlapping_pdos);
+
+    sc->allow_overlapping_pdos = allow_overlapping_pdos;
 }
 
 /*****************************************************************************/

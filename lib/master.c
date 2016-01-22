@@ -60,6 +60,11 @@ void ec_master_clear_config(ec_master_t *master)
     ec_domain_t *d, *next_d;
     ec_slave_config_t *c, *next_c;
 
+    if (master->process_data)  {
+        munmap(master->process_data, master->process_data_size);
+        master->process_data = NULL;
+    }
+
     d = master->first_domain;
     while (d) {
         next_d = d->next;
@@ -81,10 +86,6 @@ void ec_master_clear_config(ec_master_t *master)
 
 void ec_master_clear(ec_master_t *master)
 {
-    if (master->process_data)  {
-        munmap(master->process_data, master->process_data_size);
-    }
-
     ec_master_clear_config(master);
 
     if (master->fd != -1) {
@@ -389,7 +390,7 @@ int ecrt_master_get_pdo_entry(ec_master_t *master, uint16_t slave_position,
 /****************************************************************************/
 
 int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
-        uint16_t index, uint8_t subindex, uint8_t *data,
+        uint16_t index, uint8_t subindex, const uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
     ec_ioctl_slave_sdo_download_t download;
@@ -418,7 +419,7 @@ int ecrt_master_sdo_download(ec_master_t *master, uint16_t slave_position,
 /****************************************************************************/
 
 int ecrt_master_sdo_download_complete(ec_master_t *master,
-        uint16_t slave_position, uint16_t index, uint8_t *data,
+        uint16_t slave_position, uint16_t index, const uint8_t *data,
         size_t data_size, uint32_t *abort_code)
 {
     ec_ioctl_slave_sdo_download_t download;
@@ -606,15 +607,18 @@ int ecrt_master_set_send_interval(ec_master_t *master,
 
 /****************************************************************************/
 
-void ecrt_master_send(ec_master_t *master)
+size_t ecrt_master_send(ec_master_t *master)
 {
     int ret;
+    size_t sent_bytes = 0;
 
-    ret = ioctl(master->fd, EC_IOCTL_SEND, NULL);
+    ret = ioctl(master->fd, EC_IOCTL_SEND, &sent_bytes);
     if (EC_IOCTL_IS_ERROR(ret)) {
         fprintf(stderr, "Failed to send: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
+
+    return sent_bytes;
 }
 
 /****************************************************************************/
@@ -714,11 +718,16 @@ int ecrt_master_reference_clock_time(ec_master_t *master, uint32_t *time)
 
     ret = ioctl(master->fd, EC_IOCTL_REF_CLOCK_TIME, time);
     if (EC_IOCTL_IS_ERROR(ret)) {
-        fprintf(stderr, "Failed to get reference clock time: %s\n",
-                strerror(EC_IOCTL_ERRNO(ret)));
+        ret = EC_IOCTL_ERRNO(ret);
+        if (ret != EIO && ret != ENXIO) {
+            // do not log if no refclk or no refclk time yet
+            fprintf(stderr, "Failed to get reference clock time: %s\n",
+                    strerror(ret));
+        }
+        return -ret;
     }
 
-    return ret;
+    return 0;
 }
 
 /****************************************************************************/

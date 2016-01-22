@@ -351,6 +351,7 @@ void ec_master_queue_datagram_ext(ec_master_t *, ec_datagram_t *);
 // misc.
 void ec_master_set_send_interval(ec_master_t *, unsigned int);
 void ec_master_attach_slave_configs(ec_master_t *);
+void ec_master_expire_slave_config_requests(ec_master_t *);
 ec_slave_t *ec_master_find_slave(ec_master_t *, uint16_t, uint16_t);
 const ec_slave_t *ec_master_find_slave_const(const ec_master_t *, uint16_t,
         uint16_t);

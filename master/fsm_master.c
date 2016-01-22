@@ -246,6 +246,9 @@ void ec_fsm_master_state_start(
         return;
     }
 
+    // check for detached config requests
+    ec_master_expire_slave_config_requests(fsm->master);
+
     ec_datagram_brd(fsm->datagram, 0x0130, 2);
     ec_datagram_zero(fsm->datagram);
     fsm->datagram->device_index = fsm->dev_idx;
@@ -487,6 +490,11 @@ int ec_fsm_master_action_process_sdo(
             slave++) {
 
         if (!slave->config) {
+            continue;
+        }
+
+        if (!ec_fsm_slave_is_ready(&slave->fsm)) {
+            EC_SLAVE_DBG(slave, 1, "Busy - processing external request!\n");
             continue;
         }
 
