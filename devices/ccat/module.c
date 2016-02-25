@@ -348,7 +348,8 @@ static const struct pci_device_id pci_ids[] = {
 	{0,},
 };
 
-MODULE_DEVICE_TABLE(pci, pci_ids);
+/* prevent auto-loading. */
+/* MODULE_DEVICE_TABLE(pci, pci_ids); */
 
 static struct pci_driver ccat_pci_driver = {
 	.name = KBUILD_MODNAME,
@@ -408,7 +409,8 @@ static const struct of_device_id bhf_eim_ccat_ids[] = {
 	{}
 };
 
-MODULE_DEVICE_TABLE(of, bhf_eim_ccat_ids);
+/* prevent auto-loading. */
+/* MODULE_DEVICE_TABLE(of, bhf_eim_ccat_ids); */
 
 static struct platform_driver ccat_eim_driver = {
 	.driver = {
