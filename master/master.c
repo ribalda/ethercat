@@ -685,9 +685,6 @@ int ec_master_enter_operation_phase(
 {
     int ret = 0;
     ec_slave_t *slave;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-#endif
 
     EC_MASTER_DBG(master, 1, "IDLE -> OPERATION.\n");
 
@@ -736,14 +733,6 @@ int ec_master_enter_operation_phase(
             slave++) {
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
     }
-
-#ifdef EC_EOE
-    // ... but set EoE slaves to OP
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_is_open(eoe))
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
-#endif
 
     master->phase = EC_OPERATION;
     master->app_send_cb = NULL;
