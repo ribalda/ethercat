@@ -369,20 +369,20 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
     }
 
 #if EOE_DEBUG_LEVEL >= 2
-    EC_SLAVE_DBG(slave, 0, "EoE %s TX sending fragment %u%s"
-            " with %u octets (%u). %u frames queued.\n",
+    EC_SLAVE_DBG(eoe->slave, 0, "EoE %s TX sending fragment %u%s"
+            " with %zu octets (%zu). %u frames queued.\n",
             eoe->dev->name, eoe->tx_fragment_number,
             last_fragment ? "" : "+", current_size, complete_offset,
             eoe->tx_queued_frames);
 #endif
 
 #if EOE_DEBUG_LEVEL >= 3
-    EC_SLAVE_DBG(master, 0, "");
+    EC_SLAVE_DBG(eoe->slave, 0, "");
     for (i = 0; i < current_size; i++) {
         printk("%02X ", eoe->tx_frame->skb->data[eoe->tx_offset + i]);
         if ((i + 1) % 16 == 0) {
             printk("\n");
-            EC_SLAVE_DBG(master, 0, "");
+            EC_SLAVE_DBG(eoe->slave, 0, "");
         }
     }
     printk("\n");
@@ -602,7 +602,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 
 #if EOE_DEBUG_LEVEL >= 2
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s RX fragment %u%s, offset %u,"
-            " frame %u%s, %u octets\n", eoe->dev->name, fragment_number,
+            " frame %u%s, %zu octets\n", eoe->dev->name, fragment_number,
            last_fragment ? "" : "+", fragment_offset, frame_number,
            time_appended ? ", + timestamp" : "",
            time_appended ? rec_size - 8 : rec_size - 4);
