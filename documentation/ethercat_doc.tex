@@ -2066,6 +2066,9 @@ index and Y is the decimal alias address.
 
 \end{description}
 
+For some hints on how to configure these virtual interfaces, see
+\autoref{sec:eoe-config}.
+
 Frames sent to these interfaces are forwarded to the associated slaves by the
 master. Frames, that are received by the slaves, are fetched by the master and
 forwarded to the virtual interfaces.
@@ -2190,6 +2193,55 @@ execute the EoE state machines. For that, the master owns a kernel timer, that
 is executed each timer interrupt. This guarantees a constant bandwidth, but
 poses the new problem of concurrent access to the master. The locking
 mechanisms needed for this are introduced in \autoref{sec:concurr}.
+
+\subsection{EoE Interface Configuration}
+\label{sec:eoe-config}
+
+The configuration of the EoE network interfaces is a matter of using standard
+Linux networking infrastructure commands like \lstinline+ifconfig+,
+\lstinline+ip+ and \lstinline+brctl+. Though this lies not in the scope of
+this document, some hints and examples are provided in this section.
+
+In the below examples it is assumed, that there are two slaves (0 and 1) with
+EoE support in the bus. The first decision to make is whether to use a bridged
+or routed environment.
+
+\paragraph{Bridging} A common solution is to create a bridge containing all EoE
+interfaces:
+
+\begin{lstlisting}
+$ `\textbf{brctl addbr br0}`
+$ `\textbf{ip addr add 192.168.100.1/24 dev br0}`
+$ `\textbf{brctl addif br0 eoe0s0}`
+$ `\textbf{brctl addif br0 eoe0s1}`
+\end{lstlisting}
+
+The above example allows to access IPv4 nodes using subnet 192.168.100.0/24
+connected to the EtherCAT bus via EoE. Please note, that the example only
+contains ad-hoc configuration commands: If the bus topology changes, the EoE
+interfaces are re-created and have to be added to the bridge again. Therefore
+it is highly recommended to use the networking configuration infrastructure of
+the used Linux distribution to store this configuration permanently, so that
+appearing EoE devices are added automatically.
+
+\paragraph{Routing} Another possibility is to create an IP subnet for each EoE
+interface:
+
+\begin{lstlisting}
+$ `\textbf{ip addr add 192.168.200.1/24 dev eoe0s0}`
+$ `\textbf{ip addr add 192.168.201.1/24 dev eoe0s1}`
+$ `\textbf{echo 1 > /proc/sys/net/ipv4/ip\_forward}`
+\end{lstlisting}
+
+This example is again only an ad-hoc configuration (see above). Please note,
+that it is necessary to set the default gateways properly on the IP nodes
+connected to the EoE slaves, if they shall be able to communicate between the
+different EoE interfaces / IP networks.
+
+\paragraph{Setting IP Parameters} If IP address and other parameters of the
+EoE remote nodes (not the EoE interfaces on the master side) have to be set,
+this can be achieved via the \lstinline+ethercat ip+ command-line tool (see
+\autoref{sec:ipparam}).
 
 %------------------------------------------------------------------------------
 
@@ -2440,6 +2492,22 @@ created, if the \lstinline+udev+ Package is installed. See
 %------------------------------------------------------------------------------
 
 \subsection{Setting Ethernet-over-EtherCAT IP Parameters}
+\label{sec:ipparam}
+
+Slaves can have own IP stack implementations accessible via EoE. Since some of
+them do not provide other mechanisms to set IP parameters (because they only
+have an EtherCAT interface), there is a possibility to set the below
+parameters via EoE:
+
+\begin{itemize}
+\item Ethernet MAC address\footnote{The MAC address of the virtual EoE remote
+interface, not the one of the EtherCAT interface.},
+\item IPv4 address,
+\item IPv4 subnet mask,
+\item IPv4 default gateway,
+\item IPv4 DNS server,
+\item DNS host name.
+\end{itemize}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_ip}
 
