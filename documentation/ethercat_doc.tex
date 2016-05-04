@@ -2191,12 +2191,6 @@ is executed each timer interrupt. This guarantees a constant bandwidth, but
 poses the new problem of concurrent access to the master. The locking
 mechanisms needed for this are introduced in \autoref{sec:concurr}.
 
-\paragraph{Automatic Configuration}
-
-By default, slaves are left in PREOP state, if no configuration is applied. If
-an EoE interface link is set to ``up'', the requested slave's
-application-layer state is automatically set to OP.
-
 %------------------------------------------------------------------------------
 
 \section{CANopen over EtherCAT (CoE)}
@@ -2442,6 +2436,12 @@ created, if the \lstinline+udev+ Package is installed. See
 \subsection{Creating Topology Graphs}
 
 \lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_graph}
+
+%------------------------------------------------------------------------------
+
+\subsection{Setting Ethernet-over-EtherCAT IP Parameters}
+
+\lstinputlisting[basicstyle=\ttfamily\footnotesize]{external/ethercat_ip}
 
 %------------------------------------------------------------------------------
 
