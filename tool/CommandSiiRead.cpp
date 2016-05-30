@@ -66,6 +66,7 @@ string CommandSiiRead::helpString(const string &binaryBaseName) const
         << "                         the 'slaves' command." << endl
         << "  --verbose  -v          Output textual data with" << endl
         << "                         category names." << endl
+        << "  --force    -f          Force EEPROM control." << endl
         << endl
         << numericInfo();
 
@@ -84,13 +85,18 @@ void CommandSiiRead::execute(const StringVector &args)
     uint16_t categoryType, categorySize;
     stringstream err;
 
+    ec_ioctl_slave_reg_t reg_data;
+    const uint16_t reg_eeprom_config_address = 0x500;
+    const uint16_t reg_eeprom_pdi_access_address = 0x501;
+    uint8_t reg_eeprom_value;
+
     if (args.size()) {
         err << "'" << getName() << "' takes no arguments!";
         throwInvalidUsageException(err);
     }
 
     MasterDevice m(getSingleMasterIndex());
-    m.open(MasterDevice::Read);
+    m.open(MasterDevice::ReadWrite);
     slaves = selectedSlaves(m);
 
     if (slaves.size() != 1) {
@@ -98,6 +104,56 @@ void CommandSiiRead::execute(const StringVector &args)
     }
     slave = &slaves.front();
     data.slave_position = slave->position;
+
+    // Ensure that ECAT has access to EEPROM
+    reg_data.slave_position = data.slave_position;
+    reg_data.data = &reg_eeprom_value;
+    reg_data.size = 1;
+    if (getForce()) {
+        // Force ECAT control to EEPROM when forcing a SII read
+        // (forces PDI to release its EEPROM control)
+        reg_data.address = reg_eeprom_config_address;
+        reg_eeprom_value = 0x02;
+        if (getVerbosity() == Verbose) {
+            cerr << "Force EEPROM control." << endl;
+        }
+        try {
+            m.writeReg(&reg_data);
+        } catch (MasterDeviceException &e) {
+            throw e;
+        }
+    }
+    else
+    {
+        // Withdraw ECAT control to EEPROM
+        // (will fail if PDI has locked EEPROM)
+        reg_data.address = reg_eeprom_pdi_access_address;
+        reg_eeprom_value = 0x00;
+        if (getVerbosity() == Verbose) {
+            cerr << "Withdraw EEPROM control." << endl;
+        }
+        // Check if PDI has locked EEPROM control
+        try {
+            m.readReg(&reg_data);
+        } catch (MasterDeviceException &e) {
+            throw e;
+        }
+        if (reg_eeprom_value == 0x01) {
+            // PDI has locked EEPROM control
+            if (getVerbosity() == Verbose) {
+                cerr << "EEPROM locked by PDI. Use --force to override." << endl;
+            }
+            return;
+        }
+        // PDI has not locked EEPROM. Withdraw EEPROM control
+        reg_data.address = reg_eeprom_config_address;
+        reg_eeprom_value = 0x00;
+        try {
+            m.writeReg(&reg_data);
+        } catch (MasterDeviceException &e) {
+            throw e;
+        }
+    }
 
     if (!slave->sii_nwords)
         return;
