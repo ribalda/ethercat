@@ -43,16 +43,11 @@
 #include <linux/wait.h>
 #include <linux/kthread.h>
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)
-#include <linux/semaphore.h>
-#else
-#include <asm/semaphore.h>
-#endif
-
 #include "device.h"
 #include "domain.h"
 #include "ethernet.h"
 #include "fsm_master.h"
+#include "locks.h"
 #include "cdev.h"
 
 #ifdef EC_RTDM
@@ -206,7 +201,7 @@ struct ec_master {
     ec_rtdm_dev_t rtdm_dev; /**< RTDM device. */
 #endif
 
-    struct semaphore master_sem; /**< Master semaphore. */
+    ec_lock_t master_sem; /**< Master semaphore. */
 
     ec_device_t devices[EC_MAX_NUM_DEVICES]; /**< EtherCAT devices. */
     const uint8_t *macs[EC_MAX_NUM_DEVICES]; /**< Device MAC addresses. */
@@ -215,7 +210,7 @@ struct ec_master {
                                 ec_master_num_devices(), because it may be
                                 optimized! */
 #endif
-    struct semaphore device_sem; /**< Device semaphore. */
+    ec_lock_t device_sem; /**< Device semaphore. */
     ec_device_stats_t device_stats; /**< Device statistics. */
 
     ec_fsm_master_t fsm; /**< Master state machine. */
@@ -252,13 +247,13 @@ struct ec_master {
 
     unsigned int scan_busy; /**< Current scan state. */
     unsigned int allow_scan; /**< \a True, if slave scanning is allowed. */
-    struct semaphore scan_sem; /**< Semaphore protecting the \a scan_busy
+    ec_lock_t scan_sem; /**< Semaphore protecting the \a scan_busy
                                  variable and the \a allow_scan flag. */
     wait_queue_head_t scan_queue; /**< Queue for processes that wait for
                                     slave scanning. */
 
     unsigned int config_busy; /**< State of slave configuration. */
-    struct semaphore config_sem; /**< Semaphore protecting the \a config_busy
+    ec_lock_t config_sem; /**< Semaphore protecting the \a config_busy
                                    variable and the allow_config flag. */
     wait_queue_head_t config_queue; /**< Queue for processes that wait for
                                       slave configuration. */
@@ -268,7 +263,7 @@ struct ec_master {
 
     struct list_head ext_datagram_queue; /**< Queue for non-application
                                            datagrams. */
-    struct semaphore ext_queue_sem; /**< Semaphore protecting the \a
+    ec_lock_t ext_queue_sem; /**< Semaphore protecting the \a
                                       ext_datagram_queue. */
 
     ec_datagram_t ext_datagram_ring[EC_EXT_RING_SIZE]; /**< External datagram
@@ -295,7 +290,7 @@ struct ec_master {
     struct list_head eoe_handlers; /**< Ethernet over EtherCAT handlers. */
 #endif
 
-    struct semaphore io_sem; /**< Semaphore used in \a IDLE phase. */
+    ec_lock_t io_sem; /**< Semaphore used in \a IDLE phase. */
 
     void (*send_cb)(void *); /**< Current send datagrams callback. */
     void (*receive_cb)(void *); /**< Current receive datagrams callback. */

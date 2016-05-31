@@ -919,6 +919,35 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# Realtime Mutex support
+#------------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to use rtmutexes])
+
+AC_ARG_ENABLE([rtmutex],
+    AS_HELP_STRING([--enable-rtmutex],
+                   [Use rtmutexes for synchronization (default: no)]),
+    [
+        case "${enableval}" in
+            yes) rtmutex=1
+                ;;
+            no) rtmutex=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-rtmutex])
+                ;;
+        esac
+    ],
+    [rtmutex=0]
+)
+
+if test "x${rtmutex}" = "x1"; then
+    AC_DEFINE([EC_USE_RTMUTEX], [1], [Use rtmutex for synchronization])
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+#------------------------------------------------------------------------------
 # High-resolution timer support
 #------------------------------------------------------------------------------
 

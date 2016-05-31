@@ -61,7 +61,7 @@ static unsigned int backup_count; /**< Number of backup devices. */
 static unsigned int debug_level;  /**< Debug level parameter. */
 
 static ec_master_t *masters; /**< Array of masters. */
-static struct semaphore master_sem; /**< Master semaphore. */
+static ec_lock_t master_sem; /**< Master semaphore. */
 
 dev_t device_number; /**< Device number for master cdevs. */
 struct class *class; /**< Device class. */
@@ -101,7 +101,7 @@ int __init ec_init_module(void)
 
     EC_INFO("Master driver %s\n", EC_MASTER_VERSION);
 
-    sema_init(&master_sem, 1);
+    ec_lock_init(&master_sem);
 
     if (master_count) {
         if (alloc_chrdev_region(&device_number,
@@ -484,7 +484,7 @@ ec_device_t *ecdev_offer(
         master = &masters[i];
         ec_mac_print(net_dev->dev_addr, str);
 
-        if (down_interruptible(&master->device_sem)) {
+        if (ec_lock_down_interruptible(&master->device_sem)) {
             EC_MASTER_WARN(master, "%s() interrupted!\n", __func__);
             return NULL;
         }
@@ -500,7 +500,7 @@ ec_device_t *ecdev_offer(
 
                 ec_device_attach(&master->devices[dev_idx],
                         net_dev, poll, module);
-                up(&master->device_sem);
+                ec_lock_up(&master->device_sem);
 
                 snprintf(net_dev->name, IFNAMSIZ, "ec%c%u",
                         ec_device_names[dev_idx != 0][0], master->index);
@@ -509,7 +509,7 @@ ec_device_t *ecdev_offer(
             }
         }
 
-        up(&master->device_sem);
+        ec_lock_up(&master->device_sem);
 
         EC_MASTER_DBG(master, 1, "Master declined device %s.\n", str);
     }
@@ -543,27 +543,27 @@ ec_master_t *ecrt_request_master_err(
     }
     master = &masters[master_index];
 
-    if (down_interruptible(&master_sem)) {
+    if (ec_lock_down_interruptible(&master_sem)) {
         errptr = ERR_PTR(-EINTR);
         goto out_return;
     }
 
     if (master->reserved) {
-        up(&master_sem);
+        ec_lock_up(&master_sem);
         EC_MASTER_ERR(master, "Master already in use!\n");
         errptr = ERR_PTR(-EBUSY);
         goto out_return;
     }
     master->reserved = 1;
-    up(&master_sem);
+    ec_lock_up(&master_sem);
 
-    if (down_interruptible(&master->device_sem)) {
+    if (ec_lock_down_interruptible(&master->device_sem)) {
         errptr = ERR_PTR(-EINTR);
         goto out_release;
     }
 
     if (master->phase != EC_IDLE) {
-        up(&master->device_sem);
+        ec_lock_up(&master->device_sem);
         EC_MASTER_ERR(master, "Master still waiting for devices!\n");
         errptr = ERR_PTR(-ENODEV);
         goto out_release;
@@ -572,14 +572,14 @@ ec_master_t *ecrt_request_master_err(
     for (; dev_idx < ec_master_num_devices(master); dev_idx++) {
         ec_device_t *device = &master->devices[dev_idx];
         if (!try_module_get(device->module)) {
-            up(&master->device_sem);
+            ec_lock_up(&master->device_sem);
             EC_MASTER_ERR(master, "Device module is unloading!\n");
             errptr = ERR_PTR(-ENODEV);
             goto out_module_put;
         }
     }
 
-    up(&master->device_sem);
+    ec_lock_up(&master->device_sem);
 
     if (ec_master_enter_operation_phase(master)) {
         EC_MASTER_ERR(master, "Failed to enter OPERATION phase!\n");

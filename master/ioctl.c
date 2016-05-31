@@ -109,7 +109,7 @@ static ATTRIBUTES int ec_ioctl_master(
     ec_ioctl_master_t io;
     unsigned int dev_idx, j;
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
@@ -123,9 +123,9 @@ static ATTRIBUTES int ec_ioctl_master(
     io.active = (uint8_t) master->active;
     io.scan_busy = master->scan_busy;
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
-    if (down_interruptible(&master->device_sem)) {
+    if (ec_lock_down_interruptible(&master->device_sem)) {
         return -EINTR;
     }
 
@@ -177,7 +177,7 @@ static ATTRIBUTES int ec_ioctl_master(
             master->device_stats.loss_rates[j];
     }
 
-    up(&master->device_sem);
+    ec_lock_up(&master->device_sem);
 
     io.app_time = master->app_time;
     io.dc_ref_time = master->dc_ref_time;
@@ -210,12 +210,12 @@ static ATTRIBUTES int ec_ioctl_slave(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_DBG(master, 1, "Slave %u does not exist!\n", data.position);
         return -EINVAL;
     }
@@ -270,7 +270,7 @@ static ATTRIBUTES int ec_ioctl_slave(
     ec_ioctl_strcpy(data.order, slave->sii.order);
     ec_ioctl_strcpy(data.name, slave->sii.name);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -297,19 +297,19 @@ static ATTRIBUTES int ec_ioctl_slave_sync(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
                 data.sync_index);
         return -EINVAL;
@@ -323,7 +323,7 @@ static ATTRIBUTES int ec_ioctl_slave_sync(
     data.enable = sync->enable;
     data.pdo_count = ec_pdo_list_count(&sync->pdos);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -351,19 +351,19 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
                 data.sync_index);
         return -EINVAL;
@@ -372,7 +372,7 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo(
     sync = &slave->sii.syncs[data.sync_index];
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
                 "position %u!\n", data.sync_index, data.pdo_pos);
         return -EINVAL;
@@ -382,7 +382,7 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo(
     data.entry_count = ec_pdo_entry_count(pdo);
     ec_ioctl_strcpy(data.name, pdo->name);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -411,19 +411,19 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo_entry(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
     }
 
     if (data.sync_index >= slave->sii.sync_count) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Sync manager %u does not exist!\n",
                 data.sync_index);
         return -EINVAL;
@@ -432,7 +432,7 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo_entry(
     sync = &slave->sii.syncs[data.sync_index];
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sync->pdos, data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Sync manager %u does not contain a PDO with "
                 "position %u!\n", data.sync_index, data.pdo_pos);
         return -EINVAL;
@@ -440,7 +440,7 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo_entry(
 
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "PDO 0x%04X does not contain an entry with "
                 "position %u!\n", data.pdo_pos, data.entry_pos);
         return -EINVAL;
@@ -451,7 +451,7 @@ static ATTRIBUTES int ec_ioctl_slave_sync_pdo_entry(
     data.bit_length = entry->bit_length;
     ec_ioctl_strcpy(data.name, entry->name);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -478,11 +478,11 @@ static ATTRIBUTES int ec_ioctl_domain(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Domain %u does not exist!\n", data.index);
         return -EINVAL;
     }
@@ -496,7 +496,7 @@ static ATTRIBUTES int ec_ioctl_domain(
     data.expected_working_counter = domain->expected_working_counter;
     data.fmmu_count = ec_domain_fmmu_count(domain);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -523,18 +523,18 @@ static ATTRIBUTES int ec_ioctl_domain_fmmu(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Domain %u does not exist!\n",
                 data.domain_index);
         return -EINVAL;
     }
 
     if (!(fmmu = ec_domain_find_fmmu(domain, data.fmmu_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Domain %u has less than %u"
                 " fmmu configurations.\n",
                 data.domain_index, data.fmmu_index + 1);
@@ -548,7 +548,7 @@ static ATTRIBUTES int ec_ioctl_domain_fmmu(
     data.logical_address = fmmu->domain->logical_base_address + fmmu->logical_domain_offset;
     data.data_size = fmmu->data_size;
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -574,18 +574,18 @@ static ATTRIBUTES int ec_ioctl_domain_data(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(domain = ec_master_find_domain_const(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Domain %u does not exist!\n",
                 data.domain_index);
         return -EINVAL;
     }
 
     if (domain->data_size != data.data_size) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Data size mismatch %u/%zu!\n",
                 data.data_size, domain->data_size);
         return -EFAULT;
@@ -593,11 +593,11 @@ static ATTRIBUTES int ec_ioctl_domain_data(
 
     if (copy_to_user((void __user *) data.target, domain->data,
                 domain->data_size)) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -EFAULT;
     }
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return 0;
 }
 
@@ -648,12 +648,12 @@ static ATTRIBUTES int ec_ioctl_slave_state(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -661,7 +661,7 @@ static ATTRIBUTES int ec_ioctl_slave_state(
 
     ec_slave_request_state(slave, data.al_state);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return 0;
 }
 
@@ -684,12 +684,12 @@ static ATTRIBUTES int ec_ioctl_slave_sdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -697,7 +697,7 @@ static ATTRIBUTES int ec_ioctl_slave_sdo(
 
     if (!(sdo = ec_slave_get_sdo_by_pos_const(
                     slave, data.sdo_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "SDO %u does not exist!\n", data.sdo_position);
         return -EINVAL;
     }
@@ -706,7 +706,7 @@ static ATTRIBUTES int ec_ioctl_slave_sdo(
     data.max_subindex = sdo->max_subindex;
     ec_ioctl_strcpy(data.name, sdo->name);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -734,12 +734,12 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_entry(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -748,14 +748,14 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_entry(
     if (data.sdo_spec <= 0) {
         if (!(sdo = ec_slave_get_sdo_by_pos_const(
                         slave, -data.sdo_spec))) {
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             EC_SLAVE_ERR(slave, "SDO %u does not exist!\n", -data.sdo_spec);
             return -EINVAL;
         }
     } else {
         if (!(sdo = ec_slave_get_sdo_const(
                         slave, data.sdo_spec))) {
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             EC_SLAVE_ERR(slave, "SDO 0x%04X does not exist!\n",
                     data.sdo_spec);
             return -EINVAL;
@@ -764,7 +764,7 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_entry(
 
     if (!(entry = ec_sdo_get_entry_const(
                     sdo, data.sdo_entry_subindex))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "SDO entry 0x%04X:%02X does not exist!\n",
                 sdo->index, data.sdo_entry_subindex);
         return -EINVAL;
@@ -786,7 +786,7 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_entry(
         entry->write_access[EC_SDO_ENTRY_ACCESS_OP];
     ec_ioctl_strcpy(data.description, entry->description);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -907,12 +907,12 @@ static ATTRIBUTES int ec_ioctl_slave_sii_read(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(slave = ec_master_find_slave_const(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         return -EINVAL;
@@ -920,7 +920,7 @@ static ATTRIBUTES int ec_ioctl_slave_sii_read(
 
     if (!data.nwords
             || data.offset + data.nwords > slave->sii_nwords) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_SLAVE_ERR(slave, "Invalid SII read offset/size %u/%u for slave SII"
                 " size %zu!\n", data.offset, data.nwords, slave->sii_nwords);
         return -EINVAL;
@@ -932,7 +932,7 @@ static ATTRIBUTES int ec_ioctl_slave_sii_read(
     else
         retval = 0;
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return retval;
 }
 
@@ -974,14 +974,14 @@ static ATTRIBUTES int ec_ioctl_slave_sii_write(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         kfree(words);
         return -EINTR;
     }
 
     if (!(slave = ec_master_find_slave(
                     master, 0, data.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 data.slave_position);
         kfree(words);
@@ -999,21 +999,21 @@ static ATTRIBUTES int ec_ioctl_slave_sii_write(
     // schedule SII write request.
     list_add_tail(&request.list, &master->sii_requests);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->request_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->master_sem);
+        ec_lock_down(&master->master_sem);
         if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             kfree(words);
             return -EINTR;
         }
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
     }
 
     // wait until master FSM has finished processing
@@ -1056,14 +1056,14 @@ static ATTRIBUTES int ec_ioctl_slave_reg_read(
 
     ecrt_reg_request_read(&request, io.address, io.size);
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ec_reg_request_clear(&request);
         return -EINTR;
     }
 
     if (!(slave = ec_master_find_slave(
                     master, 0, io.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         ec_reg_request_clear(&request);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 io.slave_position);
@@ -1073,21 +1073,21 @@ static ATTRIBUTES int ec_ioctl_slave_reg_read(
     // schedule request.
     list_add_tail(&request.list, &slave->reg_requests);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->request_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->master_sem);
+        ec_lock_down(&master->master_sem);
         if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             ec_reg_request_clear(&request);
             return -EINTR;
         }
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
     }
 
     // wait until master FSM has finished processing
@@ -1140,7 +1140,7 @@ static ATTRIBUTES int ec_ioctl_slave_reg_write(
 
     ecrt_reg_request_write(&request, io.address, io.size);
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ec_reg_request_clear(&request);
         return -EINTR;
     }
@@ -1152,7 +1152,7 @@ static ATTRIBUTES int ec_ioctl_slave_reg_write(
     }
     else {
         if (!(slave = ec_master_find_slave(master, 0, io.slave_position))) {
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             ec_reg_request_clear(&request);
             EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                     io.slave_position);
@@ -1163,21 +1163,21 @@ static ATTRIBUTES int ec_ioctl_slave_reg_write(
         list_add_tail(&request.list, &slave->reg_requests);
     }
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->request_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->master_sem);
+        ec_lock_down(&master->master_sem);
         if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             ec_reg_request_clear(&request);
             return -EINTR;
         }
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
     }
 
     // wait until master FSM has finished processing
@@ -1207,12 +1207,12 @@ static ATTRIBUTES int ec_ioctl_config(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1238,7 +1238,7 @@ static ATTRIBUTES int ec_ioctl_config(
         data.dc_sync[i] = sc->dc_sync[i];
     }
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1271,12 +1271,12 @@ static ATTRIBUTES int ec_ioctl_config_pdo(
         return -EINVAL;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1285,7 +1285,7 @@ static ATTRIBUTES int ec_ioctl_config_pdo(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Invalid PDO position!\n");
         return -EINVAL;
     }
@@ -1294,7 +1294,7 @@ static ATTRIBUTES int ec_ioctl_config_pdo(
     data.entry_count = ec_pdo_entry_count(pdo);
     ec_ioctl_strcpy(data.name, pdo->name);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1328,12 +1328,12 @@ static ATTRIBUTES int ec_ioctl_config_pdo_entry(
         return -EINVAL;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config_const(
                     master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 data.config_index);
         return -EINVAL;
@@ -1342,14 +1342,14 @@ static ATTRIBUTES int ec_ioctl_config_pdo_entry(
     if (!(pdo = ec_pdo_list_find_pdo_by_pos_const(
                     &sc->sync_configs[data.sync_index].pdos,
                     data.pdo_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Invalid PDO position!\n");
         return -EINVAL;
     }
 
     if (!(entry = ec_pdo_find_entry_by_pos_const(
                     pdo, data.entry_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Entry not found!\n");
         return -EINVAL;
     }
@@ -1359,7 +1359,7 @@ static ATTRIBUTES int ec_ioctl_config_pdo_entry(
     data.bit_length = entry->bit_length;
     ec_ioctl_strcpy(data.name, entry->name);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1391,14 +1391,14 @@ static ATTRIBUTES int ec_ioctl_config_sdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         kfree(ioctl);
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config_const(
                     master, ioctl->config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 ioctl->config_index);
         kfree(ioctl);
@@ -1407,7 +1407,7 @@ static ATTRIBUTES int ec_ioctl_config_sdo(
 
     if (!(req = ec_slave_config_get_sdo_by_pos_const(
                     sc, ioctl->sdo_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Invalid SDO position!\n");
         kfree(ioctl);
         return -EINVAL;
@@ -1420,7 +1420,7 @@ static ATTRIBUTES int ec_ioctl_config_sdo(
             min((u32) ioctl->size, (u32) EC_MAX_SDO_DATA_SIZE));
     ioctl->complete_access = req->complete_access;
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, ioctl, sizeof(*ioctl))) {
         kfree(ioctl);
@@ -1455,14 +1455,14 @@ static ATTRIBUTES int ec_ioctl_config_idn(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         kfree(ioctl);
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config_const(
                     master, ioctl->config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave config %u does not exist!\n",
                 ioctl->config_index);
         kfree(ioctl);
@@ -1471,7 +1471,7 @@ static ATTRIBUTES int ec_ioctl_config_idn(
 
     if (!(req = ec_slave_config_get_idn_by_pos_const(
                     sc, ioctl->idn_pos))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Invalid IDN position!\n");
         kfree(ioctl);
         return -EINVAL;
@@ -1484,7 +1484,7 @@ static ATTRIBUTES int ec_ioctl_config_idn(
     memcpy(ioctl->data, req->data,
             min((u32) ioctl->size, (u32) EC_MAX_IDN_DATA_SIZE));
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, ioctl, sizeof(*ioctl))) {
         kfree(ioctl);
@@ -1515,11 +1515,11 @@ static ATTRIBUTES int ec_ioctl_eoe_handler(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(eoe = ec_master_get_eoe_handler_const(master, data.eoe_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "EoE handler %u does not exist!\n",
                 data.eoe_index);
         return -EINVAL;
@@ -1539,7 +1539,7 @@ static ATTRIBUTES int ec_ioctl_eoe_handler(
     data.tx_queued_frames = eoe->tx_queued_frames;
     data.tx_queue_size = eoe->tx_queue_size;
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1588,13 +1588,13 @@ static ATTRIBUTES int ec_ioctl_slave_eoe_ip_param(
 
     req.state = EC_INT_REQUEST_QUEUED;
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
     if (!(slave = ec_master_find_slave(
                     master, 0, io.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 io.slave_position);
         return -EINVAL;
@@ -1605,20 +1605,20 @@ static ATTRIBUTES int ec_ioctl_slave_eoe_ip_param(
     // schedule request.
     list_add_tail(&req.list, &slave->eoe_requests);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->request_queue,
                 req.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->master_sem);
+        ec_lock_down(&master->master_sem);
         if (req.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&req.list);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             return -EINTR;
         }
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
     }
 
     // wait until master FSM has finished processing
@@ -1712,7 +1712,7 @@ static ATTRIBUTES int ec_ioctl_create_slave_config(
 
     data.config_index = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     list_for_each_entry(entry, &master->configs, list) {
@@ -1721,7 +1721,7 @@ static ATTRIBUTES int ec_ioctl_create_slave_config(
         data.config_index++;
     }
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     if (copy_to_user((void __user *) arg, &data, sizeof(data)))
         return -EFAULT;
@@ -1750,7 +1750,7 @@ static ATTRIBUTES int ec_ioctl_select_ref_clock(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ret = -EINTR;
         goto out_return;
     }
@@ -1765,7 +1765,7 @@ static ATTRIBUTES int ec_ioctl_select_ref_clock(
     ecrt_master_select_reference_clock(master, sc);
 
 out_up:
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 out_return:
     return ret;
 }
@@ -1801,14 +1801,14 @@ static ATTRIBUTES int ec_ioctl_setup_domain_memory(
 
         ctx->process_data_size = 0;
 
-        if (down_interruptible(&master->master_sem))
+        if (ec_lock_down_interruptible(&master->master_sem))
             return -EINTR;
 
         list_for_each_entry(domain, &master->domains, list) {
             ctx->process_data_size += ecrt_domain_size(domain);
         }
 
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
 
         if (ctx->process_data_size) {
             ctx->process_data = vmalloc(ctx->process_data_size);
@@ -1885,14 +1885,14 @@ static ATTRIBUTES int ec_ioctl_activate(
 
         ctx->process_data_size = 0;
 
-        if (down_interruptible(&master->master_sem))
+        if (ec_lock_down_interruptible(&master->master_sem))
             return -EINTR;
 
         list_for_each_entry(domain, &master->domains, list) {
             ctx->process_data_size += ecrt_domain_size(domain);
         }
 
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
 
         if (ctx->process_data_size) {
             ctx->process_data = vmalloc(ctx->process_data_size);
@@ -2009,12 +2009,12 @@ static ATTRIBUTES int ec_ioctl_set_send_interval(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     ec_master_set_send_interval(master, send_interval);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return 0;
 }
 
@@ -2348,9 +2348,9 @@ static ATTRIBUTES int ec_ioctl_reset(
         ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
         )
 {
-    down(&master->master_sem);
+    ec_lock_down(&master->master_sem);
     ecrt_master_reset(master);
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return 0;
 }
 
@@ -2381,7 +2381,7 @@ static ATTRIBUTES int ec_ioctl_sc_sync(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ret = -EINTR;
         goto out_return;
     }
@@ -2402,7 +2402,7 @@ static ATTRIBUTES int ec_ioctl_sc_sync(
     }
 
 out_up:
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 out_return:
     return ret;
 }
@@ -2433,7 +2433,7 @@ static ATTRIBUTES int ec_ioctl_sc_watchdog(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ret = -EINTR;
         goto out_return;
     }
@@ -2447,7 +2447,7 @@ static ATTRIBUTES int ec_ioctl_sc_watchdog(
             data.watchdog_divider, data.watchdog_intervals);
 
 out_up:
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 out_return:
     return ret;
 }
@@ -2476,7 +2476,7 @@ static ATTRIBUTES int ec_ioctl_sc_allow_overlapping_pdos(
         goto out_return;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ret = -EINTR;
         goto out_return;
     }
@@ -2490,7 +2490,7 @@ static ATTRIBUTES int ec_ioctl_sc_allow_overlapping_pdos(
             data.allow_overlapping_pdos);
 
 out_up:
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 out_return:
     return ret;
 }
@@ -2515,15 +2515,15 @@ static ATTRIBUTES int ec_ioctl_sc_add_pdo(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     return ecrt_slave_config_pdo_assign_add(sc, data.sync_index, data.index);
 }
@@ -2549,15 +2549,15 @@ static ATTRIBUTES int ec_ioctl_sc_clear_pdos(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     ecrt_slave_config_pdo_assign_clear(sc, data.sync_index);
     return 0;
@@ -2584,15 +2584,15 @@ static ATTRIBUTES int ec_ioctl_sc_add_entry(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     return ecrt_slave_config_pdo_mapping_add(sc, data.pdo_index,
             data.entry_index, data.entry_subindex, data.entry_bit_length);
@@ -2619,15 +2619,15 @@ static ATTRIBUTES int ec_ioctl_sc_clear_entries(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     ecrt_slave_config_pdo_mapping_clear(sc, data.index);
     return 0;
@@ -2656,20 +2656,20 @@ static ATTRIBUTES int ec_ioctl_sc_reg_pdo_entry(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
     if (!(domain = ec_master_find_domain(master, data.domain_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc or domain could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc or domain could be invalidated */
 
     ret = ecrt_slave_config_reg_pdo_entry(sc, data.entry_index,
             data.entry_subindex, domain, &data.bit_position);
@@ -2705,21 +2705,21 @@ static ATTRIBUTES int ec_ioctl_sc_reg_pdo_pos(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config(master, io.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
     if (!(domain = ec_master_find_domain(master, io.domain_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc or domain could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc or domain could be invalidated */
 
     ret = ecrt_slave_config_reg_pdo_entry_pos(sc, io.sync_index,
             io.pdo_pos, io.entry_pos, domain, &io.bit_position);
@@ -2751,11 +2751,11 @@ static ATTRIBUTES int ec_ioctl_sc_dc(
     if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
@@ -2765,7 +2765,7 @@ static ATTRIBUTES int ec_ioctl_sc_dc(
             data.dc_sync[1].cycle_time,
             data.dc_sync[1].shift_time);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     return 0;
 }
@@ -2805,18 +2805,18 @@ static ATTRIBUTES int ec_ioctl_sc_sdo(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         kfree(sdo_data);
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config(master, data.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         kfree(sdo_data);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     if (data.complete_access) {
         ret = ecrt_slave_config_complete_sdo(sc,
@@ -2851,18 +2851,18 @@ static ATTRIBUTES int ec_ioctl_sc_emerg_size(
     if (copy_from_user(&io, (void __user *) arg, sizeof(io)))
         return -EFAULT;
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config(master, io.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
     ret = ecrt_slave_config_emerg_size(sc, io.size);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     return ret;
 }
@@ -3014,12 +3014,12 @@ static ATTRIBUTES int ec_ioctl_sc_create_sdo_request(
 
     data.request_index = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     sc = ec_master_get_config(master, data.config_index);
     if (!sc) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
@@ -3027,7 +3027,7 @@ static ATTRIBUTES int ec_ioctl_sc_create_sdo_request(
         data.request_index++;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     req = ecrt_slave_config_create_sdo_request_err(sc, data.sdo_index,
             data.sdo_subindex, data.size);
@@ -3066,13 +3066,13 @@ static ATTRIBUTES int ec_ioctl_sc_create_reg_request(
 
     io.request_index = 0;
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
     sc = ec_master_get_config(master, io.config_index);
     if (!sc) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
@@ -3080,7 +3080,7 @@ static ATTRIBUTES int ec_ioctl_sc_create_reg_request(
         io.request_index++;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     reg = ecrt_slave_config_create_reg_request_err(sc, io.mem_size);
     if (IS_ERR(reg)) {
@@ -3119,12 +3119,12 @@ static ATTRIBUTES int ec_ioctl_sc_create_voe_handler(
 
     data.voe_index = 0;
 
-    if (down_interruptible(&master->master_sem))
+    if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
     sc = ec_master_get_config(master, data.config_index);
     if (!sc) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         return -ENOENT;
     }
 
@@ -3132,7 +3132,7 @@ static ATTRIBUTES int ec_ioctl_sc_create_voe_handler(
         data.voe_index++;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     voe = ecrt_slave_config_create_voe_handler_err(sc, data.size);
     if (IS_ERR(voe))
@@ -3217,18 +3217,18 @@ static ATTRIBUTES int ec_ioctl_sc_idn(
         return -EFAULT;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         kfree(data);
         return -EINTR;
     }
 
     if (!(sc = ec_master_get_config(master, ioctl.config_index))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         kfree(data);
         return -ENOENT;
     }
 
-    up(&master->master_sem); /** \todo sc could be invalidated */
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     ret = ecrt_slave_config_idn(
             sc, ioctl.drive_no, ioctl.idn, ioctl.al_state, data, ioctl.size);
@@ -3254,19 +3254,19 @@ static ATTRIBUTES int ec_ioctl_domain_size(
         return -EPERM;
     }
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
     list_for_each_entry(domain, &master->domains, list) {
         if (domain->index == (unsigned long) arg) {
             size_t size = ecrt_domain_size(domain);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             return size;
         }
     }
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return -ENOENT;
 }
 
@@ -3288,19 +3288,19 @@ static ATTRIBUTES int ec_ioctl_domain_offset(
     if (unlikely(!ctx->requested))
         return -EPERM;
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         return -EINTR;
     }
 
     list_for_each_entry(domain, &master->domains, list) {
         if (domain->index == (unsigned long) arg) {
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             return offset;
         }
         offset += ecrt_domain_size(domain);
     }
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
     return -ENOENT;
 }
 
@@ -4155,13 +4155,13 @@ static ATTRIBUTES int ec_ioctl_slave_foe_read(
 
     ec_foe_request_read(&request);
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ec_foe_request_clear(&request);
         return -EINTR;
     }
 
     if (!(slave = ec_master_find_slave(master, 0, io.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         ec_foe_request_clear(&request);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 io.slave_position);
@@ -4173,21 +4173,21 @@ static ATTRIBUTES int ec_ioctl_slave_foe_read(
     // schedule request.
     list_add_tail(&request.list, &slave->foe_requests);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->request_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->master_sem);
+        ec_lock_down(&master->master_sem);
         if (request.state == EC_INT_REQUEST_QUEUED) {
             list_del(&request.list);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             ec_foe_request_clear(&request);
             return -EINTR;
         }
         // request already processing: interrupt not possible.
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
     }
 
     // wait until master FSM has finished processing
@@ -4259,13 +4259,13 @@ static ATTRIBUTES int ec_ioctl_slave_foe_write(
     request.data_size = io.buffer_size;
     ec_foe_request_write(&request);
 
-    if (down_interruptible(&master->master_sem)) {
+    if (ec_lock_down_interruptible(&master->master_sem)) {
         ec_foe_request_clear(&request);
         return -EINTR;
     }
 
     if (!(slave = ec_master_find_slave(master, 0, io.slave_position))) {
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
         EC_MASTER_ERR(master, "Slave %u does not exist!\n",
                 io.slave_position);
         ec_foe_request_clear(&request);
@@ -4277,21 +4277,21 @@ static ATTRIBUTES int ec_ioctl_slave_foe_write(
     // schedule FoE write request.
     list_add_tail(&request.list, &slave->foe_requests);
 
-    up(&master->master_sem);
+    ec_lock_up(&master->master_sem);
 
     // wait for processing through FSM
     if (wait_event_interruptible(master->request_queue,
                 request.state != EC_INT_REQUEST_QUEUED)) {
         // interrupted by signal
-        down(&master->master_sem);
+        ec_lock_down(&master->master_sem);
         if (request.state == EC_INT_REQUEST_QUEUED) {
             // abort request
             list_del(&request.list);
-            up(&master->master_sem);
+            ec_lock_up(&master->master_sem);
             ec_foe_request_clear(&request);
             return -EINTR;
         }
-        up(&master->master_sem);
+        ec_lock_up(&master->master_sem);
     }
 
     // wait until master FSM has finished processing

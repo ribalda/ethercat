@@ -57,7 +57,7 @@ noinst_HEADERS = \
 	globals.h \
 	ioctl.c ioctl.h \
 	mailbox.c mailbox.h \
-	master.c master.h \
+	master.c master.h locks.h \
 	module.c \
 	pdo.c pdo.h \
 	pdo_entry.c pdo_entry.h \
