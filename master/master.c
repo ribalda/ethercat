@@ -987,6 +987,15 @@ void ec_master_queue_datagram_ext(
 
 /*****************************************************************************/
 
+static int index_in_use(ec_master_t *master, uint8_t index)
+{
+    ec_datagram_t *datagram;
+    list_for_each_entry(datagram, &master->datagram_queue, queue)
+        if (datagram->state == EC_DATAGRAM_SENT && datagram->index == index)
+            return 1;
+    return 0;
+}
+
 /** Sends the datagrams in the queue for a certain device.
  *
  */
@@ -1006,6 +1015,7 @@ size_t ec_master_send_datagrams(
     unsigned int frame_count, more_datagrams_waiting;
     struct list_head sent_datagrams;
     size_t sent_bytes = 0;
+    uint8_t last_index;
 
 #ifdef EC_HAVE_CYCLES
     cycles_start = get_cycles();
@@ -1043,8 +1053,18 @@ size_t ec_master_send_datagrams(
                 break;
             }
 
-            list_add_tail(&datagram->sent, &sent_datagrams);
+            // do not reuse the index of a pending datagram to avoid confusion
+            // in ec_master_receive_datagrams()
+            last_index = master->datagram_index;
+            while (index_in_use(master, master->datagram_index)) {
+                if (++master->datagram_index == last_index) {
+                    EC_MASTER_ERR(master, "No free datagram index, sending delayed\n");
+                    goto break_send;
+                }
+            }
             datagram->index = master->datagram_index++;
+
+            list_add_tail(&datagram->sent, &sent_datagrams);
 
             EC_MASTER_DBG(master, 2, "Adding datagram 0x%02X\n",
                     datagram->index);
@@ -1073,6 +1093,7 @@ size_t ec_master_send_datagrams(
             cur_data += EC_DATAGRAM_FOOTER_SIZE;
         }
 
+break_send:
         if (list_empty(&sent_datagrams)) {
             EC_MASTER_DBG(master, 2, "nothing to send.\n");
             break;
