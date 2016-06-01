@@ -230,35 +230,34 @@ void ec_fsm_coe_transfer(
 
 /** Executes the current state of the state machine.
  *
- * \return 1 if the datagram was used, else 0.
+ * \return 1 if the state machine is still in progress, else 0.
  */
 int ec_fsm_coe_exec(
         ec_fsm_coe_t *fsm, /**< Finite state machine. */
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    int datagram_used = 0;
-
+    if (fsm->state == ec_fsm_coe_end || fsm->state == ec_fsm_coe_error)
+        return 0;
     if (fsm->datagram &&
             (fsm->datagram->state == EC_DATAGRAM_INIT ||
              fsm->datagram->state == EC_DATAGRAM_QUEUED ||
              fsm->datagram->state == EC_DATAGRAM_SENT)) {
         // datagram not received yet
-        return datagram_used;
+        if (datagram != fsm->datagram)
+            datagram->state = EC_DATAGRAM_INVALID;
+        return 1;
     }
 
     fsm->state(fsm, datagram);
 
-    datagram_used =
-        fsm->state != ec_fsm_coe_end && fsm->state != ec_fsm_coe_error;
-
-    if (datagram_used) {
-        fsm->datagram = datagram;
-    } else {
+    if (fsm->state == ec_fsm_coe_end || fsm->state == ec_fsm_coe_error) {
         fsm->datagram = NULL;
+        return 0;
     }
 
-    return datagram_used;
+    fsm->datagram = datagram;
+    return 1;
 }
 
 /*****************************************************************************/
