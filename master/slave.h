@@ -234,6 +234,7 @@ struct ec_slave
     ec_slave_config_t *config; /**< Current configuration. */
     ec_slave_state_t requested_state; /**< Requested application state. */
     ec_slave_state_t current_state; /**< Current application state. */
+    uint16_t last_al_error; /**< Last AL state error code */
     unsigned int error_flag; /**< Stop processing after an error. */
     unsigned int force_config; /**< Force (re-)configuration. */
     unsigned int reboot; /**< Request reboot */

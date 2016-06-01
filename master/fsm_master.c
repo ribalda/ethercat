@@ -833,7 +833,19 @@ void ec_fsm_master_action_configure(
 
         fsm->idle = 0;
         fsm->state = ec_fsm_master_state_configure_slave;
-        ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+#ifdef EC_QUICK_OP
+        if (!slave->force_config
+                && slave->current_state == EC_SLAVE_STATE_SAFEOP
+                && slave->requested_state == EC_SLAVE_STATE_OP
+                && slave->last_al_error == 0x001B) {
+            // last error was a sync watchdog timeout; assume a comms
+            // interruption and request a quick transition back to OP
+            ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config, slave);
+        } else
+#endif
+        {
+            ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
+        }
         fsm->state(fsm); // execute immediately
         fsm->datagram->device_index = fsm->slave->device_index;
         return;
