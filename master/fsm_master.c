@@ -496,7 +496,7 @@ int ec_fsm_master_action_process_sdo(
         }
 
         if (!ec_fsm_slave_is_ready(&slave->fsm)) {
-            EC_SLAVE_DBG(slave, 1, "Busy - processing external request!\n");
+            EC_SLAVE_DBG(slave, 2, "Busy - processing external request!\n");
             continue;
         }
 

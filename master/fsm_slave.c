@@ -217,7 +217,7 @@ void ec_fsm_slave_state_ready(
     if (slave->config) {
         list_for_each_entry(req, &slave->config->sdo_requests, list) {
             if (req->state == EC_INT_REQUEST_QUEUED || req->state == EC_INT_REQUEST_BUSY) {
-                EC_SLAVE_DBG(slave, 1, "Busy - processing internal SDO request!\n");
+                EC_SLAVE_DBG(slave, 2, "Busy - processing internal SDO request %04X:%02X!\n", req->index, req->subindex);
                 return;
             }
         }
