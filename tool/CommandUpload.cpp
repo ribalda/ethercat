@@ -49,6 +49,7 @@ string CommandUpload::helpString(const string &binaryBaseName) const
 
     str << binaryBaseName << " " << getName()
         << " [OPTIONS] <INDEX> <SUBINDEX>" << endl
+        << " [OPTIONS] <INDEX>" << endl
         << endl
         << getBriefDescription() << endl
         << endl
@@ -59,6 +60,9 @@ string CommandUpload::helpString(const string &binaryBaseName) const
         << "--type option. If the slave does not support the SDO" << endl
         << "information service or the SDO is not in the dictionary," << endl
         << "the --type option is mandatory."  << endl
+        << endl
+        << "The second call (without <SUBINDEX>) uses the complete" << endl
+        << "access method." << endl
         << endl
         << typeInfo()
         << endl
@@ -89,10 +93,11 @@ void CommandUpload::execute(const StringVector &args)
     const DataType *dataType = NULL;
     unsigned int uval;
 
-    if (args.size() != 2) {
-        err << "'" << getName() << "' takes two arguments!";
+    if (args.size() != 1 && args.size() != 2) {
+        err << "'" << getName() << "' takes 1 or 2 arguments!";
         throwInvalidUsageException(err);
     }
+    data.complete_access = args.size() == 1;
 
     strIndex << args[0];
     strIndex
@@ -103,15 +108,19 @@ void CommandUpload::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
-    strSubIndex << args[1];
-    strSubIndex
-        >> resetiosflags(ios::basefield) // guess base from prefix
-        >> uval;
-    if (strSubIndex.fail() || uval > 0xff) {
-        err << "Invalid SDO subindex '" << args[1] << "'!";
-        throwInvalidUsageException(err);
+    if (data.complete_access) {
+        data.sdo_entry_subindex = 0;
+    } else {
+        strSubIndex << args[1];
+        strSubIndex
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> uval;
+        if (strSubIndex.fail() || uval > 0xff) {
+            err << "Invalid SDO subindex '" << args[1] << "'!";
+            throwInvalidUsageException(err);
+        }
+        data.sdo_entry_subindex = uval;
     }
-    data.sdo_entry_subindex = uval;
 
     MasterDevice m(getSingleMasterIndex());
     m.open(MasterDevice::Read);
@@ -126,6 +135,9 @@ void CommandUpload::execute(const StringVector &args)
             err << "Invalid data type '" << getDataType() << "'!";
             throwInvalidUsageException(err);
         }
+    } else if (data.complete_access) { // no data type specified
+        // and complete access: assume octet_string type
+        dataType = findDataType("octet_string");
     } else { // no data type specified: fetch from dictionary
         ec_ioctl_slave_sdo_entry_t entry;
 
