@@ -424,7 +424,15 @@ void ec_fsm_slave_scan_state_dc_times(
     }
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        slave->ports[i].receive_time = EC_READ_U32(datagram->data + 4 * i);
+        u32 new_time = EC_READ_U32(datagram->data + 4 * i);
+        if (new_time == slave->ports[i].receive_time) {
+            // time has not changed since initial scan; this port has not
+            // processed the broadcast timing datagram.  this can occur
+            // in certain redundancy scenarios.  it can also occur if the
+            // port is closed, so at this stage we can't tell if it's an issue.
+            slave->ports[i].link.bypassed = 1;
+        }
+        slave->ports[i].receive_time = new_time;
     }
 
     ec_fsm_slave_scan_enter_datalink(fsm);
