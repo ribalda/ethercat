@@ -180,3 +180,22 @@ void ecrt_sdo_request_write(ec_sdo_request_t *req)
 }
 
 /*****************************************************************************/
+
+void ecrt_sdo_request_write_with_size(ec_sdo_request_t *req, size_t size)
+{
+    ec_ioctl_sdo_request_t data;
+    int ret;
+
+    data.config_index = req->config->index;
+    data.request_index = req->index;
+    data.data = req->data;
+    data.size = size;
+
+    ret = ioctl(req->config->master->fd, EC_IOCTL_SDO_REQUEST_WRITE, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to command an SDO write operation : %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+}
+
+/*****************************************************************************/

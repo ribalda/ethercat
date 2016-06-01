@@ -1924,6 +1924,19 @@ void ecrt_sdo_request_write(
         ec_sdo_request_t *req /**< SDO request. */
         );
 
+/** Schedule an SDO write operation.
+ *
+ * \attention This method may not be called while ecrt_sdo_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \attention The size must be less than or equal to the size specified
+ * when the request was created.
+ */
+void ecrt_sdo_request_write_with_size(
+        ec_sdo_request_t *req, /**< SDO request. */
+        size_t size /**< Size of data to write. */
+        );
+
 /** Schedule an SDO read operation.
  *
  * \attention This method may not be called while ecrt_sdo_request_state()
