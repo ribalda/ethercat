@@ -62,6 +62,7 @@
 /*****************************************************************************/
 
 void ec_fsm_slave_config_state_start(ec_fsm_slave_config_t *);
+void ec_fsm_slave_config_state_quick_start(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_init(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_fmmus(ec_fsm_slave_config_t *);
 void ec_fsm_slave_config_state_clear_sync(ec_fsm_slave_config_t *);
@@ -164,6 +165,19 @@ void ec_fsm_slave_config_start(
 
 /*****************************************************************************/
 
+/** Start slave configuration state machine for "quick" SAFEOP->OP
+ */
+void ec_fsm_slave_config_quick_start(
+        ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_slave_t *slave /**< slave to configure */
+        )
+{
+    fsm->slave = slave;
+    fsm->state = ec_fsm_slave_config_state_quick_start;
+}
+
+/*****************************************************************************/
+
 /**
  * \return false, if state machine has terminated
  */
@@ -222,6 +236,18 @@ void ec_fsm_slave_config_state_start(
 {
     EC_SLAVE_DBG(fsm->slave, 1, "Configuring...\n");
     ec_fsm_slave_config_enter_init(fsm);
+}
+
+/*****************************************************************************/
+
+/** Slave configuration state: QUICK START.
+ */
+void ec_fsm_slave_config_state_quick_start(
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
+        )
+{
+    EC_SLAVE_DBG(fsm->slave, 1, "Configuring (quick)...\n");
+    ec_fsm_slave_config_enter_soe_conf_safeop(fsm);
 }
 
 /*****************************************************************************/
