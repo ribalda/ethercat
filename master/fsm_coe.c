@@ -2162,9 +2162,10 @@ int ec_fsm_coe_prepare_up(
     }
 
     EC_WRITE_U16(data, 0x2 << 12); // SDO request
-    EC_WRITE_U8 (data + 2, 0x2 << 5); // initiate upload request
+    EC_WRITE_U8 (data + 2, 0x2 << 5	// initiate upload request
+                    | ((request->complete_access ? 1 : 0) << 4));
     EC_WRITE_U16(data + 3, request->index);
-    EC_WRITE_U8 (data + 5, request->subindex);
+    EC_WRITE_U8 (data + 5, request->complete_access ? 0x00 : request->subindex);
     memset(data + 6, 0x00, 4);
 
     if (master->debug_level) {
@@ -2189,9 +2190,16 @@ void ec_fsm_coe_up_start(
 {
     ec_slave_t *slave = fsm->slave;
     ec_sdo_request_t *request = fsm->request;
+    char subidxstr[10];
 
-    EC_SLAVE_DBG(slave, 1, "Uploading SDO 0x%04X:%02X.\n",
-            request->index, request->subindex);
+    if (request->complete_access) {
+        subidxstr[0] = 0x00;
+    } else {
+        sprintf(subidxstr, ":%02X", request->subindex);
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Uploading SDO 0x%04X%s.\n",
+            request->index, subidxstr);
 
     if (!slave->sii_image) {
         EC_SLAVE_ERR(slave, "Slave cannot process CoE upload request."
@@ -2229,6 +2237,13 @@ void ec_fsm_coe_up_request(
 {
     ec_slave_t *slave = fsm->slave;
     unsigned long diff_ms;
+    char subidxstr[10];
+
+    if (fsm->request->complete_access) {
+        subidxstr[0] = 0x00;
+    } else {
+        sprintf(subidxstr, ":%02X", fsm->request->subindex);
+    }
 
     if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
         if (ec_fsm_coe_prepare_up(fsm, datagram)) {
@@ -2265,16 +2280,16 @@ void ec_fsm_coe_up_request(
         fsm->request->errno = EIO;
         fsm->state = ec_fsm_coe_error;
         EC_SLAVE_ERR(slave, "Reception of CoE upload request for"
-                " SDO 0x%04x:%x failed with timeout after %lu ms: ",
-                fsm->request->index, fsm->request->subindex, diff_ms);
+                " SDO 0x%04x%s failed with timeout after %lu ms: ",
+                fsm->request->index, subidxstr, diff_ms);
         ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
 #if DEBUG_LONG
     if (diff_ms > 200) {
-        EC_SLAVE_WARN(slave, "SDO 0x%04x:%x upload took %lu ms.\n",
-                fsm->request->index, fsm->request->subindex, diff_ms);
+        EC_SLAVE_WARN(slave, "SDO 0x%04x%s upload took %lu ms.\n",
+                fsm->request->index, subidxstr, diff_ms);
     }
 #endif
 
@@ -2343,12 +2358,20 @@ void ec_fsm_coe_up_check(
         1000 / HZ;
 
         if (diff_ms >= fsm->request->response_timeout) {
+            char subidxstr[10];
+
+            if (fsm->request->complete_access) {
+                subidxstr[0] = 0x00;
+            } else {
+                sprintf(subidxstr, ":%02X", fsm->request->subindex);
+            }
+
             fsm->request->errno = EIO;
             fsm->state = ec_fsm_coe_error;
             ec_read_mbox_lock_clear(slave);
             EC_SLAVE_ERR(slave, "Timeout after %lu ms while waiting for"
-                    " SDO 0x%04x:%x upload response.\n", diff_ms,
-                    fsm->request->index, fsm->request->subindex);
+                    " SDO 0x%04x%s upload response.\n", diff_ms,
+                    fsm->request->index, subidxstr);
             return;
         }
 
@@ -2459,6 +2482,13 @@ void ec_fsm_coe_up_response_data(
     ec_sdo_request_t *request = fsm->request;
     unsigned int expedited, size_specified;
     int ret;
+    char subidxstr[10];
+
+    if (request->complete_access) {
+        subidxstr[0] = 0x00;
+    } else {
+        sprintf(subidxstr, ":%02X", request->subindex);
+    }
 
     // process the data available or initiate a new mailbox read check
     if (slave->mbox_coe_data.payload_size > 0) {
@@ -2515,8 +2545,8 @@ void ec_fsm_coe_up_response_data(
 
     if (EC_READ_U16(data) >> 12 == 0x2 && // SDO request
             EC_READ_U8(data + 2) >> 5 == 0x4) { // abort SDO transfer request
-        EC_SLAVE_ERR(slave, "SDO upload 0x%04X:%02X aborted.\n",
-               request->index, request->subindex);
+        EC_SLAVE_ERR(slave, "SDO upload 0x%04X%s aborted.\n",
+               request->index, subidxstr);
         if (rec_size >= 10) {
             request->abort_code = EC_READ_U32(data + 6);
             ec_canopen_abort_msg(slave, request->abort_code);
@@ -2531,8 +2561,8 @@ void ec_fsm_coe_up_response_data(
     if (EC_READ_U16(data) >> 12 != 0x3 || // SDO response
             EC_READ_U8(data + 2) >> 5 != 0x2) { // upload response
         EC_SLAVE_ERR(slave, "Received unknown response while"
-                " uploading SDO 0x%04X:%02X.\n",
-                request->index, request->subindex);
+                " uploading SDO 0x%04X%s.\n",
+                request->index, subidxstr);
         ec_print_data(data, rec_size);
         request->errno = EIO;
         fsm->state = ec_fsm_coe_error;
