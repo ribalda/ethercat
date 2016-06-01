@@ -889,6 +889,25 @@ int ecrt_master_sdo_upload(
         uint32_t *abort_code /**< Abort code of the SDO upload. */
         );
 
+/** Executes an SDO upload request to read data from a slave via complete access.
+ *
+ * This request is processed by the master state machine. This method blocks,
+ * until the request has been processed and may not be called in realtime
+ * context.
+ *
+ * \retval  0 Success.
+ * \retval <0 Error code.
+ */
+int ecrt_master_sdo_upload_complete(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t slave_position, /**< Slave position. */
+        uint16_t index, /**< Index of the SDO. */
+        uint8_t *target, /**< Target buffer for the upload. */
+        size_t target_size, /**< Size of the target buffer. */
+        size_t *result_size, /**< Uploaded data size. */
+        uint32_t *abort_code /**< Abort code of the SDO upload. */
+        );
+
 /** Executes an SoE write request.
  *
  * Starts writing an IDN and blocks until the request was processed, or an

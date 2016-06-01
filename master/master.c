@@ -3542,6 +3542,90 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
 
 /*****************************************************************************/
 
+int ecrt_master_sdo_upload_complete(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t *target,
+        size_t target_size, size_t *result_size, uint32_t *abort_code)
+{
+    ec_sdo_request_t request;
+    ec_slave_t *slave;
+    int ret = 0;
+
+    EC_MASTER_DBG(master, 1, "%s(master = 0x%p,"
+            " slave_position = %u, index = 0x%04X,"
+            " target = 0x%p, target_size = %zu, result_size = 0x%p,"
+            " abort_code = 0x%p)\n",
+            __func__, master, slave_position, index,
+            target, target_size, result_size, abort_code);
+
+    ec_sdo_request_init(&request);
+    ecrt_sdo_request_index(&request, index, 0);
+    request.complete_access = 1;
+    ecrt_sdo_request_read(&request);
+
+    if (ec_lock_down_interruptible(&master->master_sem)) {
+        ec_sdo_request_clear(&request);
+        return -EINTR;
+    }
+
+    if (!(slave = ec_master_find_slave(master, 0, slave_position))) {
+        ec_lock_up(&master->master_sem);
+        ec_sdo_request_clear(&request);
+        EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_position);
+        return -EINVAL;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Scheduling SDO upload request (complete access).\n");
+
+    // schedule request.
+    list_add_tail(&request.list, &slave->sdo_requests);
+
+    ec_lock_up(&master->master_sem);
+
+    // wait for processing through FSM
+    if (wait_event_interruptible(master->request_queue,
+                request.state != EC_INT_REQUEST_QUEUED)) {
+        // interrupted by signal
+        ec_lock_down(&master->master_sem);
+        if (request.state == EC_INT_REQUEST_QUEUED) {
+            list_del(&request.list);
+            ec_lock_up(&master->master_sem);
+            ec_sdo_request_clear(&request);
+            return -EINTR;
+        }
+        // request already processing: interrupt not possible.
+        ec_lock_up(&master->master_sem);
+    }
+
+    // wait until master FSM has finished processing
+    wait_event(master->request_queue, request.state != EC_INT_REQUEST_BUSY);
+
+    *abort_code = request.abort_code;
+
+    if (request.state != EC_INT_REQUEST_SUCCESS) {
+        *result_size = 0;
+        if (request.errno) {
+            ret = -request.errno;
+        } else {
+            ret = -EIO;
+        }
+    } else {
+        if (request.data_size > target_size) {
+            EC_MASTER_ERR(master, "Buffer too small.\n");
+            ret = -EOVERFLOW;
+        }
+        else {
+            memcpy(target, request.data, request.data_size);
+            *result_size = request.data_size;
+            ret = 0;
+        }
+    }
+
+    ec_sdo_request_clear(&request);
+    return ret;
+}
+
+/*****************************************************************************/
+
 int ecrt_master_write_idn(ec_master_t *master, uint16_t slave_position,
         uint8_t drive_no, uint16_t idn, uint8_t *data, size_t data_size,
         uint16_t *error_code)
@@ -3744,6 +3828,7 @@ EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 EXPORT_SYMBOL(ecrt_master_sdo_download);
 EXPORT_SYMBOL(ecrt_master_sdo_download_complete);
 EXPORT_SYMBOL(ecrt_master_sdo_upload);
+EXPORT_SYMBOL(ecrt_master_sdo_upload_complete);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_reset);

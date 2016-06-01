@@ -465,6 +465,37 @@ int ecrt_master_sdo_upload(ec_master_t *master, uint16_t slave_position,
     upload.slave_position = slave_position;
     upload.sdo_index = index;
     upload.sdo_entry_subindex = subindex;
+    upload.complete_access = 0;
+    upload.target_size = target_size;
+    upload.target = target;
+
+    ret = ioctl(master->fd, EC_IOCTL_SLAVE_SDO_UPLOAD, &upload);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        if (EC_IOCTL_ERRNO(ret) == EIO && abort_code) {
+            *abort_code = upload.abort_code;
+        }
+        EC_PRINT_ERR("Failed to execute SDO upload: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    *result_size = upload.data_size;
+    return 0;
+}
+
+/****************************************************************************/
+
+int ecrt_master_sdo_upload_complete(ec_master_t *master, uint16_t slave_position,
+        uint16_t index, uint8_t *target,
+        size_t target_size, size_t *result_size, uint32_t *abort_code)
+{
+    ec_ioctl_slave_sdo_upload_t upload;
+    int ret;
+
+    upload.slave_position = slave_position;
+    upload.sdo_index = index;
+    upload.sdo_entry_subindex = 0;
+    upload.complete_access = 1;
     upload.target_size = target_size;
     upload.target = target;
 

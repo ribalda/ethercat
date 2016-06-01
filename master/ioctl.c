@@ -934,9 +934,15 @@ static ATTRIBUTES int ec_ioctl_slave_sdo_upload(
         return -ENOMEM;
     }
 
-    ret = ecrt_master_sdo_upload(master, data.slave_position,
-            data.sdo_index, data.sdo_entry_subindex, target,
-            data.target_size, &data.data_size, &data.abort_code);
+    if (data.complete_access) {
+        ret = ecrt_master_sdo_upload_complete(master, data.slave_position,
+                data.sdo_index, target, data.target_size,
+                &data.data_size, &data.abort_code);
+    } else {
+        ret = ecrt_master_sdo_upload(master, data.slave_position,
+                data.sdo_index, data.sdo_entry_subindex, target,
+                data.target_size, &data.data_size, &data.abort_code);
+    }
 
     if (!ret) {
         if (copy_to_user((void __user *) data.target,
