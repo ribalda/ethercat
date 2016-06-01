@@ -98,6 +98,10 @@ void ec_fsm_slave_clear(
         ec_fsm_slave_t *fsm /**< Master state machine. */
         )
 {
+    if (fsm->state != ec_fsm_slave_state_idle) {
+        EC_SLAVE_DBG(fsm->slave, 1, "Unready for requests.\n");
+    }
+
     // signal requests that are currently in operation
 
     if (fsm->sdo_request) {
@@ -354,6 +358,13 @@ int ec_fsm_slave_action_process_reg(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    static const char *direction_names[] = {
+        "invalid",  //EC_DIR_INVALID
+        "download", //EC_DIR_OUTPUT
+        "upload",   //EC_DIR_INPUT
+        "down+up",  //EC_DIR_BOTH
+    };
+
     ec_slave_t *slave = fsm->slave;
     ec_reg_request_t *reg;
 
@@ -391,7 +402,9 @@ int ec_fsm_slave_action_process_reg(
     }
 
     // Found pending register request. Execute it!
-    EC_SLAVE_DBG(slave, 1, "Processing register request...\n");
+    EC_SLAVE_DBG(slave, 1, "Processing register request %s 0x%04X-0x%04X...\n",
+        direction_names[fsm->reg_request->dir % EC_DIR_COUNT], fsm->reg_request->address,
+        fsm->reg_request->address + (unsigned)fsm->reg_request->transfer_size - 1u);
 
     fsm->reg_request->state = EC_INT_REQUEST_BUSY;
 
