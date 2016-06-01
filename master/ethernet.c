@@ -231,7 +231,7 @@ int ec_eoe_init(
                 // interfaces and the NIC part can be used for the EoE
                 // interface MAC.
                 EC_SLAVE_INFO(slave, "%s MAC address derived from"
-                        " NIC part of %s MAC address",
+                        " NIC part of %s MAC address\n",
                     eoe->dev->name, dev->name);
                 eoe->dev->dev_addr[1] = dev->dev_addr[3];
                 eoe->dev->dev_addr[2] = dev->dev_addr[4];
@@ -245,7 +245,7 @@ int ec_eoe_init(
     if (eoe->dev->addr_len == ETH_ALEN) {
         if (use_master_mac) {
             EC_SLAVE_INFO(slave, "%s MAC address derived"
-                    " from NIC part of %s MAC address",
+                    " from NIC part of %s MAC address\n",
                 eoe->dev->name,
                 slave->master->devices[EC_DEVICE_MAIN].dev->name);
             eoe->dev->dev_addr[1] =
