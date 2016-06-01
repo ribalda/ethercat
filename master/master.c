@@ -3129,6 +3129,7 @@ void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
     state->slaves_responding = 0U;
     state->al_states = 0;
     state->link_up = 0U;
+    state->scan_busy = master->scan_busy ? 1U : 0U;
 
     for (dev_idx = EC_DEVICE_MAIN; dev_idx < ec_master_num_devices(master);
             dev_idx++) {

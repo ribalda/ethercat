@@ -277,6 +277,7 @@ typedef struct {
                                   - Bit 3: \a OP */
     unsigned int link_up : 1; /**< \a true, if at least one Ethernet link is
                                 up. */
+    unsigned int scan_busy : 1; /**< \a true, if a slave rescan is in progress */
 } ec_master_state_t;
 
 /*****************************************************************************/
@@ -323,6 +324,8 @@ typedef struct  {
 
                                  Note that each state is coded in a different
                                  bit! */
+    unsigned int error_flag : 1; /**< The slave has an unrecoverable error. */
+    unsigned int ready : 1; /**< The slave is ready for external requests. */
 } ec_slave_config_state_t;
 
 /*****************************************************************************/
@@ -388,6 +391,7 @@ typedef struct {
     } ports[EC_MAX_PORTS]; /**< Port information. */
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
+    uint8_t ready; /**< The slave is ready for external requests. */
     uint8_t sync_count; /**< Number of sync managers. */
     uint16_t sdo_count; /**< Number of SDOs. */
     char name[EC_MAX_STRING_LENGTH]; /**< Name of the slave. */
