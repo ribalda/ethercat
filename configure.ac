@@ -1266,6 +1266,36 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# Quick OP
+#------------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to allow quick OP])
+
+AC_ARG_ENABLE([quick-op],
+    AS_HELP_STRING([--disable-quick-op],
+                   [Disable quick return to OP]),
+    [
+        case "${enableval}" in
+            yes) quickop=1
+                ;;
+            no) quickop=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-quick-op])
+                ;;
+        esac
+    ],
+    [quickop=1]
+)
+
+if test "x${quickop}" = "x1"; then
+    AC_DEFINE([EC_QUICK_OP], [1], [Allow quick return to OP ]
+        [from SAFEOP+PD_watchdog.])
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+#------------------------------------------------------------------------------
 # syslog output in realtime context
 #------------------------------------------------------------------------------
 
