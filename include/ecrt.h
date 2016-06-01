@@ -362,6 +362,7 @@ typedef struct {
     uint8_t link_up; /**< Link detected. */
     uint8_t loop_closed; /**< Loop closed. */
     uint8_t signal_detected; /**< Detected signal on RX port. */
+    uint8_t bypassed; /**< Packets are bypassing this port (eg. redundancy) */
 } ec_slave_port_link_t;
 
 /*****************************************************************************/

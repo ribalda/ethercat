@@ -294,6 +294,7 @@ static ATTRIBUTES int ec_ioctl_slave(
         data.ports[i].link.loop_closed = slave->ports[i].link.loop_closed;
         data.ports[i].link.signal_detected =
             slave->ports[i].link.signal_detected;
+        data.ports[i].link.bypassed = slave->ports[i].link.bypassed;
         data.ports[i].receive_time = slave->ports[i].receive_time;
         if (slave->ports[i].next_slave) {
             data.ports[i].next_slave =

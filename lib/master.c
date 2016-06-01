@@ -283,6 +283,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
             data.ports[i].link.loop_closed;
         slave_info->ports[i].link.signal_detected =
             data.ports[i].link.signal_detected;
+        slave_info->ports[i].link.bypassed = data.ports[i].link.bypassed;
         slave_info->ports[i].receive_time = data.ports[i].receive_time;
         slave_info->ports[i].next_slave = data.ports[i].next_slave;
         slave_info->ports[i].delay_to_next_dc =
