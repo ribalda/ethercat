@@ -189,6 +189,14 @@ void ecrt_sdo_request_index(ec_sdo_request_t *req, uint16_t index,
 {
     req->index = index;
     req->subindex = subindex;
+    req->complete_access = 0;
+}
+
+void ecrt_sdo_request_index_complete(ec_sdo_request_t *req, uint16_t index)
+{
+    req->index = index;
+    req->subindex = 0;
+    req->complete_access = 1;
 }
 
 /*****************************************************************************/
@@ -263,6 +271,7 @@ void ecrt_sdo_request_write_with_size(ec_sdo_request_t *req, size_t size)
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_sdo_request_index);
+EXPORT_SYMBOL(ecrt_sdo_request_index_complete);
 EXPORT_SYMBOL(ecrt_sdo_request_timeout);
 EXPORT_SYMBOL(ecrt_sdo_request_data);
 EXPORT_SYMBOL(ecrt_sdo_request_data_size);
