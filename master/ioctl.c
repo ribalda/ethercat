@@ -304,6 +304,7 @@ static ATTRIBUTES int ec_ioctl_slave(
         }
         data.ports[i].delay_to_next_dc = slave->ports[i].delay_to_next_dc;
     }
+    data.upstream_port = slave->upstream_port;
     data.fmmu_bit = slave->base_fmmu_bit_operation;
     data.dc_supported = slave->base_dc_supported;
     data.dc_range = slave->base_dc_range;

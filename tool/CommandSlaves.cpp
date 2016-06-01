@@ -298,7 +298,9 @@ void CommandSlaves::showSlaves(
         cout << endl;
 
         for (i = 0; i < EC_MAX_PORTS; i++) {
-            cout << "   " << i << "  " << setfill(' ') << left << setw(4);
+            cout << "   " << i
+                 << (i == si->upstream_port ? "*" : " ")
+                 << " " << setfill(' ') << left << setw(4);
             switch (si->ports[i].desc) {
                 case EC_PORT_NOT_IMPLEMENTED:
                     cout << "N/A";
@@ -343,7 +345,7 @@ void CommandSlaves::showSlaves(
                 if (!si->ports[i].link.loop_closed &&
                         !si->ports[i].link.bypassed) {
                     cout << si->ports[i].receive_time -
-                        si->ports[0].receive_time;
+                        si->ports[si->upstream_port].receive_time;
                 } else {
                     cout << "-";
                 }

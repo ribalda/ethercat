@@ -390,6 +390,7 @@ typedef struct {
                                port.  */
         uint32_t delay_to_next_dc; /**< Delay [ns] to next DC slave. */
     } ports[EC_MAX_PORTS]; /**< Port information. */
+    uint8_t upstream_port; /**< Index of upstream (master facing) port */
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
     uint8_t ready; /**< The slave is ready for external requests. */

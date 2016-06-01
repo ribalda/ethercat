@@ -289,6 +289,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
         slave_info->ports[i].delay_to_next_dc =
             data.ports[i].delay_to_next_dc;
     }
+    slave_info->upstream_port = data.upstream_port;
     slave_info->al_state = data.al_state;
     slave_info->error_flag = data.error_flag;
     slave_info->ready = data.ready;

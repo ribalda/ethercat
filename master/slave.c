@@ -117,6 +117,7 @@ void ec_slave_init(
         slave->ports[i].link_detection_jiffies = 0;
 #endif
     }
+    slave->upstream_port = 0;
 
     slave->base_fmmu_bit_operation = 0;
     slave->base_dc_supported = 0;
@@ -993,9 +994,40 @@ unsigned int ec_slave_get_previous_port(
         if (slave->ports[port_index].next_slave) {
             return port_index;
         }
-    } while (port_index);
+    } while (port_index != slave->upstream_port);
 
-    return 0;
+    return slave->upstream_port;
+}
+
+/*****************************************************************************/
+
+/** Returns the previous connected & unbypassed port of a given port.
+ *
+ * \return Port index.
+ */
+unsigned int ec_slave_get_previous_normal_port(
+        ec_slave_t *slave, /**< EtherCAT slave. */
+        unsigned int port_index /**< Port index. */
+        )
+{
+    static const unsigned int prev_table[EC_MAX_PORTS] = {
+        2, 3, 1, 0
+    };
+
+    if (port_index >= EC_MAX_PORTS) {
+        EC_SLAVE_WARN(slave, "%s(port_index=%u): Invalid port index!\n",
+                __func__, port_index);
+    }
+
+    do {
+        port_index = prev_table[port_index];
+        if (!slave->ports[port_index].link.bypassed &&
+                slave->ports[port_index].next_slave) {
+            return port_index;
+        }
+    } while (port_index != slave->upstream_port);
+
+    return slave->upstream_port;
 }
 
 /*****************************************************************************/
@@ -1023,9 +1055,45 @@ unsigned int ec_slave_get_next_port(
         if (slave->ports[port_index].next_slave) {
             return port_index;
         }
-    } while (port_index);
+    } while (port_index != slave->upstream_port);
 
-    return 0;
+    return slave->upstream_port;
+}
+
+/*****************************************************************************/
+
+/** Calculates which of ports 0-3 appears to be the upstream one.
+ */
+void ec_slave_calc_upstream_port(
+        ec_slave_t *slave /**< EtherCAT slave. */
+        )
+{
+    int i, replace;
+
+    // initially assume it's port 0 (normal connection order)
+    slave->upstream_port = 0;
+    replace = slave->ports[0].link.loop_closed || slave->ports[0].link.bypassed;
+
+    if (!slave->base_dc_supported) {
+        // we can't tell any better for non-DC slaves; assume we're right
+        EC_SLAVE_DBG(slave, 1, "DC not supported; assuming upstream port 0.\n");
+        return;
+    }
+
+    // any open & non-bypassed port with a lower receive time
+    // is a better candidate for the upstream port
+    for (i = 1; i < EC_MAX_PORTS; ++i) {
+        if (!slave->ports[i].link.loop_closed &&
+                !slave->ports[i].link.bypassed) {
+            int32_t diff = slave->ports[i].receive_time -
+                slave->ports[slave->upstream_port].receive_time;
+            if (diff < 0 || replace) {
+                slave->upstream_port = i;
+                replace = 0;
+            }
+        }
+    }
+    EC_SLAVE_DBG(slave, 1, "upstream port = %u\n", slave->upstream_port);
 }
 
 /*****************************************************************************/
@@ -1039,15 +1107,17 @@ uint32_t ec_slave_calc_rtt_sum(
         )
 {
     uint32_t rtt_sum = 0, rtt;
-    unsigned int port_index = ec_slave_get_next_port(slave, 0);
+    unsigned int port_index = ec_slave_get_next_port(slave, slave->upstream_port);
 
-    while (port_index != 0) {
+    while (port_index != slave->upstream_port) {
         unsigned int prev_index =
-            ec_slave_get_previous_port(slave, port_index);
+            ec_slave_get_previous_normal_port(slave, port_index);
 
-        rtt = slave->ports[port_index].receive_time -
-            slave->ports[prev_index].receive_time;
-        rtt_sum += rtt;
+        if (!slave->ports[port_index].link.bypassed) {
+            rtt = slave->ports[port_index].receive_time -
+                slave->ports[prev_index].receive_time;
+            rtt_sum += rtt;
+        }
         port_index = ec_slave_get_next_port(slave, port_index);
     }
 
@@ -1070,9 +1140,9 @@ ec_slave_t *ec_slave_find_next_dc_slave(
     if (slave->base_dc_supported) {
         dc_slave = slave;
     } else {
-        port_index = ec_slave_get_next_port(slave, 0);
+        port_index = ec_slave_get_next_port(slave, slave->upstream_port);
 
-        while (port_index != 0) {
+        while (port_index != slave->upstream_port) {
             ec_slave_t *next = slave->ports[port_index].next_slave;
 
             if (next) {
@@ -1104,23 +1174,27 @@ void ec_slave_calc_port_delays(
     if (!slave->base_dc_supported)
         return;
 
-    port_index = ec_slave_get_next_port(slave, 0);
+    port_index = ec_slave_get_next_port(slave, slave->upstream_port);
 
-    while (port_index != 0) {
+    while (port_index != slave->upstream_port) {
         next_slave = slave->ports[port_index].next_slave;
         next_dc = ec_slave_find_next_dc_slave(next_slave);
 
         if (next_dc) {
             unsigned int prev_port =
-                ec_slave_get_previous_port(slave, port_index);
+                ec_slave_get_previous_normal_port(slave, port_index);
 
-            rtt = slave->ports[port_index].receive_time -
-                slave->ports[prev_port].receive_time;
+            if (!slave->ports[port_index].link.bypassed) {
+                rtt = slave->ports[port_index].receive_time -
+                    slave->ports[prev_port].receive_time;
+            } else {
+                rtt = 0; // FIXME
+            }
             next_rtt_sum = ec_slave_calc_rtt_sum(next_dc);
 
             slave->ports[port_index].delay_to_next_dc =
                 (rtt - next_rtt_sum) / 2; // FIXME
-            next_dc->ports[0].delay_to_next_dc =
+            next_dc->ports[next_dc->upstream_port].delay_to_next_dc =
                 (rtt - next_rtt_sum) / 2;
 
 #if 0
@@ -1151,9 +1225,9 @@ void ec_slave_calc_transmission_delays_rec(
 
     slave->transmission_delay = *delay;
 
-    i = ec_slave_get_next_port(slave, 0);
+    i = ec_slave_get_next_port(slave, slave->upstream_port);
 
-    while (i != 0) {
+    while (i != slave->upstream_port) {
         ec_slave_port_t *port = &slave->ports[i];
         next_dc = ec_slave_find_next_dc_slave(port->next_slave);
         if (next_dc) {
@@ -1168,7 +1242,7 @@ void ec_slave_calc_transmission_delays_rec(
         i = ec_slave_get_next_port(slave, i);
     }
 
-    *delay = *delay + slave->ports[0].delay_to_next_dc;
+    *delay = *delay + slave->ports[slave->upstream_port].delay_to_next_dc;
 }
 
 /*****************************************************************************/

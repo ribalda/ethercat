@@ -229,6 +229,7 @@ struct ec_slave
     uint32_t effective_serial_number; /**< Effective serial number. */
 #endif
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Ports. */
+    uint8_t upstream_port; /**< Index of master-facing port. */
 
     // configuration
     ec_slave_config_t *config; /**< Current configuration. */
@@ -328,6 +329,7 @@ uint16_t ec_slave_sdo_count(const ec_slave_t *);
 const ec_pdo_t *ec_slave_find_pdo(const ec_slave_t *, uint16_t);
 void ec_slave_attach_pdo_names(ec_slave_t *);
 
+void ec_slave_calc_upstream_port(ec_slave_t *);
 void ec_slave_calc_port_delays(ec_slave_t *);
 void ec_slave_calc_transmission_delays_rec(ec_slave_t *, uint32_t *);
 

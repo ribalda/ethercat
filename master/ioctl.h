@@ -249,6 +249,7 @@ typedef struct {
         uint16_t next_slave;
         uint32_t delay_to_next_dc;
     } ports[EC_MAX_PORTS];
+    uint8_t upstream_port;
     uint8_t fmmu_bit;
     uint8_t dc_supported;
     ec_slave_dc_range_t dc_range;

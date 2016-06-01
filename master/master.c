@@ -2374,7 +2374,7 @@ void ec_master_find_dc_ref_clock(
  */
 int ec_master_calc_topology_rec(
         ec_master_t *master, /**< EtherCAT master. */
-        ec_slave_t *port0_slave, /**< Slave at port 0. */
+        ec_slave_t *upstream_slave, /**< Slave at upstream port. */
         unsigned int *slave_position /**< Slave position. */
         )
 {
@@ -2386,10 +2386,10 @@ int ec_master_calc_topology_rec(
         3, 2, 0, 1
     };
 
-    slave->ports[0].next_slave = port0_slave;
+    slave->ports[slave->upstream_port].next_slave = upstream_slave;
 
-    port_index = 3;
-    while (port_index != 0) {
+    port_index = next_table[slave->upstream_port];
+    while (port_index != slave->upstream_port) {
         if (!slave->ports[port_index].link.loop_closed) {
             *slave_position = *slave_position + 1;
             if (*slave_position < master->slave_count) {
@@ -2420,9 +2420,16 @@ void ec_master_calc_topology(
         )
 {
     unsigned int slave_position = 0;
+    ec_slave_t *slave;
 
     if (master->slave_count == 0)
         return;
+
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+        ec_slave_calc_upstream_port(slave);
+    }
 
     if (ec_master_calc_topology_rec(master, NULL, &slave_position))
         EC_MASTER_ERR(master, "Failed to calculate bus topology.\n");
@@ -3089,6 +3096,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
         slave_info->ports[i].delay_to_next_dc =
             slave->ports[i].delay_to_next_dc;
     }
+    slave_info->upstream_port = slave->upstream_port;
 
     slave_info->al_state = slave->current_state;
     slave_info->error_flag = slave->error_flag;
