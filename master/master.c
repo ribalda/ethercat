@@ -500,8 +500,9 @@ void ec_master_clear_slaves(ec_master_t *master)
             list_entry(master->sii_requests.next,
                     ec_sii_write_request_t, list);
         list_del_init(&request->list); // dequeue
-        EC_MASTER_WARN(master, "Discarding SII request, slave %u about"
-                " to be deleted.\n", request->slave->ring_position);
+        EC_MASTER_WARN(master, "Discarding SII request, slave %s-%u about"
+                " to be deleted.\n", ec_device_names[request->slave->device_index!=0],
+                request->slave->ring_position);
         request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&master->request_queue);
     }
@@ -1605,8 +1606,9 @@ void ec_master_exec_slave_fsms(
 
     list_for_each_entry_safe(fsm, next, &master->fsm_exec_list, list) {
         if (!fsm->datagram) {
-            EC_MASTER_WARN(master, "Slave %u FSM has zero datagram."
-                    "This is a bug!\n", fsm->slave->ring_position);
+            EC_MASTER_WARN(master, "Slave %s-%u FSM has zero datagram."
+                    "This is a bug!\n", ec_device_names[fsm->slave->device_index!=0],
+                    fsm->slave->ring_position);
             list_del_init(&fsm->list);
             master->fsm_exec_count--;
             return;
@@ -1629,7 +1631,8 @@ void ec_master_exec_slave_fsms(
         }
 
 #if DEBUG_INJECT
-        EC_MASTER_DBG(master, 1, "Executing slave %u FSM.\n",
+        EC_MASTER_DBG(master, 1, "Executing slave %s-%u FSM.\n",
+                ec_device_names[fsm->slave->device_index!=0],
                 fsm->slave->ring_position);
 #endif
         if (ec_fsm_slave_exec(fsm, datagram)) {
@@ -1669,8 +1672,9 @@ void ec_master_exec_slave_fsms(
                         &master->fsm_exec_list);
                 master->fsm_exec_count++;
 #if DEBUG_INJECT
-                EC_MASTER_DBG(master, 1, "New slave %u FSM"
+                EC_MASTER_DBG(master, 1, "New slave %s-%u FSM"
                         " consumed datagram %s, now %u FSMs in list.\n",
+                        ec_device_names[master->fsm_slave->device_index!=0],
                         master->fsm_slave->ring_position, datagram->name,
                         master->fsm_exec_count);
 #endif
@@ -2230,12 +2234,14 @@ void ec_master_find_dc_ref_clock(
         if (slave) {
             if (slave->base_dc_supported && slave->has_dc_system_time) {
                 ref = slave;
-                EC_MASTER_INFO(master, "Using slave %u as application selected"
-                        " DC reference clock.\n", ref->ring_position);
+                EC_MASTER_INFO(master, "Using slave %s-%u as application selected"
+                        " DC reference clock.\n", ec_device_names[slave->device_index!=0],
+                        ref->ring_position);
             }
             else {
-                EC_MASTER_WARN(master, "Application selected slave %u can not"
-                        " act as a DC reference clock!", slave->ring_position);
+                EC_MASTER_WARN(master, "Application selected slave %s-%u can not"
+                        " act as a DC reference clock!", ec_device_names[slave->device_index!=0],
+                        slave->ring_position);
             }
         }
         else {
@@ -2262,8 +2268,8 @@ void ec_master_find_dc_ref_clock(
     master->dc_ref_clock = ref;
 
     if (ref) {
-        EC_MASTER_INFO(master, "Using slave %u as DC reference clock.\n",
-                ref->ring_position);
+        EC_MASTER_INFO(master, "Using slave %s-%u as DC reference clock.\n",
+                ec_device_names[ref->device_index!=0], ref->ring_position);
     }
     else {
         EC_MASTER_INFO(master, "No DC reference clock found.\n");

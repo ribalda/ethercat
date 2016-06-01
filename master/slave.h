@@ -53,50 +53,51 @@
 /** Convenience macro for printing slave-specific information to syslog.
  *
  * This will print the message in \a fmt with a prefixed
- * "EtherCAT <INDEX>-<POSITION>: ", where INDEX is the master index and
- * POSITION is the slave's ring position.
+ * "EtherCAT <INDEX>-<DEV>-<POSITION>: ", where INDEX is the master index,
+ * DEV is the device, and POSITION is the slave's ring position.
  *
  * \param slave EtherCAT slave
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
 #define EC_SLAVE_INFO(slave, fmt, args...) \
-    printk(KERN_INFO "EtherCAT %u-%u: " fmt, slave->master->index, \
-            slave->ring_position, ##args)
+    printk(KERN_INFO "EtherCAT %u-%s-%u: " fmt, slave->master->index, \
+            ec_device_names[slave->device_index!=0], slave->ring_position, ##args)
 
 /** Convenience macro for printing slave-specific errors to syslog.
  *
  * This will print the message in \a fmt with a prefixed
- * "EtherCAT <INDEX>-<POSITION>: ", where INDEX is the master index and
- * POSITION is the slave's ring position.
+ * "EtherCAT <INDEX>-<DEV>-<POSITION>: ", where INDEX is the master index,
+ * DEV is the device, and POSITION is the slave's ring position.
  *
  * \param slave EtherCAT slave
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
 #define EC_SLAVE_ERR(slave, fmt, args...) \
-    printk(KERN_ERR "EtherCAT ERROR %u-%u: " fmt, slave->master->index, \
-            slave->ring_position, ##args)
+    printk(KERN_ERR "EtherCAT ERROR %u-%s-%u: " fmt, slave->master->index, \
+            ec_device_names[slave->device_index!=0], slave->ring_position, ##args)
 
 /** Convenience macro for printing slave-specific warnings to syslog.
  *
  * This will print the message in \a fmt with a prefixed
- * "EtherCAT <INDEX>-<POSITION>: ", where INDEX is the master index and
- * POSITION is the slave's ring position.
+ * "EtherCAT <INDEX>-<DEV>-<POSITION>: ", where INDEX is the master index,
+ * DEV is the device, and POSITION is the slave's ring position.
  *
  * \param slave EtherCAT slave
  * \param fmt format string (like in printf())
  * \param args arguments (optional)
  */
 #define EC_SLAVE_WARN(slave, fmt, args...) \
-    printk(KERN_WARNING "EtherCAT WARNING %u-%u: " fmt, \
-            slave->master->index, slave->ring_position, ##args)
+    printk(KERN_WARNING "EtherCAT WARNING %u-%s-%u: " fmt, \
+            slave->master->index, ec_device_names[slave->device_index!=0], \
+            slave->ring_position, ##args)
 
 /** Convenience macro for printing slave-specific debug messages to syslog.
  *
  * This will print the message in \a fmt with a prefixed
- * "EtherCAT <INDEX>-<POSITION>: ", where INDEX is the master index and
- * POSITION is the slave's ring position.
+ * "EtherCAT <INDEX>-<DEV>-<POSITION>: ", where INDEX is the master index,
+ * DEV is the device, and POSITION is the slave's ring position.
  *
  * \param slave EtherCAT slave
  * \param level Debug level. Master's debug level must be >= \a level for
@@ -107,8 +108,9 @@
 #define EC_SLAVE_DBG(slave, level, fmt, args...) \
     do { \
         if (slave->master->debug_level >= level) { \
-            printk(KERN_DEBUG "EtherCAT DEBUG %u-%u: " fmt, \
-                    slave->master->index, slave->ring_position, ##args); \
+            printk(KERN_DEBUG "EtherCAT DEBUG %u-%s-%u: " fmt, \
+                    slave->master->index, ec_device_names[slave->device_index!=0], \
+                    slave->ring_position, ##args); \
         } \
     } while (0)
 
