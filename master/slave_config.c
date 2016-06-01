@@ -253,8 +253,9 @@ int ec_slave_config_attach(
     }
 
     if (slave->config) {
-        EC_CONFIG_DBG(sc, 1, "Failed to attach configuration. Slave %u"
-                " already has a configuration!\n", slave->ring_position);
+        EC_CONFIG_DBG(sc, 1, "Failed to attach configuration. Slave %s-%u"
+                " already has a configuration!\n",
+                ec_device_names[slave->device_index!=0], slave->ring_position);
         return -EEXIST;
     }
 
@@ -264,9 +265,10 @@ int ec_slave_config_attach(
 #endif
             slave->sii.vendor_id != sc->vendor_id
        ) {
-        EC_CONFIG_DBG(sc, 1, "Slave %u has no matching vendor ID (0x%08X)"
+        EC_CONFIG_DBG(sc, 1, "Slave %s-%u has no matching vendor ID (0x%08X)"
                 " for configuration (0x%08X).\n",
-                slave->ring_position, slave->sii.vendor_id, sc->vendor_id);
+                ec_device_names[slave->device_index!=0], slave->ring_position,
+                slave->sii.vendor_id, sc->vendor_id);
         return -EINVAL;
     }
 
@@ -276,10 +278,10 @@ int ec_slave_config_attach(
 #endif
             slave->sii.product_code != sc->product_code
        ) {
-        EC_CONFIG_DBG(sc, 1, "Slave %u has no matching product code (0x%08X)"
+        EC_CONFIG_DBG(sc, 1, "Slave %s-%u has no matching product code (0x%08X)"
                 " for configuration (0x%08X).\n",
-                slave->ring_position, slave->sii.product_code,
-                sc->product_code);
+                ec_device_names[slave->device_index!=0], slave->ring_position,
+                slave->sii.product_code, sc->product_code);
         return -EINVAL;
     }
 
@@ -287,7 +289,8 @@ int ec_slave_config_attach(
     slave->config = sc;
     sc->slave = slave;
 
-    EC_CONFIG_DBG(sc, 1, "Attached slave %u.\n", slave->ring_position);
+    EC_CONFIG_DBG(sc, 1, "Attached slave %s-%u.\n",
+                ec_device_names[slave->device_index!=0], slave->ring_position);
     return 0;
 }
 
