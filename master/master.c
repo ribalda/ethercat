@@ -3046,7 +3046,8 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     }
 
     if (slave->sii_image == NULL) {
-        EC_MASTER_WARN(master, "Cannot access SII data from slave position %u", slave->ring_position);
+        EC_MASTER_WARN(master, "Cannot access SII data from slave position %s-%u",
+                ec_device_names[slave->device_index!=0], slave->ring_position);
         ret = -ENOENT;
         goto out_get_slave;
     }
