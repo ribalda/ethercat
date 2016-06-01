@@ -548,6 +548,44 @@ void MasterDevice::requestState(
 
 /****************************************************************************/
 
+void MasterDevice::requestReboot(
+        uint16_t slavePosition
+        )
+{
+    ec_ioctl_slave_reboot_t data;
+
+    data.slave_position = slavePosition;
+    data.broadcast = 0;
+
+    if (ioctl(fd, EC_IOCTL_SLAVE_REBOOT, &data)) {
+        stringstream err;
+        err << "Failed to request slave reboot: ";
+        if (errno == EINVAL)
+            err << "Slave " << slavePosition << " does not exist!";
+        else
+            err << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::requestRebootAll()
+{
+    ec_ioctl_slave_reboot_t data;
+
+    data.slave_position = 0;
+    data.broadcast = 1;
+
+    if (ioctl(fd, EC_IOCTL_SLAVE_REBOOT, &data)) {
+        stringstream err;
+        err << "Failed to request global reboot: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 #ifdef EC_EOE
 
 void MasterDevice::getEoeHandler(

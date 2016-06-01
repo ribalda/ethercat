@@ -45,6 +45,7 @@
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
 #include "fsm_pdo.h"
+#include "fsm_reboot.h"
 
 /*****************************************************************************/
 
@@ -93,6 +94,7 @@ struct ec_fsm_master {
     ec_fsm_soe_t fsm_soe; /**< SoE state machine */
     ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
     ec_fsm_change_t fsm_change; /**< State change state machine */
+    ec_fsm_reboot_t fsm_reboot; /**< Slave reboot state machine */
     ec_fsm_slave_config_t fsm_slave_config; /**< slave state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave state machine */
     ec_fsm_sii_t fsm_sii; /**< SII state machine */
