@@ -739,6 +739,46 @@ static ATTRIBUTES int ec_ioctl_slave_state(
 
 /*****************************************************************************/
 
+/** Reboot a slave (if supported).
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_slave_reboot(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg /**< ioctl() argument. */
+        )
+{
+    ec_ioctl_slave_reboot_t io;
+    ec_slave_t *slave;
+
+    if (copy_from_user(&io, (void __user *) arg, sizeof(io))) {
+        return -EFAULT;
+    }
+
+    if (ec_lock_down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+
+    if (io.broadcast) {
+        ec_master_reboot_slaves(master);
+    } else {
+        if (!(slave = ec_master_find_slave(master, 0, io.slave_position))) {
+            ec_lock_up(&master->master_sem);
+            EC_MASTER_ERR(master, "Slave %u does not exist!\n",
+                    io.slave_position);
+            return -EINVAL;
+        }
+
+        ec_slave_request_reboot(slave);
+    }
+
+    ec_lock_up(&master->master_sem);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Get slave SDO information.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -4611,6 +4651,13 @@ long EC_IOCTL(
                 break;
             }
             ret = ec_ioctl_slave_state(master, arg);
+            break;
+        case EC_IOCTL_SLAVE_REBOOT:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_slave_reboot(master, arg);
             break;
         case EC_IOCTL_SLAVE_SDO:
             ret = ec_ioctl_slave_sdo(master, arg);

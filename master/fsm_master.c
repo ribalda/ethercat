@@ -73,6 +73,7 @@ void ec_fsm_master_state_dc_reset_filter(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
 void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
+void ec_fsm_master_state_reboot_slave(ec_fsm_master_t *);
 
 void ec_fsm_master_enter_clear_addresses(ec_fsm_master_t *);
 void ec_fsm_master_enter_write_system_times(ec_fsm_master_t *);
@@ -97,6 +98,7 @@ void ec_fsm_master_init(
     ec_fsm_soe_init(&fsm->fsm_soe);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
     ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
+    ec_fsm_reboot_init(&fsm->fsm_reboot, fsm->datagram);
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram,
             &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo);
     ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram,
@@ -117,6 +119,7 @@ void ec_fsm_master_clear(
     ec_fsm_soe_clear(&fsm->fsm_soe);
     ec_fsm_pdo_clear(&fsm->fsm_pdo);
     ec_fsm_change_clear(&fsm->fsm_change);
+    ec_fsm_reboot_clear(&fsm->fsm_reboot);
     ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
     ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
     ec_fsm_sii_clear(&fsm->fsm_sii);
@@ -249,6 +252,17 @@ void ec_fsm_master_state_start(
 
     // check for detached config requests
     ec_master_expire_slave_config_requests(fsm->master);
+
+    if (master->reboot) {
+        // A reboot of all slaves was requested
+        master->reboot = 0;
+        fsm->idle = 0;
+        fsm->state = ec_fsm_master_state_reboot_slave;
+        fsm->slave = NULL;
+        ec_fsm_reboot_all(&fsm->fsm_reboot, master);
+        fsm->state(fsm); // execute immediately
+        return;
+    }
 
     ec_datagram_brd(fsm->datagram, 0x0130, 2);
     ec_datagram_zero(fsm->datagram);
@@ -872,6 +886,16 @@ void ec_fsm_master_state_read_al_status(
     // A single slave responded
     ec_slave_set_al_status(slave, EC_READ_U8(datagram->data));
 
+    if (slave->reboot) {
+        // A reboot of this slave was requested
+        slave->reboot = 0;
+        fsm->idle = 0;
+        fsm->state = ec_fsm_master_state_reboot_slave;
+        ec_fsm_reboot_single(&fsm->fsm_reboot, slave);
+        fsm->state(fsm); // execute immediately
+        return;
+    }
+
     if (!slave->error_flag) {
         // Check, if new slave state has to be acknowledged
         if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
@@ -894,6 +918,31 @@ void ec_fsm_master_state_read_al_status(
     // process next slave
     ec_fsm_master_action_next_slave_state(fsm);
 #endif
+}
+
+/*****************************************************************************/
+
+/** Master state: REBOOT SLAVE.
+ */
+void ec_fsm_master_state_reboot_slave(
+        ec_fsm_master_t *fsm /**< Master state machine. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_reboot_exec(&fsm->fsm_reboot)) {
+        return;
+    }
+
+    if (!ec_fsm_reboot_success(&fsm->fsm_reboot)) {
+        if (slave) {
+            EC_SLAVE_ERR(slave, "Failed to reboot.\n");
+        } else {
+            EC_MASTER_ERR(fsm->master, "Failed to reboot.\n");
+        }
+    }
+
+    ec_fsm_master_restart(fsm);
 }
 
 /*****************************************************************************/

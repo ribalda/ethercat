@@ -158,6 +158,7 @@
 #define EC_IOCTL_VOE_DATA             EC_IOWR(0x59, ec_ioctl_voe_t)
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x5a, size_t)
 #define EC_IOCTL_SC_OVERLAPPING_IO     EC_IOW(0x5b, ec_ioctl_config_t)
+#define EC_IOCTL_SLAVE_REBOOT         EC_IOW(0x5c, ec_ioctl_slave_reboot_t)
 #define EC_IOCTL_SETUP_DOMAIN_MEMORY   EC_IOR(0x60, ec_ioctl_master_activate_t)
 #define EC_IOCTL_DEACTIVATE_SLAVES      EC_IO(0x61)
 #define EC_IOCTL_64_REF_CLK_TIME_QUEUE  EC_IO(0x62)
@@ -435,6 +436,14 @@ typedef struct {
     size_t size;
     uint8_t *data;
 } ec_ioctl_slave_reg_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint16_t slave_position;
+    uint8_t broadcast;
+} ec_ioctl_slave_reboot_t;
 
 /*****************************************************************************/
 

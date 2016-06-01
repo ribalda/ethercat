@@ -236,6 +236,7 @@ struct ec_slave
     ec_slave_state_t current_state; /**< Current application state. */
     unsigned int error_flag; /**< Stop processing after an error. */
     unsigned int force_config; /**< Force (re-)configuration. */
+    unsigned int reboot; /**< Request reboot */
     uint16_t configured_rx_mailbox_offset; /**< Configured receive mailbox
                                              offset. */
     uint16_t configured_rx_mailbox_size; /**< Configured receive mailbox size.
@@ -305,6 +306,7 @@ void ec_slave_clear_sync_managers(ec_slave_t *);
 void ec_slave_request_state(ec_slave_t *, ec_slave_state_t);
 void ec_slave_set_dl_status(ec_slave_t *, uint16_t);
 void ec_slave_set_al_status(ec_slave_t *, ec_slave_state_t);
+void ec_slave_request_reboot(ec_slave_t *);
 
 // SII categories
 int ec_slave_fetch_sii_strings(ec_slave_t *, const uint8_t *, size_t);

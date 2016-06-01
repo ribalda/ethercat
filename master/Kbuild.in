@@ -45,6 +45,7 @@ ec_master-objs := \
 	fsm_change.o \
 	fsm_coe.o \
 	fsm_foe.o \
+	fsm_reboot.o \
 	fsm_master.o \
 	fsm_pdo.o \
 	fsm_pdo_entry.o \
