@@ -64,10 +64,31 @@ void ecrt_sdo_request_index(ec_sdo_request_t *req, uint16_t index,
     data.request_index = req->index;
     data.sdo_index = index;
     data.sdo_subindex = subindex;
+    data.complete_access = 0;
 
     ret = ioctl(req->config->master->fd, EC_IOCTL_SDO_REQUEST_INDEX, &data);
     if (EC_IOCTL_IS_ERROR(ret)) {
         EC_PRINT_ERR("Failed to set SDO request index/subindex: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+}
+
+/*****************************************************************************/
+
+void ecrt_sdo_request_index_complete(ec_sdo_request_t *req, uint16_t index)
+{
+    ec_ioctl_sdo_request_t data;
+    int ret;
+
+    data.config_index = req->config->index;
+    data.request_index = req->index;
+    data.sdo_index = index;
+    data.sdo_subindex = 0;
+    data.complete_access = 1;
+
+    ret = ioctl(req->config->master->fd, EC_IOCTL_SDO_REQUEST_INDEX, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to set SDO request index: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
     }
 }

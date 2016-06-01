@@ -759,6 +759,7 @@ typedef struct {
     uint32_t request_index;
     uint16_t sdo_index;
     uint8_t sdo_subindex;
+    uint8_t complete_access;
     size_t size;
     uint8_t *data;
     uint32_t timeout;

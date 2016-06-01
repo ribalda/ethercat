@@ -598,6 +598,62 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(ec_slave_config_t *sc,
     data.config_index = sc->index;
     data.sdo_index = index;
     data.sdo_subindex = subindex;
+    data.complete_access = 0;
+    data.size = size;
+
+    ret = ioctl(sc->master->fd, EC_IOCTL_SC_SDO_REQUEST, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to create SDO request: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        ec_sdo_request_clear(req);
+        free(req);
+        return NULL;
+    }
+
+    req->next = NULL;
+    req->config = sc;
+    req->index = data.request_index;
+    req->sdo_index = data.sdo_index;
+    req->sdo_subindex = data.sdo_subindex;
+    req->data_size = size;
+    req->mem_size = size;
+
+    ec_slave_config_add_sdo_request(sc, req);
+
+    return req;
+}
+
+/*****************************************************************************/
+
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request_complete(ec_slave_config_t *sc,
+        uint16_t index, size_t size)
+{
+    ec_ioctl_sdo_request_t data;
+    ec_sdo_request_t *req;
+    int ret;
+
+    req = malloc(sizeof(ec_sdo_request_t));
+    if (!req) {
+        EC_PRINT_ERR("Failed to allocate memory.\n");
+        return 0;
+    }
+
+    if (size) {
+        req->data = malloc(size);
+        if (!req->data) {
+            EC_PRINT_ERR("Failed to allocate %zu bytes of SDO data"
+                    " memory.\n", size);
+            free(req);
+            return 0;
+        }
+    } else {
+        req->data = NULL;
+    }
+
+    data.config_index = sc->index;
+    data.sdo_index = index;
+    data.sdo_subindex = 0;
+    data.complete_access = 1;
     data.size = size;
 
     ret = ioctl(sc->master->fd, EC_IOCTL_SC_SDO_REQUEST, &data);

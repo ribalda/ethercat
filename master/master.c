@@ -3393,14 +3393,13 @@ int ecrt_master_sdo_download_complete(ec_master_t *master,
     }
 
     ec_sdo_request_init(&request);
-    ecrt_sdo_request_index(&request, index, 0);
+    ecrt_sdo_request_index_complete(&request, index);
     ret = ec_sdo_request_alloc(&request, data_size);
     if (ret) {
         ec_sdo_request_clear(&request);
         return ret;
     }
 
-    request.complete_access = 1;
     memcpy(request.data, data, data_size);
     request.data_size = data_size;
     ecrt_sdo_request_write(&request);
@@ -3558,8 +3557,7 @@ int ecrt_master_sdo_upload_complete(ec_master_t *master, uint16_t slave_position
             target, target_size, result_size, abort_code);
 
     ec_sdo_request_init(&request);
-    ecrt_sdo_request_index(&request, index, 0);
-    request.complete_access = 1;
+    ecrt_sdo_request_index_complete(&request, index);
     ecrt_sdo_request_read(&request);
 
     if (ec_lock_down_interruptible(&master->master_sem)) {

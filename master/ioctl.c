@@ -3266,7 +3266,7 @@ static ATTRIBUTES int ec_ioctl_sc_create_sdo_request(
     ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
 
     req = ecrt_slave_config_create_sdo_request_err(sc, data.sdo_index,
-            data.sdo_subindex, data.size);
+            data.sdo_subindex, data.complete_access, data.size);
     if (IS_ERR(req))
         return PTR_ERR(req);
 
@@ -3678,7 +3678,11 @@ static ATTRIBUTES int ec_ioctl_sdo_request_index(
         return -ENOENT;
     }
 
-    ecrt_sdo_request_index(req, data.sdo_index, data.sdo_subindex);
+    if (data.complete_access) {
+        ecrt_sdo_request_index_complete(req, data.sdo_index);
+    } else {
+        ecrt_sdo_request_index(req, data.sdo_index, data.sdo_subindex);
+    }
     return 0;
 }
 

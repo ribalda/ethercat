@@ -1647,6 +1647,23 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
         size_t size /**< Data size to reserve. */
         );
 
+/** Create an SDO request to exchange SDOs during realtime operation
+ *  using complete access.
+ *
+ * The created SDO request object is freed automatically when the master is
+ * released.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \return New SDO request, or NULL on error.
+ */
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request_complete(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        uint16_t index, /**< SDO index. */
+        size_t size /**< Data size to reserve. */
+        );
+
 /** Create an VoE handler to exchange vendor-specific data during realtime
  * operation.
  *
@@ -1836,7 +1853,9 @@ void ecrt_domain_state(
  * SDO request methods.
  ****************************************************************************/
 
-/** Set the SDO index and subindex.
+/** Set the SDO index and subindex and prepare for non-complete-access.
+ *
+ * This is valid even if the request was created for complete-access.
  *
  * \attention If the SDO index and/or subindex is changed while
  * ecrt_sdo_request_state() returns EC_REQUEST_BUSY, this may lead to
@@ -1846,6 +1865,18 @@ void ecrt_sdo_request_index(
         ec_sdo_request_t *req, /**< SDO request. */
         uint16_t index, /**< SDO index. */
         uint8_t subindex /**< SDO subindex. */
+        );
+
+/** Set the SDO index and prepare for complete-access.
+ *
+ * This is valid even if the request was not created for complete-access.
+ *
+ * \attention If the SDO index is changed while ecrt_sdo_request_state()
+ * returns EC_REQUEST_BUSY, this may lead to unexpected results.
+ */
+void ecrt_sdo_request_index_complete(
+        ec_sdo_request_t *req, /**< SDO request. */
+        uint16_t index /**< SDO index. */
         );
 
 /** Set the timeout for an SDO request.

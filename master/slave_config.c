@@ -1090,8 +1090,7 @@ int ecrt_slave_config_complete_sdo(ec_slave_config_t *sc, uint16_t index,
     }
 
     ec_sdo_request_init(req);
-    ecrt_sdo_request_index(req, index, 0);
-    req->complete_access = 1;
+    ecrt_sdo_request_index_complete(req, index);
 
     ret = ec_sdo_request_copy_data(req, data, size);
     if (ret < 0) {
@@ -1140,14 +1139,14 @@ int ecrt_slave_config_emerg_overruns(ec_slave_config_t *sc)
  * value.
  */
 ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
-        ec_slave_config_t *sc, uint16_t index, uint8_t subindex, size_t size)
+        ec_slave_config_t *sc, uint16_t index, uint8_t subindex, uint8_t complete, size_t size)
 {
     ec_sdo_request_t *req;
     int ret;
 
     EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, "
-            "index = 0x%04X, subindex = 0x%02X, size = %zu)\n",
-            __func__, sc, index, subindex, size);
+            "index = 0x%04X, subindex = 0x%02X, complete = %u, size = %zu)\n",
+            __func__, sc, index, subindex, complete, size);
 
     if (!(req = (ec_sdo_request_t *)
                 kmalloc(sizeof(ec_sdo_request_t), GFP_KERNEL))) {
@@ -1156,8 +1155,12 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_err(
     }
 
     ec_sdo_request_init(req);
-    ecrt_sdo_request_index(req, index, subindex);
-
+    if (complete) {
+        ecrt_sdo_request_index_complete(req, index);
+    }
+    else {
+        ecrt_sdo_request_index(req, index, subindex);
+    }
     ret = ec_sdo_request_alloc(req, size);
     if (ret < 0) {
         ec_sdo_request_clear(req);
@@ -1182,7 +1185,17 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request(
         ec_slave_config_t *sc, uint16_t index, uint8_t subindex, size_t size)
 {
     ec_sdo_request_t *s = ecrt_slave_config_create_sdo_request_err(sc, index,
-            subindex, size);
+            subindex, 0, size);
+    return IS_ERR(s) ? NULL : s;
+}
+
+/*****************************************************************************/
+
+ec_sdo_request_t *ecrt_slave_config_create_sdo_request_complete(
+        ec_slave_config_t *sc, uint16_t index, size_t size)
+{
+    ec_sdo_request_t *s = ecrt_slave_config_create_sdo_request_err(sc, index,
+            0, 1, size);
     return IS_ERR(s) ? NULL : s;
 }
 
@@ -1372,6 +1385,7 @@ EXPORT_SYMBOL(ecrt_slave_config_emerg_pop);
 EXPORT_SYMBOL(ecrt_slave_config_emerg_clear);
 EXPORT_SYMBOL(ecrt_slave_config_emerg_overruns);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
+EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request_complete);
 EXPORT_SYMBOL(ecrt_slave_config_create_voe_handler);
 EXPORT_SYMBOL(ecrt_slave_config_create_reg_request);
 EXPORT_SYMBOL(ecrt_slave_config_state);
