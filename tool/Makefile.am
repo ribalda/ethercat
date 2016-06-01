@@ -54,6 +54,7 @@ ethercat_SOURCES = \
 	CommandPdos.cpp \
 	CommandRegRead.cpp \
 	CommandRegWrite.cpp \
+	CommandRegReadWrite.cpp \
 	CommandReboot.cpp \
 	CommandRescan.cpp \
 	CommandSdos.cpp \
@@ -99,6 +100,7 @@ noinst_HEADERS = \
 	CommandPdos.h \
 	CommandRegRead.h \
 	CommandRegWrite.h \
+	CommandRegReadWrite.h \
 	CommandReboot.h \
 	CommandRescan.h \
 	CommandSdos.h \

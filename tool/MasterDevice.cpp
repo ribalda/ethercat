@@ -436,6 +436,19 @@ void MasterDevice::writeReg(
 
 /****************************************************************************/
 
+void MasterDevice::readWriteReg(
+        ec_ioctl_slave_reg_t *data
+        )
+{
+    if (ioctl(fd, EC_IOCTL_SLAVE_REG_READWRITE, data) < 0) {
+        stringstream err;
+        err << "Failed to read-write register: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
 void MasterDevice::readFoe(
         ec_ioctl_slave_foe_t *data
         )

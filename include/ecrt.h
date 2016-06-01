@@ -429,6 +429,7 @@ typedef enum {
     EC_DIR_INVALID, /**< Invalid direction. Do not use this value. */
     EC_DIR_OUTPUT, /**< Values written by the master. */
     EC_DIR_INPUT, /**< Values read by the master. */
+    EC_DIR_BOTH, /**< Values read and written by the master. */
     EC_DIR_COUNT /**< Number of directions. For internal use only. */
 } ec_direction_t;
 
@@ -2100,6 +2101,20 @@ void ecrt_reg_request_read(
         ec_reg_request_t *req, /**< Register request. */
         uint16_t address, /**< Register address. */
         size_t size /**< Size to write. */
+        );
+
+/** Schedule a register read-write operation.
+ *
+ * \attention This method may not be called while ecrt_reg_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \attention The \a size parameter is truncated to the size given at request
+ * creation.
+ */
+void ecrt_reg_request_readwrite(
+        ec_reg_request_t *req, /**< Register request. */
+        uint16_t address, /**< Register address. */
+        size_t size /**< Size to read-write. */
         );
 
 /*****************************************************************************/
