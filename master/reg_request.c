@@ -119,12 +119,24 @@ void ecrt_reg_request_read(ec_reg_request_t *reg, uint16_t address,
 
 /*****************************************************************************/
 
+void ecrt_reg_request_readwrite(ec_reg_request_t *reg, uint16_t address,
+        size_t size)
+{
+    reg->dir = EC_DIR_BOTH;
+    reg->address = address;
+    reg->transfer_size = min(size, reg->mem_size);
+    reg->state = EC_INT_REQUEST_QUEUED;
+}
+
+/*****************************************************************************/
+
 /** \cond */
 
 EXPORT_SYMBOL(ecrt_reg_request_data);
 EXPORT_SYMBOL(ecrt_reg_request_state);
 EXPORT_SYMBOL(ecrt_reg_request_write);
 EXPORT_SYMBOL(ecrt_reg_request_read);
+EXPORT_SYMBOL(ecrt_reg_request_readwrite);
 
 /** \endcond */
 

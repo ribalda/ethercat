@@ -159,6 +159,8 @@
 #define EC_IOCTL_SET_SEND_INTERVAL     EC_IOW(0x5a, size_t)
 #define EC_IOCTL_SC_OVERLAPPING_IO     EC_IOW(0x5b, ec_ioctl_config_t)
 #define EC_IOCTL_SLAVE_REBOOT         EC_IOW(0x5c, ec_ioctl_slave_reboot_t)
+#define EC_IOCTL_SLAVE_REG_READWRITE  EC_IOWR(0x5d, ec_ioctl_slave_reg_t)
+#define EC_IOCTL_REG_REQUEST_READWRITE EC_IOWR(0x5e, ec_ioctl_reg_request_t)
 #define EC_IOCTL_SETUP_DOMAIN_MEMORY   EC_IOR(0x60, ec_ioctl_master_activate_t)
 #define EC_IOCTL_DEACTIVATE_SLAVES      EC_IO(0x61)
 #define EC_IOCTL_64_REF_CLK_TIME_QUEUE  EC_IO(0x62)

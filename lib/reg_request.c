@@ -135,3 +135,24 @@ void ecrt_reg_request_read(ec_reg_request_t *reg, uint16_t address,
 }
 
 /*****************************************************************************/
+
+void ecrt_reg_request_readwrite(ec_reg_request_t *reg, uint16_t address,
+        size_t size)
+{
+    ec_ioctl_reg_request_t io;
+    int ret;
+
+    io.config_index = reg->config->index;
+    io.request_index = reg->index;
+    io.data = reg->data;
+    io.address = address;
+    io.transfer_size = size;
+
+    ret = ioctl(reg->config->master->fd, EC_IOCTL_REG_REQUEST_READWRITE, &io);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to command an register read-write operation: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+}
+
+/*****************************************************************************/

@@ -396,15 +396,31 @@ int ec_fsm_slave_action_process_reg(
     fsm->reg_request->state = EC_INT_REQUEST_BUSY;
 
     // Start register access
-    if (fsm->reg_request->dir == EC_DIR_INPUT) {
+    switch (fsm->reg_request->dir) {
+    case EC_DIR_INPUT:
         ec_datagram_fprd(datagram, slave->station_address,
                 fsm->reg_request->address, fsm->reg_request->transfer_size);
         ec_datagram_zero(datagram);
-    } else {
+        break;
+    case EC_DIR_OUTPUT:
         ec_datagram_fpwr(datagram, slave->station_address,
                 fsm->reg_request->address, fsm->reg_request->transfer_size);
         memcpy(datagram->data, fsm->reg_request->data,
                 fsm->reg_request->transfer_size);
+        break;
+    case EC_DIR_BOTH:
+        ec_datagram_fprw(datagram, slave->station_address,
+                fsm->reg_request->address, fsm->reg_request->transfer_size);
+        memcpy(datagram->data, fsm->reg_request->data,
+               fsm->reg_request->transfer_size);
+        break;
+    default:
+        EC_SLAVE_WARN(slave, "Aborting register request, unknown direction.\n");
+        fsm->reg_request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->reg_request = NULL;
+        fsm->state = ec_fsm_slave_state_idle;
+        return 1;
     }
     datagram->device_index = slave->device_index;
     fsm->state = ec_fsm_slave_state_reg_request;
@@ -441,8 +457,8 @@ void ec_fsm_slave_state_reg_request(
         return;
     }
 
-    if (fsm->datagram->working_counter == 1) {
-        if (reg->dir == EC_DIR_INPUT) { // read request
+    if (fsm->datagram->working_counter == ((reg->dir == EC_DIR_BOTH) ? 3 : 1)) {
+        if (reg->dir != EC_DIR_OUTPUT) { // read/read-write request
             memcpy(reg->data, fsm->datagram->data, reg->transfer_size);
         }
 
