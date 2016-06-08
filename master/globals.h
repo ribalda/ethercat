@@ -65,10 +65,6 @@
 /** If set, skip fetching SDO dictionary during slave scan. */
 #define EC_SKIP_SDO_DICT 1
 
-/** If set, re-use the stored SII image to improve slave re-scan
- *  performance in operational state. */
-#define EC_REUSE_SII_IMAGE 1
-
 /** Minimum size of a buffer used with ec_state_string(). */
 #define EC_STATE_STRING_SIZE 32
 
@@ -118,6 +114,9 @@
 
 /** Word offset of SII product number. */
 #define EC_PRODUCT_SII_OFFSET 0x0A
+
+/** Word offset of SII revision number. */
+#define EC_REVISION_SII_OFFSET 0x0C
 
 /** Word offset of SII serial number. */
 #define EC_SERIAL_SII_OFFSET 0x0E
