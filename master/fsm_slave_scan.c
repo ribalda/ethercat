@@ -53,11 +53,8 @@ void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
 #ifdef EC_SII_ASSIGN
 void ec_fsm_slave_scan_state_assign_sii(ec_fsm_slave_scan_t *);
 #endif
-#if EC_REUSE_SII_IMAGE
-void ec_fsm_slave_scan_state_sii_alias(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sii_serial(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sii_vendor(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sii_product(ec_fsm_slave_scan_t *);
+#ifdef EC_SII_CACHE
+void ec_fsm_slave_scan_state_sii_identity(ec_fsm_slave_scan_t *);
 #endif
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
@@ -76,8 +73,8 @@ void ec_fsm_slave_scan_enter_datalink(ec_fsm_slave_scan_t *);
 #ifdef EC_REGALIAS
 void ec_fsm_slave_scan_enter_regalias(ec_fsm_slave_scan_t *);
 #endif
-#if EC_REUSE_SII_IMAGE
-void ec_fsm_slave_scan_enter_sii_alias(ec_fsm_slave_scan_t *);
+#ifdef EC_SII_CACHE
+void ec_fsm_slave_scan_enter_sii_identity(ec_fsm_slave_scan_t *);
 #endif
 void ec_fsm_slave_scan_enter_attach_sii(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_enter_sii_size(ec_fsm_slave_scan_t *);
@@ -453,12 +450,12 @@ void ec_fsm_slave_scan_enter_datalink(
     fsm->state = ec_fsm_slave_scan_state_datalink;
 }
 
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
 /*****************************************************************************/
 
-/** Enter slave scan state SII_ALIAS.
+/** Enter slave scan state SII_IDENTITY.
  */
-void ec_fsm_slave_scan_enter_sii_alias(
+void ec_fsm_slave_scan_enter_sii_identity(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
 {
@@ -466,7 +463,7 @@ void ec_fsm_slave_scan_enter_sii_alias(
     fsm->sii_offset = EC_ALIAS_SII_OFFSET;
     ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-    fsm->state = ec_fsm_slave_scan_state_sii_alias;
+    fsm->state = ec_fsm_slave_scan_state_sii_identity;
     fsm->state(fsm); // execute state immediately
 }
 #endif
@@ -482,7 +479,7 @@ void ec_fsm_slave_scan_enter_attach_sii(
     ec_sii_image_t *sii_image;
     ec_slave_t *slave = fsm->slave;
 
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
     unsigned int i = 0;
     unsigned int found = 0;
 
@@ -490,7 +487,9 @@ void ec_fsm_slave_scan_enter_attach_sii(
         list_for_each_entry(sii_image, &slave->master->sii_images, list) {
             // Check if slave match a stored SII image with alias, serial number,
             // vendor id and product code.
-            if ((slave->effective_alias != 0) && (slave->effective_alias == sii_image->sii.alias)) {
+            if ((slave->effective_alias != 0) &&
+                    (slave->effective_alias == sii_image->sii.alias) &&
+                    (slave->effective_revision_number == sii_image->sii.revision_number)) {
                 EC_SLAVE_DBG(slave, 1, "Slave can re-use SII image data stored."
                         " Identified by alias %u.\n", (uint32_t)slave->effective_alias);
                 found = 1;
@@ -498,12 +497,14 @@ void ec_fsm_slave_scan_enter_attach_sii(
             }
             else if ((slave->effective_vendor_id == sii_image->sii.vendor_id) &&
                      (slave->effective_product_code == sii_image->sii.product_code) &&
+                     (slave->effective_revision_number == sii_image->sii.revision_number) &&
                      (slave->effective_serial_number == sii_image->sii.serial_number)) {
                 EC_SLAVE_DBG(slave, 1, "Slave can re-use SII image data stored."
                         " Identified by vendor id 0x%08x,"
-                        " product code 0x%08x and serial 0x%08x.\n",
+                        " product code 0x%08x, revision 0x%08x and serial 0x%08x.\n",
                         slave->effective_vendor_id,
                         slave->effective_product_code,
+                        slave->effective_revision_number,
                         slave->effective_serial_number);
                 found = 1;
                 break;
@@ -519,6 +520,7 @@ void ec_fsm_slave_scan_enter_attach_sii(
         // Update slave references lost during slave initialization
         slave->effective_vendor_id = sii_image->sii.vendor_id;
         slave->effective_product_code = sii_image->sii.product_code;
+        slave->effective_revision_number = sii_image->sii.revision_number;
         slave->effective_serial_number = sii_image->sii.serial_number;
         slave->sii_image = sii_image;
         for (i = 0; i < slave->sii_image->sii.sync_count; i++) {
@@ -635,8 +637,8 @@ void ec_fsm_slave_scan_state_datalink(
 
 #ifdef EC_SII_ASSIGN
     ec_fsm_slave_scan_enter_assign_sii(fsm);
-#elif EC_REUSE_SII_IMAGE
-    ec_fsm_slave_scan_enter_sii_alias(fsm);
+#elif defined(EC_SII_CACHE)
+    ec_fsm_slave_scan_enter_sii_identity(fsm);
 #else
     ec_fsm_slave_scan_enter_attach_sii(fsm);
 #endif
@@ -675,8 +677,8 @@ void ec_fsm_slave_scan_state_assign_sii(
     }
 
 continue_with_sii_size:
-#if EC_REUSE_SII_IMAGE
-    ec_fsm_slave_scan_enter_sii_alias(fsm);
+#ifdef EC_SII_CACHE
+    ec_fsm_slave_scan_enter_sii_identity(fsm);
 #else
     ec_fsm_slave_scan_enter_attach_sii(fsm);
 #endif
@@ -684,137 +686,80 @@ continue_with_sii_size:
 
 #endif
 
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
 /*****************************************************************************/
 
 /**
-   Slave scan state: SII ALIAS.
+   Slave scan state: SII IDENTITY.
 */
 
-void ec_fsm_slave_scan_state_sii_alias(
+void ec_fsm_slave_scan_state_sii_identity(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii))
-        return;
+    while (1) {
+        if (ec_fsm_sii_exec(&fsm->fsm_sii))
+            return;
 
-    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to determine SII alias\n");
-    }
+        if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
+            fsm->slave->error_flag = 1;
+            fsm->state = ec_fsm_slave_scan_state_error;
+            EC_SLAVE_ERR(slave, "Failed to determine SII identity\n");
+            return;
+        }
 
-    slave->effective_alias = EC_READ_U32(fsm->fsm_sii.value);
+        switch (fsm->sii_offset) {
+            case EC_ALIAS_SII_OFFSET:
+                slave->effective_alias = EC_READ_U16(fsm->fsm_sii.value);
+                EC_SLAVE_DBG(slave, 1, "Alias: %u\n",
+                             (uint32_t)slave->effective_alias);
+                if (slave->effective_alias) {
+                    fsm->sii_offset = EC_REVISION_SII_OFFSET;
+                } else {
+                    fsm->sii_offset = EC_SERIAL_SII_OFFSET;
+                }
+                break;
+            case EC_SERIAL_SII_OFFSET:
+                slave->effective_serial_number = EC_READ_U32(fsm->fsm_sii.value);
+                EC_SLAVE_DBG(slave, 1, "Serial Number: 0x%08x\n",
+                             slave->effective_serial_number);
+                if (!slave->effective_serial_number) {
+                    ec_fsm_slave_scan_enter_attach_sii(fsm);
+                    return;
+                }
+                fsm->sii_offset = EC_VENDOR_SII_OFFSET;
+                break;
+            case EC_VENDOR_SII_OFFSET:
+                slave->effective_vendor_id = EC_READ_U32(fsm->fsm_sii.value);
+                EC_SLAVE_DBG(slave, 1, "Vendor ID: 0x%08x\n",
+                             slave->effective_vendor_id);
+                fsm->sii_offset = EC_PRODUCT_SII_OFFSET;
+                break;
+            case EC_PRODUCT_SII_OFFSET:
+                slave->effective_product_code = EC_READ_U32(fsm->fsm_sii.value);
+                EC_SLAVE_DBG(slave, 1, "Product Code: 0x%08x\n",
+                             slave->effective_product_code);
+                fsm->sii_offset = EC_REVISION_SII_OFFSET;
+                break;
+            case EC_REVISION_SII_OFFSET:
+                slave->effective_revision_number = EC_READ_U32(fsm->fsm_sii.value);
+                EC_SLAVE_DBG(slave, 1, "Revision: 0x%08x\n",
+                             slave->effective_revision_number);
+                ec_fsm_slave_scan_enter_attach_sii(fsm);
+                return;
+            default:
+                fsm->slave->error_flag = 1;
+                fsm->state = ec_fsm_slave_scan_state_error;
+                EC_SLAVE_ERR(slave, "Unexpected offset %u in identity scan.\n",
+                             fsm->sii_offset);
+                return;
+        }
 
-    EC_SLAVE_DBG(slave, 1, "Alias: %u\n", (uint32_t)slave->effective_alias);
-
-    if (slave->effective_alias == 0) {
-        // Start fetching SII serial number
-        fsm->sii_offset = EC_SERIAL_SII_OFFSET;
         ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
                 EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-        fsm->state = ec_fsm_slave_scan_state_sii_serial;
-        fsm->state(fsm); // execute state immediately
     }
-    else {
-        ec_fsm_slave_scan_enter_attach_sii(fsm);
-    }
-}
-
-/*****************************************************************************/
-
-/**
-   Slave scan state: SII SERIAL.
-*/
-
-void ec_fsm_slave_scan_state_sii_serial(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_sii_exec(&fsm->fsm_sii))
-        return;
-
-    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to determine SII serial number\n");
-    }
-
-    slave->effective_serial_number = EC_READ_U32(fsm->fsm_sii.value);
-
-    EC_SLAVE_DBG(slave, 1, "Serial Number: 0x%08x\n", slave->effective_serial_number);
-
-    // Start fetching SII vendor ID
-    fsm->sii_offset = EC_VENDOR_SII_OFFSET;
-    ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
-            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-    fsm->state = ec_fsm_slave_scan_state_sii_vendor;
-    fsm->state(fsm); // execute state immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Slave scan state: SII VENDOR.
-*/
-
-void ec_fsm_slave_scan_state_sii_vendor(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_sii_exec(&fsm->fsm_sii))
-        return;
-
-    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to determine SII vendor ID\n");
-    }
-
-    slave->effective_vendor_id = EC_READ_U32(fsm->fsm_sii.value);
-
-    EC_SLAVE_DBG(slave, 1, "Vendor ID: 0x%08x\n", slave->effective_vendor_id);
-
-    // Start fetching SII product code
-    fsm->sii_offset = EC_PRODUCT_SII_OFFSET;
-    ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
-            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-    fsm->state = ec_fsm_slave_scan_state_sii_product;
-    fsm->state(fsm); // execute state immediately
-}
-
-/*****************************************************************************/
-
-/**
-   Slave scan state: SII PRODUCT.
-*/
-
-void ec_fsm_slave_scan_state_sii_product(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_sii_exec(&fsm->fsm_sii))
-        return;
-
-    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
-        fsm->slave->error_flag = 1;
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to determine SII product code\n");
-    }
-
-    slave->effective_product_code = EC_READ_U32(fsm->fsm_sii.value);
-
-    EC_SLAVE_DBG(slave, 1, "Product code: 0x%08x\n", slave->effective_product_code);
-
-    ec_fsm_slave_scan_enter_attach_sii(fsm);
 }
 #endif
 
@@ -975,9 +920,10 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
     slave->sii_image->sii.mailbox_protocols =
         EC_READ_U16(slave->sii_image->words + 0x001C);
 
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
     slave->effective_vendor_id = slave->sii_image->sii.vendor_id;
     slave->effective_product_code = slave->sii_image->sii.product_code;
+    slave->effective_revision_number = slave->sii_image->sii.revision_number;
     slave->effective_serial_number = slave->sii_image->sii.serial_number;
 #endif
 
@@ -1299,7 +1245,7 @@ void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *fsm /**< slave
     ec_slave_t *slave = fsm->slave;
     ec_datagram_t *datagram = fsm->datagram;
 
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
     unsigned int i = 0;
     unsigned int fetch_pdos = 1;
 #endif
@@ -1323,7 +1269,7 @@ void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *fsm /**< slave
         return;
     }
 
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
     if ((slave->effective_alias != 0) || (slave->effective_serial_number != 0)) {
         // SII data has been stored
         for (i = 0; i < slave->sii_image->sii.sync_count; i++) {
