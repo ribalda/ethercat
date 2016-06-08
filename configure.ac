@@ -1236,6 +1236,36 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# SII cache
+#------------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to cache the SII for re-use])
+
+AC_ARG_ENABLE([sii-cache],
+    AS_HELP_STRING([--disable-sii-cache],
+                   [Disable SII cache for devices with aliases or serials]),
+    [
+        case "${enableval}" in
+            yes) siicache=1
+                ;;
+            no) siicache=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-sii-cache])
+                ;;
+        esac
+    ],
+    [siicache=1]
+)
+
+if test "x${siicache}" = "x1"; then
+    AC_DEFINE([EC_SII_CACHE], [1], [Cache the SII images to improve ]
+        [slave re-scan performance in operational state.])
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+#------------------------------------------------------------------------------
 # syslog output in realtime context
 #------------------------------------------------------------------------------
 

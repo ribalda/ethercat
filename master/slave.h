@@ -222,9 +222,10 @@ struct ec_slave
     uint16_t station_address; /**< Configured station address. */
     uint16_t effective_alias; /**< Effective alias address. */
     // identification
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
     uint32_t effective_vendor_id; /**< Effective vendor ID. */
     uint32_t effective_product_code; /**< Effective product code. */
+    uint32_t effective_revision_number; /**< Effective revision number. */
     uint32_t effective_serial_number; /**< Effective serial number. */
 #endif
     ec_slave_port_t ports[EC_MAX_PORTS]; /**< Ports. */

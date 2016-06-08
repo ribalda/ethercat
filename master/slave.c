@@ -75,9 +75,10 @@ void ec_slave_init(
     slave->ring_position = ring_position;
     slave->station_address = station_address;
     slave->effective_alias = 0x0000;
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
     slave->effective_vendor_id = 0x00000000;
     slave->effective_product_code = 0x00000000;
+    slave->effective_revision_number = 0x00000000;
     slave->effective_serial_number = 0x00000000;
 #endif
     slave->config = NULL;

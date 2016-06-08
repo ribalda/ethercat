@@ -532,7 +532,7 @@ void ec_master_clear_sii_images(
     ec_sii_image_t *sii_image, *next;
 
     list_for_each_entry_safe(sii_image, next, &master->sii_images, list) {
-#if EC_REUSE_SII_IMAGE
+#ifdef EC_SII_CACHE
         if ((master->phase != EC_OPERATION) ||
            ((sii_image->sii.serial_number == 0) && (sii_image->sii.alias == 0)))
 #endif
