@@ -125,6 +125,7 @@ void ec_slave_init(
     slave->has_dc_system_time = 0;
     slave->transmission_delay = 0U;
 
+    slave->vendor_words = NULL;
     slave->sii_image = NULL;
 
 
@@ -316,6 +317,10 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         kfree(sdo);
     }
 
+    if (slave->vendor_words) {
+        kfree(slave->vendor_words);
+        slave->vendor_words = NULL;
+    }
 
     // free mailbox response data
 #ifdef EC_EOE

@@ -1296,6 +1296,47 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# Alternate SII firmware loading
+#------------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to load SII locally if available])
+
+AC_ARG_ENABLE([sii-override],
+    AS_HELP_STRING([--enable-sii-override],
+                   [Enable SII override (default: no)
+--enable-sii-override=/lib/firmware to load directly]),
+    [
+        case "${enableval}" in
+            yes) siioverride=1
+                siidir=""
+                ;;
+            no) siioverride=0
+                siidir=""
+                ;;
+            */) AC_MSG_ERROR([Must omit trailing slash in --enable-sii-override.])
+                ;;
+            *) siioverride=1
+               siidir="${enableval}"
+                ;;
+        esac
+    ],
+    [siioverride=0]
+    [siidir=""]
+)
+
+if test "x${siioverride}" = "x1"; then
+    AC_DEFINE([EC_SII_OVERRIDE], [1], [Allow locally loadable SII])
+    if test "x${siidir}" = "x"; then
+        AC_MSG_RESULT([yes, from hotplug])
+    else
+        AC_MSG_RESULT([yes, from $siidir])
+        AC_DEFINE_UNQUOTED([EC_SII_DIR], ["$siidir"], [Direct SII firmware base path])
+    fi
+else
+    AC_MSG_RESULT([no])
+fi
+
+#------------------------------------------------------------------------------
 # syslog output in realtime context
 #------------------------------------------------------------------------------
 

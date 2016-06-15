@@ -37,6 +37,7 @@
 #include "globals.h"
 #include "master.h"
 #include "mailbox.h"
+#include "sii_firmware.h"
 #include "slave_config.h"
 
 #include "fsm_slave_scan.h"
@@ -56,8 +57,13 @@ void ec_fsm_slave_scan_state_assign_sii(ec_fsm_slave_scan_t *);
 #ifdef EC_SII_CACHE
 void ec_fsm_slave_scan_state_sii_identity(ec_fsm_slave_scan_t *);
 #endif
+#ifdef EC_SII_OVERRIDE
+void ec_fsm_slave_scan_state_sii_device(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_request(ec_fsm_slave_scan_t *);
+#endif
 void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_parse(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *);
 #ifdef EC_REGALIAS
 void ec_fsm_slave_scan_state_regalias(ec_fsm_slave_scan_t *);
@@ -75,6 +81,9 @@ void ec_fsm_slave_scan_enter_regalias(ec_fsm_slave_scan_t *);
 #endif
 #ifdef EC_SII_CACHE
 void ec_fsm_slave_scan_enter_sii_identity(ec_fsm_slave_scan_t *);
+#endif
+#ifdef EC_SII_OVERRIDE
+void ec_fsm_slave_scan_enter_sii_request(ec_fsm_slave_scan_t *);
 #endif
 void ec_fsm_slave_scan_enter_attach_sii(ec_fsm_slave_scan_t *);
 void ec_fsm_slave_scan_enter_sii_size(ec_fsm_slave_scan_t *);
@@ -577,12 +586,31 @@ void ec_fsm_slave_scan_enter_sii_size(
         ec_fsm_slave_scan_t *fsm /**< slave state machine */
         )
 {
-    // Start fetching SII size
+    ec_slave_t *slave = fsm->slave;
 
+#ifdef EC_SII_OVERRIDE
+    if (!slave->vendor_words) {
+        if (!(slave->vendor_words =
+              (uint16_t *) kmalloc(32, GFP_KERNEL))) {
+            EC_SLAVE_ERR(slave, "Failed to allocate 16 words of SII data.\n");
+            slave->error_flag = 1;
+            fsm->state = ec_fsm_slave_scan_state_error;
+            return;
+        }
+    }
+
+    // Start fetching device identity
+    fsm->sii_offset = 0;
+    fsm->state = ec_fsm_slave_scan_state_sii_device;
+#else
+    // Start fetching SII size
     fsm->sii_offset = EC_FIRST_SII_CATEGORY_OFFSET; // first category header
-    ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
-            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
     fsm->state = ec_fsm_slave_scan_state_sii_size;
+#endif
+
+    ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+            EC_FSM_SII_USE_CONFIGURED_ADDRESS);
+
     fsm->state(fsm); // execute state immediately
 }
 
@@ -771,6 +799,178 @@ void ec_fsm_slave_scan_state_sii_identity(
 }
 #endif
 
+#ifdef EC_SII_OVERRIDE
+/*****************************************************************************/
+
+/**
+   Slave scan state: SII DEVICE.
+*/
+
+void ec_fsm_slave_scan_state_sii_device(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_sii_exec(&fsm->fsm_sii))
+        return;
+
+    if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
+        fsm->slave->error_flag = 1;
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to determine product and vendor id."
+                " Reading word offset 0x%04x failed.\n",
+                fsm->sii_offset);
+        return;
+    }
+
+    memcpy(slave->vendor_words + fsm->sii_offset, fsm->fsm_sii.value, 4);
+
+    if (fsm->sii_offset + 2 < 16) {
+        // fetch the next 2 words
+        fsm->sii_offset += 2;
+        ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+                        EC_FSM_SII_USE_CONFIGURED_ADDRESS);
+        ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
+        return;
+    }
+
+    // Evaluate SII contents
+    slave->sii_image->sii.alias           = EC_READ_U16(slave->vendor_words + EC_ALIAS_SII_OFFSET);
+    slave->sii_image->sii.vendor_id       = EC_READ_U32(slave->vendor_words + EC_VENDOR_SII_OFFSET);
+    slave->sii_image->sii.product_code    = EC_READ_U32(slave->vendor_words + EC_PRODUCT_SII_OFFSET);
+    slave->sii_image->sii.revision_number = EC_READ_U32(slave->vendor_words + EC_REVISION_SII_OFFSET);
+    slave->sii_image->sii.serial_number   = EC_READ_U32(slave->vendor_words + EC_SERIAL_SII_OFFSET);
+
+    slave->effective_alias                = slave->sii_image->sii.alias;
+#ifdef EC_SII_CACHE
+    slave->effective_vendor_id            = slave->sii_image->sii.vendor_id;
+    slave->effective_product_code         = slave->sii_image->sii.product_code;
+    slave->effective_revision_number      = slave->sii_image->sii.revision_number;
+    slave->effective_serial_number        = slave->sii_image->sii.serial_number;
+#endif
+
+    ec_fsm_slave_scan_enter_sii_request(fsm);
+}
+
+/*****************************************************************************/
+
+struct firmware_request_context
+{
+    struct task_struct *fsm_task;
+    ec_fsm_slave_scan_t *fsm;
+    ec_slave_t *slave;
+};
+
+static const struct firmware no_sii_firmware;
+
+static void firmware_request_complete(
+        const struct firmware *firmware,
+        void *context
+        )
+{
+    struct firmware_request_context *ctx = context;
+    ec_fsm_slave_scan_t *fsm = ctx->fsm;
+
+    if (fsm->slave != ctx->slave) {
+        printk(KERN_ERR "Aborting firmware request; FSM slave changed unexpectedly.\n");
+        ec_release_sii_firmware(firmware);
+    } else if (fsm->state != ec_fsm_slave_scan_state_sii_request) {
+        EC_SLAVE_WARN(fsm->slave, "Aborting firmware request; FSM state changed unexpectedly.\n");
+        ec_release_sii_firmware(firmware);
+    } else {
+        fsm->sii_firmware = firmware ? firmware : &no_sii_firmware;
+    }
+
+    kfree(ctx);
+}
+
+/*****************************************************************************/
+
+/**
+   Enter slave scan state: SII REQUEST.
+*/
+
+void ec_fsm_slave_scan_enter_sii_request(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    struct firmware_request_context *ctx;
+
+    if (!(ctx = kmalloc(sizeof(*ctx), GFP_KERNEL))) {
+        EC_SLAVE_ERR(slave, "Unable to allocate firmware request context.\n");
+        fsm->state = ec_fsm_slave_scan_state_error;
+        return;
+    }
+
+    ctx->fsm_task = current;
+    ctx->fsm = fsm;
+    ctx->slave = slave;
+
+    fsm->sii_firmware = NULL;
+    fsm->state = ec_fsm_slave_scan_state_sii_request;
+    ec_request_sii_firmware(slave, ctx, firmware_request_complete);
+    fsm->state(fsm); // execute state immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave scan state: SII REQUEST.
+*/
+
+void ec_fsm_slave_scan_state_sii_request(
+        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    const struct firmware *firmware = fsm->sii_firmware;
+    
+    if (firmware == &no_sii_firmware) {
+        EC_SLAVE_DBG(slave, 1, "SII firmware file not found; reading SII data from slave.\n");
+        fsm->sii_firmware = NULL;
+
+        fsm->sii_offset = EC_FIRST_SII_CATEGORY_OFFSET; // first category header
+        ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
+                EC_FSM_SII_USE_CONFIGURED_ADDRESS);
+        fsm->state = ec_fsm_slave_scan_state_sii_size;
+        fsm->state(fsm); // execute state immediately
+    } else if (firmware) {
+        EC_SLAVE_DBG(slave, 1, "Firmware file found, reading %zu bytes.\n", firmware->size);
+
+        slave->sii_image->nwords = firmware->size / 2;
+
+        if (slave->sii_image->words) {
+            EC_SLAVE_WARN(slave, "Freeing old SII data...\n");
+            kfree(slave->sii_image->words);
+        }
+        if (!(slave->sii_image->words =
+              (uint16_t *) kmalloc(slave->sii_image->nwords * 2, GFP_KERNEL))) {
+            EC_SLAVE_ERR(slave, "Failed to allocate %zu words of SII data.\n",
+                slave->sii_image->nwords);
+            slave->sii_image->nwords = 0;
+            slave->error_flag = 1;
+            ec_release_sii_firmware(firmware);
+            fsm->sii_firmware = NULL;
+
+            fsm->state = ec_fsm_slave_scan_state_error;
+            return;
+        }
+
+        memcpy(slave->sii_image->words, firmware->data, slave->sii_image->nwords * 2);
+        ec_release_sii_firmware(firmware);
+        fsm->sii_firmware = NULL;
+
+        fsm->state = ec_fsm_slave_scan_state_sii_parse;
+        fsm->state(fsm); // execute state immediately
+    } else {
+        // do nothing while waiting for async request to complete
+        fsm->datagram->state = EC_DATAGRAM_INVALID;
+    }
+}
+#endif
+
 /*****************************************************************************/
 
 /**
@@ -841,10 +1041,19 @@ alloc_sii:
         return;
     }
 
+#ifdef EC_SII_OVERRIDE
+    // Copy vendor data to sii words
+    memcpy(slave->sii_image->words, slave->vendor_words, 32);
+    kfree(slave->vendor_words);
+    slave->vendor_words = NULL;
+    
+    // Start fetching rest of SII contents
+    fsm->sii_offset = 0x0010;
+#else
     // Start fetching SII contents
-
-    fsm->state = ec_fsm_slave_scan_state_sii_data;
     fsm->sii_offset = 0x0000;
+#endif
+    fsm->state = ec_fsm_slave_scan_state_sii_data;
     ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
     ec_fsm_sii_exec(&fsm->fsm_sii); // execute state immediately
@@ -859,7 +1068,6 @@ alloc_sii:
 void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
 {
     ec_slave_t *slave = fsm->slave;
-    uint16_t *cat_word, cat_type, cat_size;
 
     if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
 
@@ -894,10 +1102,26 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         return;
     }
 
+    fsm->state = ec_fsm_slave_scan_state_sii_parse;
+    fsm->state(fsm); // execute state immediately
+}
+
+/*****************************************************************************/
+
+/**
+   Slave scan state: SII PARSE.
+*/
+
+void ec_fsm_slave_scan_state_sii_parse(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+{
+    ec_slave_t *slave = fsm->slave;
+    uint16_t *cat_word, cat_type, cat_size;
+
     // Evaluate SII contents
 
     ec_slave_clear_sync_managers(slave);
 
+#ifndef EC_SII_OVERRIDE
     slave->sii_image->sii.alias =
         EC_READ_U16(slave->sii_image->words + 0x0004);
     slave->effective_alias = slave->sii_image->sii.alias;
@@ -909,6 +1133,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         EC_READ_U32(slave->sii_image->words + 0x000C);
     slave->sii_image->sii.serial_number =
         EC_READ_U32(slave->sii_image->words + 0x000E);
+#endif
     slave->sii_image->sii.boot_rx_mailbox_offset =
         EC_READ_U16(slave->sii_image->words + 0x0014);
     slave->sii_image->sii.boot_rx_mailbox_size =
@@ -928,7 +1153,7 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
     slave->sii_image->sii.mailbox_protocols =
         EC_READ_U16(slave->sii_image->words + 0x001C);
 
-#ifdef EC_SII_CACHE
+#if !defined(EC_SII_OVERRIDE) && defined(EC_SII_CACHE)
     slave->effective_vendor_id = slave->sii_image->sii.vendor_id;
     slave->effective_product_code = slave->sii_image->sii.product_code;
     slave->effective_revision_number = slave->sii_image->sii.revision_number;

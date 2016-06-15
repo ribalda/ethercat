@@ -70,6 +70,7 @@ noinst_HEADERS = \
 	sdo.c sdo.h \
 	sdo_entry.c sdo_entry.h \
 	sdo_request.c sdo_request.h \
+	sii_firmware.c sii_firmware.h \
 	slave.c slave.h \
 	slave_config.c slave_config.h \
 	soe_errors.c \
