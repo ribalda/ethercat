@@ -263,6 +263,7 @@ struct ec_slave
                                    (offset from reference clock). */
 
     // Slave information interface
+    uint16_t *vendor_words; /**< First 16 words of SII image. */
     ec_sii_image_t *sii_image;  /**< Current complete SII image. */
 
     struct list_head sdo_dictionary; /**< SDO dictionary list */
