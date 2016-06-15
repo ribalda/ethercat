@@ -65,6 +65,10 @@ struct ec_fsm_slave_scan
     uint16_t sii_offset; /**< SII offset in words. */
 
     ec_fsm_sii_t fsm_sii; /**< SII state machine. */
+
+#ifdef EC_SII_OVERRIDE
+    const struct firmware *sii_firmware;
+#endif
 };
 
 /*****************************************************************************/
