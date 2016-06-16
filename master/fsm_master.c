@@ -103,7 +103,7 @@ void ec_fsm_master_init(
     ec_fsm_reboot_init(&fsm->fsm_reboot, fsm->datagram);
     ec_fsm_slave_config_init(&fsm->fsm_slave_config,
             &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo);
-    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram,
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan,
             &fsm->fsm_slave_config, &fsm->fsm_pdo);
     ec_fsm_sii_init(&fsm->fsm_sii);
 }
@@ -1215,7 +1215,7 @@ void ec_fsm_master_state_dc_measure_delays(
             ec_device_names[fsm->slave->device_index != 0]);
     fsm->state = ec_fsm_master_state_scan_slave;
     ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
-    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
+    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram); // execute immediately
     fsm->datagram->device_index = fsm->slave->device_index;
 }
 
@@ -1234,7 +1234,7 @@ void ec_fsm_master_state_scan_slave(
     ec_slave_t *slave = fsm->slave;
 #endif
 
-    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan)) {
+    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram)) {
         return;
     }
     // Assume that the slaves mailbox data is valid even if the slave scanning skipped
@@ -1263,7 +1263,7 @@ void ec_fsm_master_state_scan_slave(
                 fsm->slave->ring_position,
                 ec_device_names[fsm->slave->device_index != 0]);
         ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
-        ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan); // execute immediately
+        ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram); // execute immediately
         fsm->datagram->device_index = fsm->slave->device_index;
         return;
     }
