@@ -183,6 +183,27 @@ void ec_datagram_zero(ec_datagram_t *datagram /**< EtherCAT datagram. */)
 
 /*****************************************************************************/
 
+/** Copies a previously constructed datagram for repeated send.
+ * 
+ * \return Return value of ec_datagram_prealloc().
+ */
+int ec_datagram_repeat(
+        ec_datagram_t *datagram, /**< EtherCAT datagram to update. */
+        const ec_datagram_t *source /**< EtherCAT datagram to copy. */)
+{
+    int ret;
+    size_t data_size = source->data_size;
+    EC_FUNC_HEADER;
+    if (datagram != source) {
+        datagram->type = source->type;
+        memcpy(datagram->address, source->address, sizeof(datagram->address));
+        memcpy(datagram->data, source->data, data_size);
+    }
+    EC_FUNC_FOOTER;
+}
+
+/*****************************************************************************/
+
 /** Initializes an EtherCAT APRD datagram.
  *
  * \return Return value of ec_datagram_prealloc().
