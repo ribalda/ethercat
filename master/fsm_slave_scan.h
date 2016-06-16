@@ -61,7 +61,7 @@ struct ec_fsm_slave_scan
     ec_fsm_pdo_t *fsm_pdo; /**< PDO configuration state machine to use. */
     unsigned int retries; /**< Retries on datagram timeout. */
 
-    void (*state)(ec_fsm_slave_scan_t *); /**< State function. */
+    void (*state)(ec_fsm_slave_scan_t *, ec_datagram_t *); /**< State function. */
     uint16_t sii_offset; /**< SII offset in words. */
 
     ec_fsm_sii_t fsm_sii; /**< SII state machine. */
@@ -73,13 +73,13 @@ struct ec_fsm_slave_scan
 
 /*****************************************************************************/
 
-void ec_fsm_slave_scan_init(ec_fsm_slave_scan_t *, ec_datagram_t *,
+void ec_fsm_slave_scan_init(ec_fsm_slave_scan_t *,
         ec_fsm_slave_config_t *, ec_fsm_pdo_t *);
 void ec_fsm_slave_scan_clear(ec_fsm_slave_scan_t *);
 
 void ec_fsm_slave_scan_start(ec_fsm_slave_scan_t *, ec_slave_t *);
 
-int ec_fsm_slave_scan_exec(ec_fsm_slave_scan_t *);
+int ec_fsm_slave_scan_exec(ec_fsm_slave_scan_t *, ec_datagram_t *);
 int ec_fsm_slave_scan_success(const ec_fsm_slave_scan_t *);
 
 /*****************************************************************************/
