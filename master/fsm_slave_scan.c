@@ -44,52 +44,52 @@
 
 /*****************************************************************************/
 
-void ec_fsm_slave_scan_state_start(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_state(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_dc_cap(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_dc_times(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_start(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_address(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_state(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_base(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_dc_cap(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_dc_times(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_datalink(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #ifdef EC_SII_ASSIGN
-void ec_fsm_slave_scan_state_assign_sii(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_assign_sii(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
 #ifdef EC_SII_CACHE
-void ec_fsm_slave_scan_state_sii_identity(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_identity(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
 #ifdef EC_SII_OVERRIDE
-void ec_fsm_slave_scan_state_sii_device(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sii_request(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_device(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_sii_request(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
-void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sii_parse(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_sii_size(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_sii_parse(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #ifdef EC_REGALIAS
-void ec_fsm_slave_scan_state_regalias(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_regalias(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
-void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_sync(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_preop(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_sync(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_pdos(ec_fsm_slave_scan_t *, ec_datagram_t *);
 
-void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_state_error(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_state_end(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_state_error(ec_fsm_slave_scan_t *, ec_datagram_t *);
 
-void ec_fsm_slave_scan_enter_datalink(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_enter_datalink(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #ifdef EC_REGALIAS
-void ec_fsm_slave_scan_enter_regalias(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_enter_regalias(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
 #ifdef EC_SII_CACHE
-void ec_fsm_slave_scan_enter_sii_identity(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_enter_sii_identity(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
 #ifdef EC_SII_OVERRIDE
-void ec_fsm_slave_scan_enter_sii_request(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_enter_sii_request(ec_fsm_slave_scan_t *, ec_datagram_t *);
 #endif
-void ec_fsm_slave_scan_enter_attach_sii(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_enter_sii_size(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_enter_preop(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_enter_clear_mailbox(ec_fsm_slave_scan_t *);
-void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *);
+void ec_fsm_slave_scan_enter_attach_sii(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_enter_sii_size(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_enter_preop(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_enter_clear_mailbox(ec_fsm_slave_scan_t *, ec_datagram_t *);
+void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *, ec_datagram_t *);
 
 /*****************************************************************************/
 
@@ -97,13 +97,12 @@ void ec_fsm_slave_scan_enter_pdos(ec_fsm_slave_scan_t *);
  */
 void ec_fsm_slave_scan_init(
         ec_fsm_slave_scan_t *fsm, /**< Slave scanning state machine. */
-        ec_datagram_t *datagram, /**< Datagram to use. */
         ec_fsm_slave_config_t *fsm_slave_config, /**< Slave configuration
                                                   state machine to use. */
         ec_fsm_pdo_t *fsm_pdo /**< PDO configuration machine to use. */
         )
 {
-    fsm->datagram = datagram;
+    fsm->datagram = NULL;
     fsm->fsm_slave_config = fsm_slave_config;
     fsm->fsm_pdo = fsm_pdo;
 
@@ -157,16 +156,32 @@ int ec_fsm_slave_scan_running(const ec_fsm_slave_scan_t *fsm /**< slave state ma
    \return false, if state machine has terminated
 */
 
-int ec_fsm_slave_scan_exec(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+int ec_fsm_slave_scan_exec(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
 {
-    if (fsm->datagram->state == EC_DATAGRAM_SENT
-        || fsm->datagram->state == EC_DATAGRAM_QUEUED) {
-        // datagram was not sent or received yet.
-        return ec_fsm_slave_scan_running(fsm);
+    if (!ec_fsm_slave_scan_running(fsm))
+        return 0;
+    if (fsm->datagram &&
+            (fsm->datagram->state == EC_DATAGRAM_INIT ||
+             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
+             fsm->datagram->state == EC_DATAGRAM_SENT)) {
+        // datagram not received yet
+        if (datagram != fsm->datagram)
+            datagram->state = EC_DATAGRAM_INVALID;
+        return 1;
     }
 
-    fsm->state(fsm);
-    return ec_fsm_slave_scan_running(fsm);
+    fsm->state(fsm, datagram);
+
+    if (!ec_fsm_slave_scan_running(fsm)) {
+        fsm->datagram = NULL;
+        return 0;
+    }
+
+    fsm->datagram = datagram;
+    return 1;
 }
 
 /*****************************************************************************/
@@ -190,11 +205,14 @@ int ec_fsm_slave_scan_success(const ec_fsm_slave_scan_t *fsm /**< slave state ma
    slave, according to its ring position.
 */
 
-void ec_fsm_slave_scan_state_start(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_start(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
 {
     // write station address
-    ec_datagram_apwr(fsm->datagram, fsm->slave->ring_position, 0x0010, 2);
-    EC_WRITE_U16(fsm->datagram->data, fsm->slave->station_address);
+    ec_datagram_apwr(datagram, fsm->slave->ring_position, 0x0010, 2);
+    EC_WRITE_U16(datagram->data, fsm->slave->station_address);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_address;
 }
@@ -206,27 +224,28 @@ void ec_fsm_slave_scan_state_start(ec_fsm_slave_scan_t *fsm /**< slave state mac
 */
 
 void ec_fsm_slave_scan_state_address(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
-
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(fsm->slave,
-                "Failed to receive station address datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(fsm->slave,
+                "Failed to receive station address datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(fsm->slave, "Failed to write station address: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
@@ -244,31 +263,33 @@ void ec_fsm_slave_scan_state_address(
 */
 
 void ec_fsm_slave_scan_state_state(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive AL state datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive AL state datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to read AL state: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
-    slave->current_state = EC_READ_U8(datagram->data);
+    slave->current_state = EC_READ_U8(fsm->datagram->data);
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         char state_str[EC_STATE_STRING_SIZE];
         ec_state_string(slave->current_state, state_str, 0);
@@ -288,44 +309,46 @@ void ec_fsm_slave_scan_state_state(
 /** Slave scan state: BASE.
  */
 void ec_fsm_slave_scan_state_base(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     u8 octet;
     int i;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive base data datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive base data datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to read base data: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
-    slave->base_type       = EC_READ_U8 (datagram->data);
-    slave->base_revision   = EC_READ_U8 (datagram->data + 1);
-    slave->base_build      = EC_READ_U16(datagram->data + 2);
+    slave->base_type       = EC_READ_U8 (fsm->datagram->data);
+    slave->base_revision   = EC_READ_U8 (fsm->datagram->data + 1);
+    slave->base_build      = EC_READ_U16(fsm->datagram->data + 2);
 
-    slave->base_fmmu_count = EC_READ_U8 (datagram->data + 4);
+    slave->base_fmmu_count = EC_READ_U8 (fsm->datagram->data + 4);
     if (slave->base_fmmu_count > EC_MAX_FMMUS) {
         EC_SLAVE_WARN(slave, "Slave has more FMMUs (%u) than the master can"
                 " handle (%u).\n", slave->base_fmmu_count, EC_MAX_FMMUS);
         slave->base_fmmu_count = EC_MAX_FMMUS;
     }
 
-    slave->base_sync_count = EC_READ_U8(datagram->data + 5);
+    slave->base_sync_count = EC_READ_U8(fsm->datagram->data + 5);
     if (slave->base_sync_count > EC_MAX_SYNC_MANAGERS) {
         EC_SLAVE_WARN(slave, "Slave provides more sync managers (%u)"
                 " than the master can handle (%u).\n",
@@ -333,12 +356,12 @@ void ec_fsm_slave_scan_state_base(
         slave->base_sync_count = EC_MAX_SYNC_MANAGERS;
     }
 
-    octet = EC_READ_U8(datagram->data + 7);
+    octet = EC_READ_U8(fsm->datagram->data + 7);
     for (i = 0; i < EC_MAX_PORTS; i++) {
         slave->ports[i].desc = (octet >> (2 * i)) & 0x03;
     }
 
-    octet = EC_READ_U8(datagram->data + 8);
+    octet = EC_READ_U8(fsm->datagram->data + 8);
     slave->base_fmmu_bit_operation = octet & 0x01;
     slave->base_dc_supported = (octet >> 2) & 0x01;
     slave->base_dc_range = ((octet >> 3) & 0x01) ? EC_DC_64 : EC_DC_32;
@@ -351,7 +374,7 @@ void ec_fsm_slave_scan_state_base(
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_scan_state_dc_cap;
     } else {
-        ec_fsm_slave_scan_enter_datalink(fsm);
+        ec_fsm_slave_scan_enter_datalink(fsm, datagram);
     }
 }
 
@@ -362,26 +385,28 @@ void ec_fsm_slave_scan_state_base(
 */
 
 void ec_fsm_slave_scan_state_dc_cap(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive system time datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter == 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive system time datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter == 1) {
         slave->has_dc_system_time = 1;
         EC_SLAVE_DBG(slave, 1, "Slave has the System Time register.\n");
-    } else if (datagram->working_counter == 0) {
+    } else if (fsm->datagram->working_counter == 0) {
         EC_SLAVE_DBG(slave, 1, "Slave has no System Time register; delay "
                 "measurement only.\n");
     } else {
@@ -389,7 +414,7 @@ void ec_fsm_slave_scan_state_dc_cap(
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to determine, if system time register is "
                 "supported: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
@@ -407,33 +432,35 @@ void ec_fsm_slave_scan_state_dc_cap(
 */
 
 void ec_fsm_slave_scan_state_dc_times(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
     int i;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive system time datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive system time datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to get DC receive times: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
     for (i = 0; i < EC_MAX_PORTS; i++) {
-        u32 new_time = EC_READ_U32(datagram->data + 4 * i);
+        u32 new_time = EC_READ_U32(fsm->datagram->data + 4 * i);
         if (new_time == slave->ports[i].receive_time) {
             // time has not changed since initial scan; this port has not
             // processed the broadcast timing datagram.  this can occur
@@ -444,7 +471,7 @@ void ec_fsm_slave_scan_state_dc_times(
         slave->ports[i].receive_time = new_time;
     }
 
-    ec_fsm_slave_scan_enter_datalink(fsm);
+    ec_fsm_slave_scan_enter_datalink(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -454,10 +481,10 @@ void ec_fsm_slave_scan_state_dc_times(
 */
 
 void ec_fsm_slave_scan_enter_datalink(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     // read data link status
@@ -473,7 +500,8 @@ void ec_fsm_slave_scan_enter_datalink(
 /** Enter slave scan state SII_IDENTITY.
  */
 void ec_fsm_slave_scan_enter_sii_identity(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     // Start fetching SII serial number
@@ -481,7 +509,7 @@ void ec_fsm_slave_scan_enter_sii_identity(
     ec_fsm_sii_read(&fsm->fsm_sii, fsm->slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
     fsm->state = ec_fsm_slave_scan_state_sii_identity;
-    fsm->state(fsm); // execute state immediately
+    fsm->state(fsm, datagram); // execute state immediately
 }
 #endif
 
@@ -490,7 +518,8 @@ void ec_fsm_slave_scan_enter_sii_identity(
 /** Enter slave scan state ATTACH_SII.
  */
 void ec_fsm_slave_scan_enter_attach_sii(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_sii_image_t *sii_image;
@@ -545,10 +574,10 @@ void ec_fsm_slave_scan_enter_attach_sii(
         }
         // The SII image data is already available and we can enter PREOP
 #ifdef EC_REGALIAS
-        ec_fsm_slave_scan_enter_regalias(fsm);
+        ec_fsm_slave_scan_enter_regalias(fsm, datagram);
 #else
         if (slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE) {
-            ec_fsm_slave_scan_enter_preop(fsm);
+            ec_fsm_slave_scan_enter_preop(fsm, datagram);
         } else {
             fsm->state = ec_fsm_slave_scan_state_end;
         }
@@ -574,7 +603,7 @@ void ec_fsm_slave_scan_enter_attach_sii(
         // Store the SII image for later re-use
         list_add_tail(&sii_image->list, &slave->master->sii_images);
 
-        ec_fsm_slave_scan_enter_sii_size(fsm);
+        ec_fsm_slave_scan_enter_sii_size(fsm, datagram);
     }
 }
 
@@ -583,7 +612,8 @@ void ec_fsm_slave_scan_enter_attach_sii(
 /** Enter slave scan state SII_SIZE.
  */
 void ec_fsm_slave_scan_enter_sii_size(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -611,7 +641,7 @@ void ec_fsm_slave_scan_enter_sii_size(
     ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
 
-    fsm->state(fsm); // execute state immediately
+    fsm->state(fsm, datagram); // execute state immediately
 }
 
 /*****************************************************************************/
@@ -621,10 +651,10 @@ void ec_fsm_slave_scan_enter_sii_size(
 /** Enter slave scan state ASSIGN_SII.
  */
 void ec_fsm_slave_scan_enter_assign_sii(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     EC_SLAVE_DBG(slave, 1, "Assigning SII access to EtherCAT.\n");
@@ -645,38 +675,40 @@ void ec_fsm_slave_scan_enter_assign_sii(
 */
 
 void ec_fsm_slave_scan_state_datalink(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive DL status datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive DL status datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to read DL status: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
-    ec_slave_set_dl_status(slave, EC_READ_U16(datagram->data));
+    ec_slave_set_dl_status(slave, EC_READ_U16(fsm->datagram->data));
 
 #ifdef EC_SII_ASSIGN
-    ec_fsm_slave_scan_enter_assign_sii(fsm);
+    ec_fsm_slave_scan_enter_assign_sii(fsm, datagram);
 #elif defined(EC_SII_CACHE)
-    ec_fsm_slave_scan_enter_sii_identity(fsm);
+    ec_fsm_slave_scan_enter_sii_identity(fsm, datagram);
 #else
-    ec_fsm_slave_scan_enter_attach_sii(fsm);
+    ec_fsm_slave_scan_enter_attach_sii(fsm, datagram);
 #endif
 }
 
@@ -689,34 +721,35 @@ void ec_fsm_slave_scan_state_datalink(
 */
 
 void ec_fsm_slave_scan_state_assign_sii(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         EC_SLAVE_WARN(slave, "Failed to receive SII assignment datagram: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(fsm->datagram);
         // Try to go on, probably assignment is correct
         goto continue_with_sii_size;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->working_counter != 1) {
         EC_SLAVE_WARN(slave, "Failed to assign SII to EtherCAT: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         // Try to go on, probably assignment is correct
     }
 
 continue_with_sii_size:
 #ifdef EC_SII_CACHE
-    ec_fsm_slave_scan_enter_sii_identity(fsm);
+    ec_fsm_slave_scan_enter_sii_identity(fsm, datagram);
 #else
-    ec_fsm_slave_scan_enter_attach_sii(fsm);
+    ec_fsm_slave_scan_enter_attach_sii(fsm, datagram);
 #endif
 }
 
@@ -730,13 +763,14 @@ continue_with_sii_size:
 */
 
 void ec_fsm_slave_scan_state_sii_identity(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
 
     while (1) {
-        if (ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram))
+        if (ec_fsm_sii_exec(&fsm->fsm_sii, datagram))
             return;
 
         if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
@@ -762,7 +796,7 @@ void ec_fsm_slave_scan_state_sii_identity(
                 EC_SLAVE_DBG(slave, 1, "Serial Number: 0x%08x\n",
                              slave->effective_serial_number);
                 if (!slave->effective_serial_number) {
-                    ec_fsm_slave_scan_enter_attach_sii(fsm);
+                    ec_fsm_slave_scan_enter_attach_sii(fsm, datagram);
                     return;
                 }
                 fsm->sii_offset = EC_VENDOR_SII_OFFSET;
@@ -783,7 +817,7 @@ void ec_fsm_slave_scan_state_sii_identity(
                 slave->effective_revision_number = EC_READ_U32(fsm->fsm_sii.value);
                 EC_SLAVE_DBG(slave, 1, "Revision: 0x%08x\n",
                              slave->effective_revision_number);
-                ec_fsm_slave_scan_enter_attach_sii(fsm);
+                ec_fsm_slave_scan_enter_attach_sii(fsm, datagram);
                 return;
             default:
                 fsm->slave->error_flag = 1;
@@ -807,12 +841,13 @@ void ec_fsm_slave_scan_state_sii_identity(
 */
 
 void ec_fsm_slave_scan_state_sii_device(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram))
+    if (ec_fsm_sii_exec(&fsm->fsm_sii, datagram))
         return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
@@ -831,7 +866,7 @@ void ec_fsm_slave_scan_state_sii_device(
         fsm->sii_offset += 2;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
                         EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-        ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram); // execute state immediately
+        ec_fsm_sii_exec(&fsm->fsm_sii, datagram); // execute state immediately
         return;
     }
 
@@ -850,7 +885,7 @@ void ec_fsm_slave_scan_state_sii_device(
     slave->effective_serial_number        = slave->sii_image->sii.serial_number;
 #endif
 
-    ec_fsm_slave_scan_enter_sii_request(fsm);
+    ec_fsm_slave_scan_enter_sii_request(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -892,7 +927,8 @@ static void firmware_request_complete(
 */
 
 void ec_fsm_slave_scan_enter_sii_request(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -911,7 +947,7 @@ void ec_fsm_slave_scan_enter_sii_request(
     fsm->sii_firmware = NULL;
     fsm->state = ec_fsm_slave_scan_state_sii_request;
     ec_request_sii_firmware(slave, ctx, firmware_request_complete);
-    fsm->state(fsm); // execute state immediately
+    fsm->state(fsm, datagram); // execute state immediately
 }
 
 /*****************************************************************************/
@@ -921,7 +957,8 @@ void ec_fsm_slave_scan_enter_sii_request(
 */
 
 void ec_fsm_slave_scan_state_sii_request(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -935,7 +972,7 @@ void ec_fsm_slave_scan_state_sii_request(
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
                 EC_FSM_SII_USE_CONFIGURED_ADDRESS);
         fsm->state = ec_fsm_slave_scan_state_sii_size;
-        fsm->state(fsm); // execute state immediately
+        fsm->state(fsm, datagram); // execute state immediately
     } else if (firmware) {
         EC_SLAVE_DBG(slave, 1, "Firmware file found, reading %zu bytes.\n", firmware->size);
 
@@ -963,10 +1000,10 @@ void ec_fsm_slave_scan_state_sii_request(
         fsm->sii_firmware = NULL;
 
         fsm->state = ec_fsm_slave_scan_state_sii_parse;
-        fsm->state(fsm); // execute state immediately
+        fsm->state(fsm, datagram); // execute state immediately
     } else {
         // do nothing while waiting for async request to complete
-        fsm->datagram->state = EC_DATAGRAM_INVALID;
+        datagram->state = EC_DATAGRAM_INVALID;
     }
 }
 #endif
@@ -978,13 +1015,14 @@ void ec_fsm_slave_scan_state_sii_request(
 */
 
 void ec_fsm_slave_scan_state_sii_size(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
     uint16_t cat_type, cat_size;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram))
+    if (ec_fsm_sii_exec(&fsm->fsm_sii, datagram))
         return;
 
     if (!slave->sii_image) {
@@ -1019,7 +1057,7 @@ void ec_fsm_slave_scan_state_sii_size(
         fsm->sii_offset = next_offset;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
                         EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-        ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram); // execute state immediately
+        ec_fsm_sii_exec(&fsm->fsm_sii, datagram); // execute state immediately
         return;
     }
 
@@ -1056,7 +1094,7 @@ alloc_sii:
     fsm->state = ec_fsm_slave_scan_state_sii_data;
     ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
             EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-    ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram); // execute state immediately
+    ec_fsm_sii_exec(&fsm->fsm_sii, datagram); // execute state immediately
 }
 
 /*****************************************************************************/
@@ -1065,11 +1103,14 @@ alloc_sii:
    Slave scan state: SII DATA.
 */
 
-void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_sii_data(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii, datagram)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         fsm->slave->error_flag = 1;
@@ -1098,12 +1139,12 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
         fsm->sii_offset += 2;
         ec_fsm_sii_read(&fsm->fsm_sii, slave, fsm->sii_offset,
                         EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-        ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram); // execute state immediately
+        ec_fsm_sii_exec(&fsm->fsm_sii, datagram); // execute state immediately
         return;
     }
 
     fsm->state = ec_fsm_slave_scan_state_sii_parse;
-    fsm->state(fsm); // execute state immediately
+    fsm->state(fsm, datagram); // execute state immediately
 }
 
 /*****************************************************************************/
@@ -1112,7 +1153,10 @@ void ec_fsm_slave_scan_state_sii_data(ec_fsm_slave_scan_t *fsm /**< slave state 
    Slave scan state: SII PARSE.
 */
 
-void ec_fsm_slave_scan_state_sii_parse(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_sii_parse(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
 {
     ec_slave_t *slave = fsm->slave;
     uint16_t *cat_word, cat_type, cat_size;
@@ -1252,10 +1296,10 @@ void ec_fsm_slave_scan_state_sii_parse(ec_fsm_slave_scan_t *fsm /**< slave state
     }
 
 #ifdef EC_REGALIAS
-    ec_fsm_slave_scan_enter_regalias(fsm);
+    ec_fsm_slave_scan_enter_regalias(fsm, datagram);
 #else
     if (slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE) {
-        ec_fsm_slave_scan_enter_preop(fsm);
+        ec_fsm_slave_scan_enter_preop(fsm, datagram);
     } else {
         fsm->state = ec_fsm_slave_scan_state_end;
     }
@@ -1275,10 +1319,10 @@ end:
 /** Slave scan entry function: REGALIAS.
  */
 void ec_fsm_slave_scan_enter_regalias(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
     // read alias from register
@@ -1294,26 +1338,28 @@ void ec_fsm_slave_scan_enter_regalias(
 /** Slave scan state: REGALIAS.
  */
 void ec_fsm_slave_scan_state_regalias(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
-        return;
-
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
-        fsm->state = ec_fsm_slave_scan_state_error;
-        EC_SLAVE_ERR(slave, "Failed to receive register alias datagram: ");
-        ec_datagram_print_state(datagram);
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
+        fsm->state = ec_fsm_slave_scan_state_error;
+        EC_SLAVE_ERR(slave, "Failed to receive register alias datagram: ");
+        ec_datagram_print_state(fsm->datagram);
+        return;
+    }
+
+    if (fsm->datagram->working_counter != 1) {
         EC_SLAVE_DBG(slave, 1, "Failed to read register alias.\n");
     } else {
-        slave->effective_alias = EC_READ_U16(datagram->data);
+        slave->effective_alias = EC_READ_U16(fsm->datagram->data);
         EC_SLAVE_DBG(slave, 1, "Read alias %u from register.\n",
                 slave->effective_alias);
     }
@@ -1326,7 +1372,7 @@ void ec_fsm_slave_scan_state_regalias(
     }
 
     if (slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE) {
-        ec_fsm_slave_scan_enter_preop(fsm);
+        ec_fsm_slave_scan_enter_preop(fsm, datagram);
     } else {
         fsm->state = ec_fsm_slave_scan_state_end;
     }
@@ -1339,7 +1385,8 @@ void ec_fsm_slave_scan_state_regalias(
 /** Enter slave scan state PREOP.
  */
 void ec_fsm_slave_scan_enter_preop(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -1358,16 +1405,16 @@ void ec_fsm_slave_scan_enter_preop(
         fsm->state = ec_fsm_slave_scan_state_preop;
         ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
         ec_fsm_slave_config_start(fsm->fsm_slave_config, slave);
-        ec_fsm_slave_config_exec(fsm->fsm_slave_config, fsm->datagram);
+        ec_fsm_slave_config_exec(fsm->fsm_slave_config, datagram);
     } else {
         EC_SLAVE_DBG(slave, 1, "Reading mailbox"
                 " sync manager configuration.\n");
 
         /* Scan current sync manager configuration to get configured mailbox
          * sizes. */
-        ec_datagram_fprd(fsm->datagram, slave->station_address, 0x0800,
+        ec_datagram_fprd(datagram, slave->station_address, 0x0800,
                 EC_SYNC_PAGE_SIZE * 2);
-        ec_datagram_zero(fsm->datagram);
+        ec_datagram_zero(datagram);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_scan_state_sync;
     }
@@ -1378,10 +1425,11 @@ void ec_fsm_slave_scan_enter_preop(
 /** Slave scan state: PREOP.
  */
 void ec_fsm_slave_scan_state_preop(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_slave_config_exec(fsm->fsm_slave_config, fsm->datagram))
+    if (ec_fsm_slave_config_exec(fsm->fsm_slave_config, datagram))
         return;
 
     if (!ec_fsm_slave_config_success(fsm->fsm_slave_config)) {
@@ -1389,7 +1437,7 @@ void ec_fsm_slave_scan_state_preop(
         return;
     }
 
-    ec_fsm_slave_scan_enter_clear_mailbox(fsm);
+    ec_fsm_slave_scan_enter_clear_mailbox(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -1397,35 +1445,37 @@ void ec_fsm_slave_scan_state_preop(
 /** Slave scan state: SYNC.
  */
 void ec_fsm_slave_scan_state_sync(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_t *slave = fsm->slave;
 
-    if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--)
+    if (fsm->datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
+        ec_datagram_repeat(datagram, fsm->datagram);
         return;
+    }
 
-    if (datagram->state != EC_DATAGRAM_RECEIVED) {
+    if (fsm->datagram->state != EC_DATAGRAM_RECEIVED) {
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to receive sync manager"
                 " configuration datagram: ");
-        ec_datagram_print_state(datagram);
+        ec_datagram_print_state(fsm->datagram);
         return;
     }
 
-    if (datagram->working_counter != 1) {
+    if (fsm->datagram->working_counter != 1) {
         fsm->slave->error_flag = 1;
         fsm->state = ec_fsm_slave_scan_state_error;
         EC_SLAVE_ERR(slave, "Failed to read DL status: ");
-        ec_datagram_print_wc_error(datagram);
+        ec_datagram_print_wc_error(fsm->datagram);
         return;
     }
 
-    slave->configured_rx_mailbox_offset = EC_READ_U16(datagram->data);
-    slave->configured_rx_mailbox_size = EC_READ_U16(datagram->data + 2);
-    slave->configured_tx_mailbox_offset = EC_READ_U16(datagram->data + 8);
-    slave->configured_tx_mailbox_size = EC_READ_U16(datagram->data + 10);
+    slave->configured_rx_mailbox_offset = EC_READ_U16(fsm->datagram->data);
+    slave->configured_rx_mailbox_size = EC_READ_U16(fsm->datagram->data + 2);
+    slave->configured_tx_mailbox_offset = EC_READ_U16(fsm->datagram->data + 8);
+    slave->configured_tx_mailbox_size = EC_READ_U16(fsm->datagram->data + 10);
 
     EC_SLAVE_DBG(slave, 1, "Mailbox configuration:\n");
     EC_SLAVE_DBG(slave, 1, " RX offset=0x%04x size=%u\n",
@@ -1445,7 +1495,7 @@ void ec_fsm_slave_scan_state_sync(
     // allocate memory for mailbox response data for supported mailbox protocols
     ec_mbox_prot_data_prealloc(slave, slave->sii_image->sii.mailbox_protocols, slave->configured_tx_mailbox_size);
 
-    ec_fsm_slave_scan_enter_clear_mailbox(fsm);
+    ec_fsm_slave_scan_enter_clear_mailbox(fsm, datagram);
 }
 
 /*****************************************************************************/
@@ -1453,7 +1503,8 @@ void ec_fsm_slave_scan_state_sync(
 /** Enter slave scan state: Clear Mailbox.
  */
 void ec_fsm_slave_scan_enter_clear_mailbox(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -1461,7 +1512,6 @@ void ec_fsm_slave_scan_enter_clear_mailbox(
     // If there is some old data in the slave's mailbox, read it out and
     // discard it. We don't need to check the mailbox first, we just ignore
     // an error or empty mailbox response.
-    ec_datagram_t *datagram = fsm->datagram;
     ec_slave_mbox_prepare_fetch(fsm->slave, datagram);
     fsm->retries = EC_FSM_RETRIES;
     fsm->state = ec_fsm_slave_scan_state_mailbox_cleared;
@@ -1473,10 +1523,12 @@ void ec_fsm_slave_scan_enter_clear_mailbox(
 
 /** Slave scan state: Mailbox cleared.
  */
-void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *fsm /**< slave state machine */)
+void ec_fsm_slave_scan_state_mailbox_cleared(
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
 {
     ec_slave_t *slave = fsm->slave;
-    ec_datagram_t *datagram = fsm->datagram;
 
 #ifdef EC_SII_CACHE
     unsigned int i = 0;
@@ -1489,8 +1541,8 @@ void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *fsm /**< slave
     }
 
     if (unlikely(slave->master->debug_level > 0)
-        && datagram->state == EC_DATAGRAM_RECEIVED
-        && datagram->working_counter == 1)
+        && fsm->datagram->state == EC_DATAGRAM_RECEIVED
+        && fsm->datagram->working_counter == 1)
         EC_SLAVE_INFO(slave, "Cleared old data from the mailbox\n");
 
     slave->valid_mbox_data = 1;
@@ -1518,7 +1570,7 @@ void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *fsm /**< slave
     else
 #endif
     {
-        ec_fsm_slave_scan_enter_pdos(fsm);
+        ec_fsm_slave_scan_enter_pdos(fsm, datagram);
     }
 }
 
@@ -1527,7 +1579,8 @@ void ec_fsm_slave_scan_state_mailbox_cleared(ec_fsm_slave_scan_t *fsm /**< slave
 /** Enter slave scan state PDOS.
  */
 void ec_fsm_slave_scan_enter_pdos(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
     ec_slave_t *slave = fsm->slave;
@@ -1535,7 +1588,7 @@ void ec_fsm_slave_scan_enter_pdos(
     EC_SLAVE_DBG(slave, 1, "Scanning PDO assignment and mapping.\n");
     fsm->state = ec_fsm_slave_scan_state_pdos;
     ec_fsm_pdo_start_reading(fsm->fsm_pdo, slave);
-    ec_fsm_pdo_exec(fsm->fsm_pdo, fsm->datagram); // execute immediately
+    ec_fsm_pdo_exec(fsm->fsm_pdo, datagram); // execute immediately
 }
 
 /*****************************************************************************/
@@ -1543,10 +1596,11 @@ void ec_fsm_slave_scan_enter_pdos(
 /** Slave scan state: PDOS.
  */
 void ec_fsm_slave_scan_state_pdos(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
-    if (ec_fsm_pdo_exec(fsm->fsm_pdo, fsm->datagram)) {
+    if (ec_fsm_pdo_exec(fsm->fsm_pdo, datagram)) {
         return;
     }
 
@@ -1566,7 +1620,8 @@ void ec_fsm_slave_scan_state_pdos(
 /** State: ERROR.
  */
 void ec_fsm_slave_scan_state_error(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
 }
@@ -1576,7 +1631,8 @@ void ec_fsm_slave_scan_state_error(
 /** State: END.
  */
 void ec_fsm_slave_scan_state_end(
-        ec_fsm_slave_scan_t *fsm /**< slave state machine */
+        ec_fsm_slave_scan_t *fsm, /**< slave state machine */
+        ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
 }
