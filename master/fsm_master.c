@@ -105,7 +105,7 @@ void ec_fsm_master_init(
             &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo);
     ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->datagram,
             &fsm->fsm_slave_config, &fsm->fsm_pdo);
-    ec_fsm_sii_init(&fsm->fsm_sii, fsm->datagram);
+    ec_fsm_sii_init(&fsm->fsm_sii);
 }
 
 /*****************************************************************************/
@@ -1623,7 +1623,7 @@ void ec_fsm_master_state_write_sii(
     ec_sii_write_request_t *request = fsm->sii_request;
     ec_slave_t *slave = request->slave;
 
-    if (ec_fsm_sii_exec(&fsm->fsm_sii)) return;
+    if (ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram)) return;
 
     if (!ec_fsm_sii_success(&fsm->fsm_sii)) {
         EC_SLAVE_ERR(slave, "Failed to write SII data.\n");
@@ -1639,7 +1639,7 @@ void ec_fsm_master_state_write_sii(
                 request->offset + fsm->sii_index,
                 request->words + fsm->sii_index,
                 EC_FSM_SII_USE_CONFIGURED_ADDRESS);
-        ec_fsm_sii_exec(&fsm->fsm_sii); // execute immediately
+        ec_fsm_sii_exec(&fsm->fsm_sii, fsm->datagram); // execute immediately
         return;
     }
 

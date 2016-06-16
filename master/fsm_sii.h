@@ -64,7 +64,7 @@ struct ec_fsm_sii
     ec_datagram_t *datagram; /**< datagram used in the state machine */
     unsigned int retries; /**< retries upon datagram timeout */
 
-    void (*state)(ec_fsm_sii_t *); /**< SII state function */
+    void (*state)(ec_fsm_sii_t *, ec_datagram_t *); /**< SII state function */
     uint16_t word_offset; /**< input: word offset in SII */
     ec_fsm_sii_addressing_t mode; /**< reading via APRD or NPRD */
     uint8_t value[4]; /**< raw SII value (32bit) */
@@ -74,7 +74,7 @@ struct ec_fsm_sii
 
 /*****************************************************************************/
 
-void ec_fsm_sii_init(ec_fsm_sii_t *, ec_datagram_t *);
+void ec_fsm_sii_init(ec_fsm_sii_t *);
 void ec_fsm_sii_clear(ec_fsm_sii_t *);
 
 void ec_fsm_sii_read(ec_fsm_sii_t *, ec_slave_t *,
@@ -82,7 +82,7 @@ void ec_fsm_sii_read(ec_fsm_sii_t *, ec_slave_t *,
 void ec_fsm_sii_write(ec_fsm_sii_t *, ec_slave_t *, uint16_t,
         const uint16_t *, ec_fsm_sii_addressing_t);
 
-int ec_fsm_sii_exec(ec_fsm_sii_t *);
+int ec_fsm_sii_exec(ec_fsm_sii_t *, ec_datagram_t *);
 int ec_fsm_sii_success(ec_fsm_sii_t *);
 
 /*****************************************************************************/
