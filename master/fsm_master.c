@@ -99,7 +99,7 @@ void ec_fsm_master_init(
     ec_fsm_coe_init(&fsm->fsm_coe);
     ec_fsm_soe_init(&fsm->fsm_soe);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
-    ec_fsm_change_init(&fsm->fsm_change, fsm->datagram);
+    ec_fsm_change_init(&fsm->fsm_change);
     ec_fsm_reboot_init(&fsm->fsm_reboot, fsm->datagram);
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->datagram,
             &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo);
@@ -962,7 +962,7 @@ void ec_fsm_master_state_acknowledge(
 {
     ec_slave_t *slave = fsm->slave;
 
-    if (ec_fsm_change_exec(&fsm->fsm_change)) {
+    if (ec_fsm_change_exec(&fsm->fsm_change, fsm->datagram)) {
         return;
     }
 
