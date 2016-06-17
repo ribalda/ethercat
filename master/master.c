@@ -3099,6 +3099,8 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
 
     slave_info->al_state = slave->current_state;
     slave_info->error_flag = slave->error_flag;
+    slave_info->scan_required = slave->scan_required;
+    slave_info->ready = ec_fsm_slave_is_ready(&slave->fsm);
     slave_info->sync_count = slave->sii_image->sii.sync_count;
     slave_info->sdo_count = ec_slave_sdo_count(slave);
     if (slave->sii_image->sii.name) {

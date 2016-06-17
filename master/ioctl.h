@@ -266,6 +266,7 @@ typedef struct {
     uint32_t transmission_delay;
     uint8_t al_state;
     uint8_t error_flag;
+    uint8_t scan_required;
     uint8_t ready;
     uint8_t sync_count;
     uint16_t sdo_count;

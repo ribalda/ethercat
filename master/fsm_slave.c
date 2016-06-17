@@ -44,6 +44,11 @@
 
 void ec_fsm_slave_state_idle(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_ready(ec_fsm_slave_t *, ec_datagram_t *);
+int ec_fsm_slave_action_scan(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_scan(ec_fsm_slave_t *, ec_datagram_t *);
+int ec_fsm_slave_action_config(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_acknowledge(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_config(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_dict(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_dict_request(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_config_sdo(ec_fsm_slave_t *, ec_datagram_t *);
@@ -92,6 +97,12 @@ void ec_fsm_slave_init(
 #ifdef EC_EOE
     ec_fsm_eoe_init(&fsm->fsm_eoe);
 #endif
+    ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
+    ec_fsm_change_init(&fsm->fsm_change);
+    ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->slave,
+            &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo);
+    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan, fsm->slave,
+            &fsm->fsm_slave_config, &fsm->fsm_pdo);
 }
 
 /*****************************************************************************/
@@ -141,6 +152,10 @@ void ec_fsm_slave_clear(
     }
 
     // clear sub-state machines
+    ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
+    ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
+    ec_fsm_change_clear(&fsm->fsm_change);
+    ec_fsm_pdo_clear(&fsm->fsm_pdo);
     ec_fsm_coe_clear(&fsm->fsm_coe);
     ec_fsm_foe_clear(&fsm->fsm_foe);
     ec_fsm_soe_clear(&fsm->fsm_soe);
@@ -168,6 +183,7 @@ int ec_fsm_slave_exec(
         fsm->state != ec_fsm_slave_state_ready;
 
     if (datagram_used) {
+        datagram->device_index = fsm->slave->device_index;
         fsm->datagram = datagram;
     } else {
         fsm->datagram = NULL;
@@ -188,6 +204,188 @@ void ec_fsm_slave_set_ready(
         EC_SLAVE_DBG(fsm->slave, 1, "Ready for requests.\n");
         fsm->state = ec_fsm_slave_state_ready;
     }
+}
+
+/*****************************************************************************/
+
+/** Check for pending scan.
+ *
+ * \return non-zero, if scan is started.
+ */
+int ec_fsm_slave_action_scan(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (!slave->scan_required) {
+        return 0;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Scanning slave %u on %s link.\n",
+            slave->ring_position, ec_device_names[slave->device_index != 0]);
+    fsm->state = ec_fsm_slave_state_scan;
+    ec_fsm_slave_scan_start(&fsm->fsm_slave_scan);
+    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, datagram); // execute immediately
+    return 1;
+}
+
+/*****************************************************************************/
+
+/** Slave state: SCAN.
+ */
+void ec_fsm_slave_state_scan(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, datagram)) {
+        return;
+    }
+
+    // Assume that the slaves mailbox data is valid even if the slave scanning skipped
+    // the clear mailbox state, e.g. if the slave refused to enter state INIT.
+    slave->valid_mbox_data = 1;
+
+#ifdef EC_EOE
+    if (slave->sii_image && (slave->sii_image->sii.mailbox_protocols & EC_MBOX_EOE)) {
+        // create EoE handler for this slave
+        ec_eoe_t *eoe;
+        if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+            EC_SLAVE_ERR(slave, "Failed to allocate EoE handler memory!\n");
+        } else if (ec_eoe_init(eoe, slave)) {
+            EC_SLAVE_ERR(slave, "Failed to init EoE handler!\n");
+            kfree(eoe);
+        } else {
+            list_add_tail(&eoe->list, &slave->master->eoe_handlers);
+        }
+    }
+#endif
+
+    // disable processing after scan, to wait for master FSM to be ready again
+    slave->scan_required = 0;
+    fsm->state = ec_fsm_slave_state_idle;
+}
+
+/*****************************************************************************/
+
+/** Check for pending configuration.
+ *
+ * \return non-zero, if configuration is started.
+ */
+int ec_fsm_slave_action_config(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (slave->error_flag) {
+        return 0;
+    }
+
+    // Check, if new slave state has to be acknowledged
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+        fsm->state = ec_fsm_slave_state_acknowledge;
+        ec_fsm_change_ack(&fsm->fsm_change, slave);
+        fsm->state(fsm, datagram); // execute immediately
+        return 1;
+    }
+
+    // Does the slave have to be configured?
+    if (slave->current_state != slave->requested_state
+                || slave->force_config) {
+
+        if (slave->master->debug_level) {
+            char old_state[EC_STATE_STRING_SIZE],
+                 new_state[EC_STATE_STRING_SIZE];
+            ec_state_string(slave->current_state, old_state, 0);
+            ec_state_string(slave->requested_state, new_state, 0);
+            EC_SLAVE_DBG(slave, 1, "Changing state from %s to %s%s.\n",
+                    old_state, new_state,
+                    slave->force_config ? " (forced)" : "");
+        }
+
+        ec_lock_down(&slave->master->config_sem);
+        ++slave->master->config_busy;
+        ec_lock_up(&slave->master->config_sem);
+
+        fsm->state = ec_fsm_slave_state_config;
+#ifdef EC_QUICK_OP
+        if (!slave->force_config
+                && slave->current_state == EC_SLAVE_STATE_SAFEOP
+                && slave->requested_state == EC_SLAVE_STATE_OP
+                && slave->last_al_error == 0x001B) {
+            // last error was a sync watchdog timeout; assume a comms
+            // interruption and request a quick transition back to OP
+            ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config);
+        } else
+#endif
+        {
+            ec_fsm_slave_config_start(&fsm->fsm_slave_config);
+        }
+        fsm->state(fsm, datagram); // execute immediately
+        return 1;
+    }
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Slave state: ACKNOWLEDGE.
+ */
+void ec_fsm_slave_state_acknowledge(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_change_exec(&fsm->fsm_change, datagram)) {
+        return;
+    }
+
+    if (!ec_fsm_change_success(&fsm->fsm_change)) {
+        slave->error_flag = 1;
+        EC_SLAVE_ERR(slave, "Failed to acknowledge state change.\n");
+    }
+
+    fsm->state = ec_fsm_slave_state_ready;
+}
+
+/*****************************************************************************/
+
+/** Slave state: CONFIG.
+ */
+void ec_fsm_slave_state_config(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+
+    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config, datagram)) {
+        return;
+    }
+
+    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config)) {
+        // TODO: mark slave_config as failed.
+    }
+
+    slave->force_config = 0;
+
+    ec_lock_down(&slave->master->config_sem);
+    if (slave->master->config_busy) {
+        if (--slave->master->config_busy == 0) {
+            wake_up_interruptible(&slave->master->config_queue);
+        }
+    }
+    ec_lock_up(&slave->master->config_sem);
+
+    fsm->state = ec_fsm_slave_state_ready;
 }
 
 /*****************************************************************************/
@@ -459,6 +657,16 @@ void ec_fsm_slave_state_ready(
         ec_datagram_t *datagram /**< Datagram to use. */
         )
 {
+    // Check for pending scan requests
+    if (ec_fsm_slave_action_scan(fsm, datagram)) {
+        return;
+    }
+
+    // Check for pending configuration requests
+    if (ec_fsm_slave_action_config(fsm, datagram)) {
+        return;
+    }
+
     // Check for pending internal SDO requests
     if (ec_fsm_slave_action_process_config_sdo(fsm, datagram)) {
         return;

@@ -59,8 +59,6 @@ void ec_fsm_master_state_read_al_status(ec_fsm_master_t *);
 void ec_fsm_master_state_read_dl_status(ec_fsm_master_t *);
 void ec_fsm_master_state_open_port(ec_fsm_master_t *);
 #endif
-void ec_fsm_master_state_acknowledge(ec_fsm_master_t *);
-void ec_fsm_master_state_configure_slave(ec_fsm_master_t *);
 void ec_fsm_master_state_dc_read_old_times(ec_fsm_master_t *);
 void ec_fsm_master_state_clear_addresses(ec_fsm_master_t *);
 #ifdef EC_LOOP_CONTROL
@@ -94,15 +92,7 @@ void ec_fsm_master_init(
     ec_fsm_master_reset(fsm);
 
     // init sub-state-machines
-    ec_fsm_coe_init(&fsm->fsm_coe);
-    ec_fsm_soe_init(&fsm->fsm_soe);
-    ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
-    ec_fsm_change_init(&fsm->fsm_change);
     ec_fsm_reboot_init(&fsm->fsm_reboot, fsm->datagram);
-    ec_fsm_slave_config_init(&fsm->fsm_slave_config,
-            &fsm->fsm_change, &fsm->fsm_coe, &fsm->fsm_soe, &fsm->fsm_pdo);
-    ec_fsm_slave_scan_init(&fsm->fsm_slave_scan,
-            &fsm->fsm_slave_config, &fsm->fsm_pdo);
     ec_fsm_sii_init(&fsm->fsm_sii);
 }
 
@@ -115,13 +105,7 @@ void ec_fsm_master_clear(
         )
 {
     // clear sub-state machines
-    ec_fsm_coe_clear(&fsm->fsm_coe);
-    ec_fsm_soe_clear(&fsm->fsm_soe);
-    ec_fsm_pdo_clear(&fsm->fsm_pdo);
-    ec_fsm_change_clear(&fsm->fsm_change);
     ec_fsm_reboot_clear(&fsm->fsm_reboot);
-    ec_fsm_slave_config_clear(&fsm->fsm_slave_config);
-    ec_fsm_slave_scan_clear(&fsm->fsm_slave_scan);
     ec_fsm_sii_clear(&fsm->fsm_sii);
 }
 
@@ -309,6 +293,10 @@ void ec_fsm_master_state_broadcast(
         ec_master_clear_slaves(master);
         ec_master_clear_sii_images(master);
 
+        ec_lock_down(&master->config_sem);
+        master->config_busy = 0;
+        ec_lock_up(&master->config_sem);
+
         for (dev_idx = EC_DEVICE_MAIN;
                 dev_idx < ec_master_num_devices(master); dev_idx++) {
             fsm->slave_states[dev_idx] = 0x00;
@@ -363,6 +351,10 @@ void ec_fsm_master_state_broadcast(
 #endif
             ec_master_clear_slaves(master);
             ec_master_clear_sii_images(master);
+
+            ec_lock_down(&master->config_sem);
+            master->config_busy = 0;
+            ec_lock_up(&master->config_sem);
 
             for (dev_idx = EC_DEVICE_MAIN;
                     dev_idx < ec_master_num_devices(master); dev_idx++) {
@@ -491,25 +483,10 @@ void ec_fsm_master_action_idle(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
-    ec_master_t *master = fsm->master;
-    ec_slave_t *slave;
-
-    // set slaves ready for requests.
-    for (slave = master->slaves;
-            slave < master->slaves + master->slave_count;
-            slave++) {
-        if (slave->sii_image
-                && !slave->error_flag
-                && slave->current_state != EC_SLAVE_STATE_INIT
-                ) {
-            ec_fsm_slave_set_ready(&slave->fsm);
-        }
-    }
-
     // check for pending SII write operations.
     if (ec_fsm_master_action_process_sii(fsm)) {
         return; // SII write request found
-	}
+    }
 
     ec_fsm_master_restart(fsm);
 }
@@ -696,7 +673,6 @@ void ec_fsm_master_action_configure(
         )
 {
     ec_master_t *master = fsm->master;
-    ec_slave_t *slave = fsm->slave;
 
     if (master->config_changed) {
         master->config_changed = 0;
@@ -713,50 +689,8 @@ void ec_fsm_master_action_configure(
         return;
     }
 
-    // Does the slave have to be configured?
-    if ((slave->current_state != slave->requested_state
-                || slave->force_config) && !slave->error_flag) {
-
-        if (!ec_fsm_slave_set_unready(&slave->fsm)) {
-            // slave FSM is still busy with something; retry later
-            ec_fsm_master_action_next_slave_state(fsm);
-            return;
-        }
-        
-        // Start slave configuration
-        ec_lock_down(&master->config_sem);
-        master->config_busy = 1;
-        ec_lock_up(&master->config_sem);
-
-        if (master->debug_level) {
-            char old_state[EC_STATE_STRING_SIZE],
-                 new_state[EC_STATE_STRING_SIZE];
-            ec_state_string(slave->current_state, old_state, 0);
-            ec_state_string(slave->requested_state, new_state, 0);
-            EC_SLAVE_DBG(slave, 1, "Changing state from %s to %s%s.\n",
-                    old_state, new_state,
-                    slave->force_config ? " (forced)" : "");
-        }
-
-        fsm->idle = 0;
-        fsm->state = ec_fsm_master_state_configure_slave;
-#ifdef EC_QUICK_OP
-        if (!slave->force_config
-                && slave->current_state == EC_SLAVE_STATE_SAFEOP
-                && slave->requested_state == EC_SLAVE_STATE_OP
-                && slave->last_al_error == 0x001B) {
-            // last error was a sync watchdog timeout; assume a comms
-            // interruption and request a quick transition back to OP
-            ec_fsm_slave_config_quick_start(&fsm->fsm_slave_config, slave);
-        } else
-#endif
-        {
-            ec_fsm_slave_config_start(&fsm->fsm_slave_config, slave);
-        }
-        fsm->state(fsm); // execute immediately
-        fsm->datagram->device_index = fsm->slave->device_index;
-        return;
-    }
+    // allow slave to start config (if not already done).
+    ec_fsm_slave_set_ready(&fsm->slave->fsm);
 
 #ifdef EC_LOOP_CONTROL
     // read DL status
@@ -816,16 +750,7 @@ void ec_fsm_master_state_read_al_status(
     }
 
     if (!slave->error_flag) {
-        // Check, if new slave state has to be acknowledged
-        if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
-            fsm->idle = 0;
-            fsm->state = ec_fsm_master_state_acknowledge;
-            ec_fsm_change_ack(&fsm->fsm_change, slave);
-            fsm->state(fsm); // execute immediately
-            return;
-        }
-
-        // No acknowlegde necessary; check for configuration
+        // Check for configuration
         ec_fsm_master_action_configure(fsm);
         return;
     }
@@ -862,28 +787,6 @@ void ec_fsm_master_state_reboot_slave(
     }
 
     ec_fsm_master_restart(fsm);
-}
-
-/*****************************************************************************/
-
-/** Master state: ACKNOWLEDGE.
- */
-void ec_fsm_master_state_acknowledge(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-
-    if (ec_fsm_change_exec(&fsm->fsm_change, fsm->datagram)) {
-        return;
-    }
-
-    if (!ec_fsm_change_success(&fsm->fsm_change)) {
-        fsm->slave->error_flag = 1;
-        EC_SLAVE_ERR(slave, "Failed to acknowledge state change.\n");
-    }
-
-    ec_fsm_master_action_configure(fsm);
 }
 
 /*****************************************************************************/
@@ -1090,6 +993,7 @@ void ec_fsm_master_state_dc_measure_delays(
 {
     ec_master_t *master = fsm->master;
     ec_datagram_t *datagram = fsm->datagram;
+    ec_slave_t *slave;
 
     if (datagram->state == EC_DATAGRAM_TIMED_OUT && fsm->retries--) {
         return;
@@ -1120,64 +1024,38 @@ void ec_fsm_master_state_dc_measure_delays(
 
     EC_MASTER_INFO(master, "Scanning bus.\n");
 
-    // begin scanning of slaves
-    fsm->slave = master->slaves;
-    EC_MASTER_DBG(master, 1, "Scanning slave %u on %s link.\n",
-            fsm->slave->ring_position,
-            ec_device_names[fsm->slave->device_index != 0]);
+    // set slaves ready for requests (begins scan).
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+        ec_fsm_slave_set_ready(&slave->fsm);
+    }
+
     fsm->state = ec_fsm_master_state_scan_slave;
-    ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
-    ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram); // execute immediately
-    fsm->datagram->device_index = fsm->slave->device_index;
+    fsm->datagram->state = EC_DATAGRAM_INVALID; // nothing to send
+    fsm->state(fsm);    // execute immediately
 }
 
 /*****************************************************************************/
 
 /** Master state: SCAN SLAVE.
  *
- * Executes the sub-statemachine for the scanning of a slave.
+ * Waits until slave scanning is completed.
  */
 void ec_fsm_master_state_scan_slave(
         ec_fsm_master_t *fsm /**< Master state machine. */
         )
 {
     ec_master_t *master = fsm->master;
-#ifdef EC_EOE
-    ec_slave_t *slave = fsm->slave;
-#endif
+    ec_slave_t *slave;
 
-    if (ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram)) {
-        return;
-    }
-    // Assume that the slaves mailbox data is valid even if the slave scanning skipped
-    // the clear mailbox state, e.g. if the slave refused to enter state INIT.
-    fsm->slave->valid_mbox_data = 1;
-
-#ifdef EC_EOE
-    if (slave->sii_image && (slave->sii_image->sii.mailbox_protocols & EC_MBOX_EOE)) {
-        // create EoE handler for this slave
-        ec_eoe_t *eoe;
-        if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
-            EC_SLAVE_ERR(slave, "Failed to allocate EoE handler memory!\n");
-        } else if (ec_eoe_init(eoe, slave)) {
-            EC_SLAVE_ERR(slave, "Failed to init EoE handler!\n");
-            kfree(eoe);
-        } else {
-            list_add_tail(&eoe->list, &master->eoe_handlers);
+    for (slave = master->slaves;
+            slave < master->slaves + master->slave_count;
+            slave++) {
+        if (slave->scan_required && !slave->error_flag) {
+            // still in progress
+            return;
         }
-    }
-#endif
-
-    // another slave to fetch?
-    fsm->slave++;
-    if (fsm->slave < master->slaves + master->slave_count) {
-        EC_MASTER_DBG(master, 1, "Scanning slave %u on %s link.\n",
-                fsm->slave->ring_position,
-                ec_device_names[fsm->slave->device_index != 0]);
-        ec_fsm_slave_scan_start(&fsm->fsm_slave_scan, fsm->slave);
-        ec_fsm_slave_scan_exec(&fsm->fsm_slave_scan, fsm->datagram); // execute immediately
-        fsm->datagram->device_index = fsm->slave->device_index;
-        return;
     }
 
     EC_MASTER_INFO(master, "Bus scanning completed in %lu ms.\n",
@@ -1208,43 +1086,6 @@ void ec_fsm_master_state_scan_slave(
     } else {
         ec_fsm_master_restart(fsm);
     }
-}
-
-/*****************************************************************************/
-
-/** Master state: CONFIGURE SLAVE.
- *
- * Starts configuring a slave.
- */
-void ec_fsm_master_state_configure_slave(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_master_t *master = fsm->master;
-
-    if (ec_fsm_slave_config_exec(&fsm->fsm_slave_config, fsm->datagram)) {
-        return;
-    }
-
-    fsm->slave->force_config = 0;
-
-    // configuration finished
-    master->config_busy = 0;
-    wake_up_interruptible(&master->config_queue);
-
-    if (!ec_fsm_slave_config_success(&fsm->fsm_slave_config)) {
-        // TODO: mark slave_config as failed.
-    }
-
-    fsm->idle = 1;
-
-#ifdef EC_LOOP_CONTROL
-    // read DL status
-    ec_fsm_master_action_read_dl_status(fsm);
-#else
-    // process next slave
-    ec_fsm_master_action_next_slave_state(fsm);
-#endif
 }
 
 /*****************************************************************************/

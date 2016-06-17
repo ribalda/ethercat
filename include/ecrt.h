@@ -397,6 +397,7 @@ typedef struct {
     uint8_t upstream_port; /**< Index of upstream (master facing) port */
     uint8_t al_state; /**< Current state of the slave. */
     uint8_t error_flag; /**< Error flag for that slave. */
+    uint8_t scan_required; /**< The slave is being scanned. */
     uint8_t ready; /**< The slave is ready for external requests. */
     uint8_t sync_count; /**< Number of sync managers. */
     uint16_t sdo_count; /**< Number of SDOs. */

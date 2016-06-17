@@ -293,6 +293,7 @@ int ecrt_master_get_slave(ec_master_t *master, uint16_t slave_position,
     slave_info->upstream_port = data.upstream_port;
     slave_info->al_state = data.al_state;
     slave_info->error_flag = data.error_flag;
+    slave_info->scan_required = data.scan_required;
     slave_info->ready = data.ready;
     slave_info->sync_count = data.sync_count;
     slave_info->sdo_count = data.sdo_count;

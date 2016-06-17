@@ -49,6 +49,8 @@
 #ifdef EC_EOE
 #include "fsm_eoe.h"
 #endif
+#include "fsm_slave_config.h"
+#include "fsm_slave_scan.h"
 
 /*****************************************************************************/
 
@@ -79,6 +81,10 @@ struct ec_fsm_slave {
 #ifdef EC_EOE
     ec_fsm_eoe_t fsm_eoe; /**< EoE state machine. */
 #endif
+    ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
+    ec_fsm_change_t fsm_change; /**< State change state machine */
+    ec_fsm_slave_scan_t fsm_slave_scan; /**< slave scan state machine */
+    ec_fsm_slave_config_t fsm_slave_config; /**< slave config state machine. */
 };
 
 /*****************************************************************************/

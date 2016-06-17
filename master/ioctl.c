@@ -312,6 +312,7 @@ static ATTRIBUTES int ec_ioctl_slave(
     data.transmission_delay = slave->transmission_delay;
     data.al_state = slave->current_state;
     data.error_flag = slave->error_flag;
+    data.scan_required = slave->scan_required;
     data.sdo_count = ec_slave_sdo_count(slave);
     data.ready = ec_fsm_slave_is_ready(&slave->fsm);
 
