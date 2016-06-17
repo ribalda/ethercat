@@ -88,7 +88,6 @@ struct ec_fsm_master {
     ec_slave_t *slave; /**< current slave */
     ec_sii_write_request_t *sii_request; /**< SII write request */
     off_t sii_index; /**< index to SII write request data */
-    ec_sdo_request_t *sdo_request; /**< SDO request to process. */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine */
     ec_fsm_soe_t fsm_soe; /**< SoE state machine */
