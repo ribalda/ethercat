@@ -121,6 +121,7 @@ void ec_fsm_slave_config_reconfigure(ec_fsm_slave_config_t *, ec_datagram_t *);
  */
 void ec_fsm_slave_config_init(
         ec_fsm_slave_config_t *fsm, /**< slave state machine */
+        ec_slave_t *slave, /**< slave to configure */
         ec_fsm_change_t *fsm_change, /**< State change state machine to use. */
         ec_fsm_coe_t *fsm_coe, /**< CoE state machine to use. */
         ec_fsm_soe_t *fsm_soe, /**< SoE state machine to use. */
@@ -130,6 +131,7 @@ void ec_fsm_slave_config_init(
     ec_sdo_request_init(&fsm->request_copy);
     ec_soe_request_init(&fsm->soe_request_copy);
 
+    fsm->slave = slave;
     fsm->datagram = NULL;
     fsm->fsm_change = fsm_change;
     fsm->fsm_coe = fsm_coe;
@@ -154,11 +156,9 @@ void ec_fsm_slave_config_clear(
 /** Start slave configuration state machine.
  */
 void ec_fsm_slave_config_start(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        ec_slave_t *slave /**< slave to configure */
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    fsm->slave = slave;
     fsm->state = ec_fsm_slave_config_state_start;
 }
 
@@ -167,11 +167,9 @@ void ec_fsm_slave_config_start(
 /** Start slave configuration state machine for "quick" SAFEOP->OP
  */
 void ec_fsm_slave_config_quick_start(
-        ec_fsm_slave_config_t *fsm, /**< slave state machine */
-        ec_slave_t *slave /**< slave to configure */
+        ec_fsm_slave_config_t *fsm /**< slave state machine */
         )
 {
-    fsm->slave = slave;
     fsm->state = ec_fsm_slave_config_state_quick_start;
 }
 
@@ -1439,6 +1437,7 @@ void ec_fsm_slave_config_state_dc_cycle(
 
     EC_SLAVE_DBG(slave, 1, "Checking for synchrony.\n");
 
+    fsm->last_diff_ms = 0;
     fsm->jiffies_start = jiffies;
     ec_datagram_fprd(datagram, slave->station_address, 0x092c, 4);
     ec_datagram_zero(datagram);
@@ -1500,9 +1499,9 @@ void ec_fsm_slave_config_state_dc_sync_check(
             EC_SLAVE_WARN(slave, "Slave did not sync after %lu ms.\n",
                     diff_ms);
         } else {
-            static unsigned long last_diff_ms = 0;
-            if ((diff_ms < last_diff_ms) || (diff_ms >= (last_diff_ms + 100))) {
-                last_diff_ms = diff_ms;
+            if ((diff_ms < fsm->last_diff_ms)
+                    || (diff_ms >= (fsm->last_diff_ms + 100))) {
+                fsm->last_diff_ms = diff_ms;
                 EC_SLAVE_DBG(slave, 1, "Sync after %4lu ms: %10d ns\n",
                         diff_ms, negative ? -abs_sync_diff: abs_sync_diff);
             }

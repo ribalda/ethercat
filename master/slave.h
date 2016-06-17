@@ -267,6 +267,7 @@ struct ec_slave
     ec_sii_image_t *sii_image;  /**< Current complete SII image. */
 
     struct list_head sdo_dictionary; /**< SDO dictionary list */
+    uint8_t scan_required; /**< Scan required. */
     uint8_t sdo_dictionary_fetched; /**< Dictionary has been fetched. */
     unsigned long jiffies_preop; /**< Time, the slave went to PREOP. */
 
