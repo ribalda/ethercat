@@ -72,8 +72,6 @@ void ec_fsm_master_state_dc_read_offset(ec_fsm_master_t *);
 void ec_fsm_master_state_dc_write_offset(ec_fsm_master_t *);
 void ec_fsm_master_state_dc_reset_filter(ec_fsm_master_t *);
 void ec_fsm_master_state_write_sii(ec_fsm_master_t *);
-void ec_fsm_master_state_sdo_dictionary(ec_fsm_master_t *);
-void ec_fsm_master_state_sdo_request(ec_fsm_master_t *);
 void ec_fsm_master_state_reboot_slave(ec_fsm_master_t *);
 
 void ec_fsm_master_enter_dc_read_old_times(ec_fsm_master_t *);
@@ -485,65 +483,6 @@ int ec_fsm_master_action_process_sii(
 
 /*****************************************************************************/
 
-/** Check for pending SDO requests and process one.
- *
- * \return non-zero, if an SDO request is processed.
- */
-int ec_fsm_master_action_process_sdo(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_master_t *master = fsm->master;
-    ec_slave_t *slave;
-    ec_sdo_request_t *req;
-
-    // search for internal requests to be processed
-    for (slave = master->slaves;
-            slave < master->slaves + master->slave_count;
-            slave++) {
-
-        if (!slave->config) {
-            continue;
-        }
-
-        if (!ec_fsm_slave_is_ready(&slave->fsm)) {
-            EC_SLAVE_DBG(slave, 2, "Busy - processing external request!\n");
-            continue;
-        }
-
-        list_for_each_entry(req, &slave->config->sdo_requests, list) {
-            if (req->state == EC_INT_REQUEST_QUEUED) {
-
-                if (ec_sdo_request_timed_out(req)) {
-                    req->state = EC_INT_REQUEST_FAILURE;
-                    EC_SLAVE_DBG(slave, 1, "Internal SDO request"
-                            " timed out.\n");
-                    continue;
-                }
-
-                if (slave->current_state == EC_SLAVE_STATE_INIT) {
-                    req->state = EC_INT_REQUEST_FAILURE;
-                    continue;
-                }
-
-                req->state = EC_INT_REQUEST_BUSY;
-                EC_SLAVE_DBG(slave, 1, "Processing internal"
-                        " SDO request...\n");
-                fsm->idle = 0;
-                fsm->sdo_request = req;
-                fsm->slave = slave;
-                fsm->state = ec_fsm_master_state_sdo_request;
-                ec_fsm_coe_transfer(&fsm->fsm_coe, slave, req);
-                ec_fsm_coe_exec(&fsm->fsm_coe, fsm->datagram);
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
-
-/*****************************************************************************/
-
 /** Master action: IDLE.
  *
  * Does secondary work.
@@ -555,49 +494,16 @@ void ec_fsm_master_action_idle(
     ec_master_t *master = fsm->master;
     ec_slave_t *slave;
 
-    // Check for pending internal SDO requests
-    if (ec_fsm_master_action_process_sdo(fsm)) {
-        return;
-    }
-
-    // check, if slaves have an SDO dictionary to read out.
+    // set slaves ready for requests.
     for (slave = master->slaves;
             slave < master->slaves + master->slave_count;
             slave++) {
-#if !EC_SKIP_SDO_DICT
-        if (slave->sii_image && (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
-                || (slave->sii_image->sii.has_general
-                    && !slave->sii_image->sii.coe_details.enable_sdo_info)
-                || slave->sdo_dictionary_fetched
-                || slave->current_state == EC_SLAVE_STATE_INIT
-                || slave->current_state == EC_SLAVE_STATE_UNKNOWN
-                || jiffies - slave->jiffies_preop < EC_WAIT_SDO_DICT * HZ
-                )) {
-            if (!(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE)
-                    || (slave->sii_image->sii.has_general
-                        && !slave->sii_image->sii.coe_details.enable_sdo_info)
-                    ){
-#endif
-                // SDO info not supported. Enable processing of requests
-                ec_fsm_slave_set_ready(&slave->fsm);
-#if !EC_SKIP_SDO_DICT
-            }
-            continue;
+        if (slave->sii_image
+                && !slave->error_flag
+                && slave->current_state != EC_SLAVE_STATE_INIT
+                ) {
+            ec_fsm_slave_set_ready(&slave->fsm);
         }
-
-        EC_SLAVE_DBG(slave, 1, "Fetching SDO dictionary.\n");
-
-        slave->sdo_dictionary_fetched = 1;
-
-        // start fetching SDO dictionary
-        fsm->idle = 0;
-        fsm->slave = slave;
-        fsm->state = ec_fsm_master_state_sdo_dictionary;
-        ec_fsm_coe_dictionary(&fsm->fsm_coe, slave);
-        ec_fsm_coe_exec(&fsm->fsm_coe, fsm->datagram); // execute immediately
-        fsm->datagram->device_index = fsm->slave->device_index;
-        return;
-#endif
     }
 
     // check for pending SII write operations.
@@ -811,6 +717,12 @@ void ec_fsm_master_action_configure(
     if ((slave->current_state != slave->requested_state
                 || slave->force_config) && !slave->error_flag) {
 
+        if (!ec_fsm_slave_set_unready(&slave->fsm)) {
+            // slave FSM is still busy with something; retry later
+            ec_fsm_master_action_next_slave_state(fsm);
+            return;
+        }
+        
         // Start slave configuration
         ec_lock_down(&master->config_sem);
         master->config_busy = 1;
@@ -1667,87 +1579,6 @@ void ec_fsm_master_state_write_sii(
     // check for another SII write request
     if (ec_fsm_master_action_process_sii(fsm))
         return; // processing another request
-
-    ec_fsm_master_restart(fsm);
-}
-
-/*****************************************************************************/
-
-/** Master state: SDO DICTIONARY.
- */
-void ec_fsm_master_state_sdo_dictionary(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_slave_t *slave = fsm->slave;
-    ec_master_t *master = fsm->master;
-
-    if (ec_fsm_coe_exec(&fsm->fsm_coe, fsm->datagram)) {
-        return;
-    }
-
-    if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        ec_fsm_master_restart(fsm);
-        return;
-    }
-
-    // SDO dictionary fetching finished
-
-    if (master->debug_level) {
-        unsigned int sdo_count, entry_count;
-        ec_slave_sdo_dict_info(slave, &sdo_count, &entry_count);
-        EC_SLAVE_DBG(slave, 1, "Fetched %u SDOs and %u entries.\n",
-               sdo_count, entry_count);
-    }
-
-    // enable processing of requests
-    ec_fsm_slave_set_ready(&slave->fsm);
-
-    // attach pdo names from dictionary
-    ec_slave_attach_pdo_names(slave);
-
-    ec_fsm_master_restart(fsm);
-}
-
-/*****************************************************************************/
-
-/** Master state: SDO REQUEST.
- */
-void ec_fsm_master_state_sdo_request(
-        ec_fsm_master_t *fsm /**< Master state machine. */
-        )
-{
-    ec_sdo_request_t *request = fsm->sdo_request;
-
-    if (!request) {
-        // configuration was cleared in the meantime
-        ec_fsm_master_restart(fsm);
-        return;
-    }
-
-    if (ec_fsm_coe_exec(&fsm->fsm_coe, fsm->datagram)) {
-        return;
-    }
-
-    if (!ec_fsm_coe_success(&fsm->fsm_coe)) {
-        EC_SLAVE_DBG(fsm->slave, 1,
-                "Failed to process internal SDO request.\n");
-        request->state = EC_INT_REQUEST_FAILURE;
-        wake_up_all(&fsm->master->request_queue);
-        ec_fsm_master_restart(fsm);
-        return;
-    }
-
-    // SDO request finished
-    request->state = EC_INT_REQUEST_SUCCESS;
-    wake_up_all(&fsm->master->request_queue);
-
-    EC_SLAVE_DBG(fsm->slave, 1, "Finished internal SDO request.\n");
-
-    // check for another SDO request
-    if (ec_fsm_master_action_process_sdo(fsm)) {
-        return; // processing another request
-    }
 
     ec_fsm_master_restart(fsm);
 }
