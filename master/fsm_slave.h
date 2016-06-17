@@ -59,6 +59,7 @@ typedef struct ec_fsm_slave ec_fsm_slave_t; /**< \see ec_fsm_slave */
 struct ec_fsm_slave {
     ec_slave_t *slave; /**< slave the FSM runs on */
     struct list_head list; /**< Used for execution list. */
+    ec_dict_request_t int_dict_request; /**< Internal dictionary request. */
 
     void (*state)(ec_fsm_slave_t *, ec_datagram_t *); /**< State function. */
     ec_datagram_t *datagram; /**< Previous state datagram. */
@@ -87,6 +88,7 @@ void ec_fsm_slave_clear(ec_fsm_slave_t *);
 
 int ec_fsm_slave_exec(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_set_ready(ec_fsm_slave_t *);
+int ec_fsm_slave_set_unready(ec_fsm_slave_t *);
 int ec_fsm_slave_is_ready(const ec_fsm_slave_t *);
 
 /*****************************************************************************/

@@ -476,7 +476,6 @@ void ec_master_clear_slave_configs(ec_master_t *master)
     ec_slave_config_t *sc, *next;
 
     master->dc_ref_config = NULL;
-    master->fsm.sdo_request = NULL; // mark sdo_request as invalid
 
     list_for_each_entry_safe(sc, next, &master->configs, list) {
         list_del(&sc->list);

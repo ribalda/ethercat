@@ -58,10 +58,6 @@
 /** Number of state machine retries on datagram timeout. */
 #define EC_FSM_RETRIES 3
 
-/** Seconds to wait before fetching SDO dictionary
-    after slave entered PREOP state. */
-#define EC_WAIT_SDO_DICT 3
-
 /** If set, skip fetching SDO dictionary during slave scan. */
 #define EC_SKIP_SDO_DICT 1
 
