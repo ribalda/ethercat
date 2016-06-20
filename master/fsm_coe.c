@@ -239,15 +239,6 @@ int ec_fsm_coe_exec(
 {
     if (fsm->state == ec_fsm_coe_end || fsm->state == ec_fsm_coe_error)
         return 0;
-    if (fsm->datagram &&
-            (fsm->datagram->state == EC_DATAGRAM_INIT ||
-             fsm->datagram->state == EC_DATAGRAM_QUEUED ||
-             fsm->datagram->state == EC_DATAGRAM_SENT)) {
-        // datagram not received yet
-        if (datagram != fsm->datagram)
-            datagram->state = EC_DATAGRAM_INVALID;
-        return 1;
-    }
 
     fsm->state(fsm, datagram);
 
