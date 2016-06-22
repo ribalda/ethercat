@@ -1653,8 +1653,9 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
         return;
     }
 
-    if (list_empty(&master->eoe_handlers))
+    if (list_empty(&master->eoe_handlers)) {
         return;
+    }
 
     if (!master->send_cb || !master->receive_cb) {
         EC_MASTER_WARN(master, "No EoE processing"
@@ -1714,8 +1715,9 @@ static int ec_master_eoe_thread(void *priv_data)
                 break;
             }
         }
-        if (none_open)
+        if (none_open) {
             goto schedule;
+        }
 
         // receive datagrams
         master->receive_cb(master->cb_data);
