@@ -74,8 +74,9 @@ uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *slave, /**< slave */
     ret = ec_datagram_fpwr(datagram, slave->station_address,
             slave->configured_rx_mailbox_offset,
             slave->configured_rx_mailbox_size);
-    if (ret)
+    if (ret) {
         return ERR_PTR(ret);
+    }
 
     EC_WRITE_U16(datagram->data,     size); // mailbox service data length
     EC_WRITE_U16(datagram->data + 2, slave->station_address); // station addr.
