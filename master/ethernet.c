@@ -109,8 +109,9 @@ ec_eoedev_set_mac(struct net_device *netdev, void *p)
 {
    struct sockaddr *addr = p;
 
-   if (!is_valid_ether_addr(addr->sa_data))
+   if (!is_valid_ether_addr(addr->sa_data)) {
       return -EADDRNOTAVAIL;
+   }
 
    memcpy(netdev->dev_addr, addr->sa_data, netdev->addr_len);
 
@@ -390,8 +391,9 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
 
     data = ec_slave_mbox_prepare_send(eoe->slave, &eoe->datagram,
             EC_MBOX_TYPE_EOE, current_size + 4);
-    if (IS_ERR(data))
+    if (IS_ERR(data)) {
         return PTR_ERR(data);
+    }
 
     EC_WRITE_U8 (data, EC_EOE_FRAMETYPE_INIT_REQ); // Initiate EoE Request
     EC_WRITE_U8 (data + 1, last_fragment);
@@ -413,12 +415,14 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
  */
 void ec_eoe_run(ec_eoe_t *eoe /**< EoE handler */)
 {
-    if (!eoe->opened)
+    if (!eoe->opened) {
         return;
+    }
 
     // if the datagram was not sent, or is not yet received, skip this cycle
-    if (eoe->queue_datagram || eoe->datagram.state == EC_DATAGRAM_SENT)
+    if (eoe->queue_datagram || eoe->datagram.state == EC_DATAGRAM_SENT) {
         return;
+    }
 
     // call state function
     eoe->state(eoe);
@@ -932,8 +936,9 @@ int ec_eoedev_tx(struct sk_buff *skb, /**< transmit socket buffer */
     EC_SLAVE_DBG(eoe->slave, 0, "EoE %s TX queued frame"
             " with %u octets (%u frames queued).\n",
             eoe->dev->name, skb->len, eoe->tx_queued_frames);
-    if (!eoe->tx_queue_active)
+    if (!eoe->tx_queue_active) {
         EC_SLAVE_WARN(eoe->slave, "EoE TX queue is now full.\n");
+    }
 #endif
 
     return 0;
