@@ -5201,7 +5201,7 @@ link_up:
 	 * if there is queued Tx work it cannot be done.  So
 	 * reset the controller to flush the Tx packet buffers.
 	 */
-	if (!netif_carrier_ok(netdev) &&
+	if (!adapter->ecdev && !netif_carrier_ok(netdev) &&
 	    (e1000_desc_unused(tx_ring) + 1 < tx_ring->count))
 		adapter->flags |= FLAG_RESTART_NOW;
 
