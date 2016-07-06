@@ -5074,15 +5074,11 @@ static void e1000_watchdog_task(struct work_struct *work)
 							round_jiffies(jiffies + 2 * HZ));
 			}
 
-			/* The link is lost so the controller stops DMA.
-			 * If there is queued Tx work that cannot be done
-			 * or if on an 8000ES2LAN which requires a Rx packet
-			 * buffer work-around on link down event, reset the
-			 * controller to flush the Tx/Rx packet buffers.
-			 * (Do the reset outside of interrupt context).
+			/* 8000ES2LAN requires a Rx packet buffer work-around
+			 * on link down event; reset the controller to flush
+			 * the Rx packet buffer.
 			 */
-			if ((adapter->flags & FLAG_RX_NEEDS_RESTART) ||
-			    (e1000_desc_unused(tx_ring) + 1 < tx_ring->count))
+			if (adapter->flags & FLAG_RX_NEEDS_RESTART)
 				adapter->flags |= FLAG_RESTART_NOW;
 			else
 				pm_schedule_suspend(netdev->dev.parent,
@@ -5104,6 +5100,14 @@ link_up:
 	adapter->gotc = adapter->stats.gotc - adapter->gotc_old;
 	adapter->gotc_old = adapter->stats.gotc;
 	spin_unlock(&adapter->stats64_lock);
+
+	/* If the link is lost the controller stops DMA, but
+	 * if there is queued Tx work it cannot be done.  So
+	 * reset the controller to flush the Tx packet buffers.
+	 */
+	if (!adapter->ecdev && !netif_carrier_ok(netdev) &&
+	    (e1000_desc_unused(tx_ring) + 1 < tx_ring->count))
+		adapter->flags |= FLAG_RESTART_NOW;
 
 	if (adapter->flags & FLAG_RESTART_NOW) {
 		schedule_work(&adapter->reset_task);
