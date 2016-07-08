@@ -55,6 +55,7 @@ typedef enum {
     FOE_MBOX_FETCH_ERROR   = 13, /**< Error fetching data from mailbox. */
     FOE_READ_NODATA_ERROR  = 14, /**< No data while reading. */
     FOE_MBOX_PROT_ERROR    = 15, /**< Mailbox protocol error. */
+    FOE_READ_OVER_ERROR    = 16, /**< Read buffer overflow. */
 } ec_foe_error_t;
 
 /*****************************************************************************/

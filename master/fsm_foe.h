@@ -57,26 +57,13 @@ struct ec_fsm_foe {
     void (*state)(ec_fsm_foe_t *, ec_datagram_t *); /**< FoE state function. */
     ec_datagram_t *datagram; /**< Datagram used in previous step. */
     unsigned long jiffies_start; /**< FoE timestamp. */
-    uint8_t subindex; /**< Current subindex. */
     ec_foe_request_t *request; /**< FoE request. */
-    uint8_t toggle; /**< Toggle bit for segment commands. */
 
-    uint8_t *tx_buffer; /**< Buffer with data to transmit. */
-    uint32_t tx_buffer_size; /**< Size of data to transmit. */
-    uint32_t tx_buffer_offset; /**< Offset of data to tranmit next. */
-    uint32_t tx_last_packet; /**< Current packet is last one to send. */
-    uint32_t tx_packet_no; /**< FoE packet number. */
-    uint32_t tx_current_size; /**< Size of current packet to send. */
-    uint8_t *tx_filename; /**< Name of file to transmit. */
-    uint32_t tx_filename_len; /**< Lenth of transmit file name. */
-
-    uint8_t *rx_buffer; /**< Buffer for received data. */
-    uint32_t rx_buffer_size; /**< Size of receive buffer. */
-    uint32_t rx_buffer_offset; /**< Offset in receive buffer. */
-    uint32_t rx_expected_packet_no; /**< Expected receive packet number. */
-    uint32_t rx_last_packet; /**< Current packet is the last to receive. */
-    uint8_t *rx_filename; /**< Name of the file to receive. */
-    uint32_t rx_filename_len; /**< Length of the receive file name. */
+    uint32_t buffer_size; /**< Size of transmit/receive buffer. */
+    uint32_t buffer_offset; /**< Offset of data to transmit/receive next. */
+    uint32_t last_packet; /**< Current packet is last one to send/receive. */
+    uint32_t packet_no; /**< FoE packet number. */
+    uint32_t current_size; /**< Size of current packet to send. */
 };
 
 /*****************************************************************************/
