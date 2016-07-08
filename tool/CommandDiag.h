@@ -68,8 +68,8 @@ class CommandDiag:
     private:
         void CheckallSlaves(MasterDevice &, const SlaveList &, bool);
         static bool slaveInList(const ec_ioctl_slave_t &, const SlaveList &);
-        uint32_t EscRegRead(MasterDevice &, uint16_t, uint16_t, size_t);
-        void EscRegWrite(MasterDevice &, uint16_t, uint16_t, size_t, uint32_t data);
+        void EscRegRead(MasterDevice &, uint16_t, uint16_t, uint8_t*, size_t);
+        void EscRegReadWrite(MasterDevice &, uint16_t, uint16_t, uint8_t*, size_t);
 };
 
 /****************************************************************************/
