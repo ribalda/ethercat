@@ -177,23 +177,12 @@ void ec_fsm_foe_transfer(
     fsm->slave = slave;
     fsm->request = request;
 
+    fsm->buffer_offset = 0;
     if (request->dir == EC_DIR_OUTPUT) {
-        fsm->tx_buffer = fsm->request->buffer;
-        fsm->tx_buffer_size = fsm->request->data_size;
-        fsm->tx_buffer_offset = 0;
-
-        fsm->tx_filename = fsm->request->file_name;
-        fsm->tx_filename_len = strlen(fsm->tx_filename);
-
+        fsm->buffer_size = fsm->request->data_size;
         fsm->state = ec_fsm_foe_write_start;
-    }
-    else {
-        fsm->rx_buffer = fsm->request->buffer;
-        fsm->rx_buffer_size = fsm->request->buffer_size;
-
-        fsm->rx_filename = fsm->request->file_name;
-        fsm->rx_filename_len = strlen(fsm->rx_filename);
-
+    } else {
+        fsm->buffer_size = fsm->request->buffer_size;
         fsm->state = ec_fsm_foe_read_start;
     }
 }
@@ -240,15 +229,13 @@ int ec_foe_prepare_data_send(
     size_t remaining_size, current_size;
     uint8_t *data;
 
-    remaining_size = fsm->tx_buffer_size - fsm->tx_buffer_offset;
-
-    if (remaining_size < fsm->slave->configured_tx_mailbox_size
-            - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE) {
-        current_size = remaining_size;
-        fsm->tx_last_packet = 1;
-    } else {
-        current_size = fsm->slave->configured_tx_mailbox_size
+    remaining_size = fsm->buffer_size - fsm->buffer_offset;
+    current_size = fsm->slave->configured_tx_mailbox_size
             - EC_MBOX_HEADER_SIZE - EC_FOE_HEADER_SIZE;
+
+    if (remaining_size < current_size) {
+        current_size = remaining_size;
+        fsm->last_packet = 1;
     }
 
     data = ec_slave_mbox_prepare_send(fsm->slave,
@@ -258,15 +245,15 @@ int ec_foe_prepare_data_send(
     }
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_DATA);    // OpCode = DataBlock req.
-    EC_WRITE_U32(data + 2, fsm->tx_packet_no); // PacketNo, Password
+    EC_WRITE_U32(data + 2, fsm->packet_no);    // PacketNo, Password
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u packet %u\n",
-            EC_FOE_OPCODE_DATA, fsm->tx_packet_no);
+            EC_FOE_OPCODE_DATA, fsm->packet_no);
 #endif
 
     memcpy(data + EC_FOE_HEADER_SIZE,
-            fsm->tx_buffer + fsm->tx_buffer_offset, current_size);
-    fsm->tx_current_size = current_size;
+            fsm->request->buffer + fsm->buffer_offset, current_size);
+    fsm->current_size = current_size;
 
     return 0;
 }
@@ -285,12 +272,7 @@ int ec_foe_prepare_wrq_send(
     size_t current_size;
     uint8_t *data;
 
-    fsm->tx_buffer_offset = 0;
-    fsm->tx_current_size = 0;
-    fsm->tx_packet_no = 0;
-    fsm->tx_last_packet = 0;
-
-    current_size = fsm->tx_filename_len;
+    current_size = strlen(fsm->request->file_name);
 
     data = ec_slave_mbox_prepare_send(fsm->slave, datagram,
             EC_MBOX_TYPE_FOE, current_size + EC_FOE_HEADER_SIZE);
@@ -298,14 +280,14 @@ int ec_foe_prepare_wrq_send(
         return -1;
     }
 
-    EC_WRITE_U16( data, EC_FOE_OPCODE_WRQ); // fsm write request
-    EC_WRITE_U32( data + 2, fsm->tx_packet_no );
+    EC_WRITE_U16(data, EC_FOE_OPCODE_WRQ); // fsm write request
+    EC_WRITE_U32(data + 2, 0); // password
 #ifdef DEBUG_FOE
-    EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u packet %u\n",
-            EC_FOE_OPCODE_WRQ, fsm->tx_packet_no);
+    EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u\n",
+            EC_FOE_OPCODE_WRQ);
 #endif
 
-    memcpy(data + EC_FOE_HEADER_SIZE, fsm->tx_filename, current_size);
+    memcpy(data + EC_FOE_HEADER_SIZE, fsm->request->file_name, current_size);
 
     return 0;
 }
@@ -321,10 +303,10 @@ void ec_fsm_foe_write_start(
 {
     ec_slave_t *slave = fsm->slave;
 
-    fsm->tx_buffer_offset = 0;
-    fsm->tx_current_size = 0;
-    fsm->tx_packet_no = 0;
-    fsm->tx_last_packet = 0;
+    fsm->buffer_offset = 0;
+    fsm->current_size = 0;
+    fsm->packet_no = 0;
+    fsm->last_packet = 0;
 
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
@@ -525,10 +507,10 @@ void ec_fsm_foe_state_ack_read_data(
     }
 
     if (opCode == EC_FOE_OPCODE_ACK) {
-        fsm->tx_packet_no++;
-        fsm->tx_buffer_offset += fsm->tx_current_size;
+        fsm->packet_no++;
+        fsm->buffer_offset += fsm->current_size;
 
-        if (fsm->tx_last_packet) {
+        if (fsm->last_packet) {
             fsm->state = ec_fsm_foe_end;
             return;
         }
@@ -650,7 +632,7 @@ int ec_foe_prepare_rrq_send(
     size_t current_size;
     uint8_t *data;
 
-    current_size = fsm->rx_filename_len;
+    current_size = strlen(fsm->request->file_name);
 
     data = ec_slave_mbox_prepare_send(fsm->slave, datagram,
             EC_MBOX_TYPE_FOE, current_size + EC_FOE_HEADER_SIZE);
@@ -660,7 +642,7 @@ int ec_foe_prepare_rrq_send(
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_RRQ); // fsm read request
     EC_WRITE_U32(data + 2, 0x00000000); // no passwd
-    memcpy(data + EC_FOE_HEADER_SIZE, fsm->rx_filename, current_size);
+    memcpy(data + EC_FOE_HEADER_SIZE, fsm->request->file_name, current_size);
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u\n", EC_FOE_OPCODE_RRQ);
 #endif
@@ -693,10 +675,10 @@ int ec_foe_prepare_send_ack(
     }
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_ACK);
-    EC_WRITE_U32(data + 2, fsm->rx_expected_packet_no);
+    EC_WRITE_U32(data + 2, fsm->packet_no);
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u packet %u\n",
-            EC_FOE_OPCODE_ACK, fsm->rx_expected_packet_no);
+            EC_FOE_OPCODE_ACK, fsm->packet_no);
 #endif
 
     return 0;
@@ -762,9 +744,9 @@ void ec_fsm_foe_read_start(
 {
     ec_slave_t *slave = fsm->slave;
 
-    fsm->rx_buffer_offset = 0;
-    fsm->rx_expected_packet_no = 1;
-    fsm->rx_last_packet = 0;
+    fsm->buffer_offset = 0;
+    fsm->packet_no = 1;
+    fsm->last_packet = 0;
 
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "%s()\n", __func__);
@@ -936,7 +918,7 @@ void ec_fsm_foe_state_data_read_data(
 #endif
 
     if (opCode == EC_FOE_OPCODE_BUSY) {
-        fsm->rx_expected_packet_no--;
+        fsm->packet_no--;
         if (ec_foe_prepare_send_ack(fsm, datagram)) {
             ec_foe_set_rx_error(fsm, FOE_PROT_ERROR);
         } else {
@@ -944,7 +926,7 @@ void ec_fsm_foe_state_data_read_data(
         }
 #ifdef DEBUG_FOE
         EC_SLAVE_DBG(fsm->slave, 0, "%s() busy. Next pkt %u\n", __func__,
-                fsm->rx_expected_packet_no);
+                fsm->packet_no);
 #endif
         return;
     }
@@ -972,29 +954,29 @@ void ec_fsm_foe_state_data_read_data(
     }
 
     packet_no = EC_READ_U32(data + 2);
-    if (packet_no != fsm->rx_expected_packet_no) {
+    if (packet_no != fsm->packet_no) {
         EC_SLAVE_ERR(slave, "Received packet number %u, expected %u.\n",
-                packet_no, fsm->rx_expected_packet_no);
+                packet_no, fsm->packet_no);
         ec_foe_set_rx_error(fsm, FOE_PACKETNO_ERROR);
         return;
     }
 
     rec_size -= EC_FOE_HEADER_SIZE;
 
-    if (fsm->rx_buffer_size >= fsm->rx_buffer_offset + rec_size) {
-        memcpy(fsm->rx_buffer + fsm->rx_buffer_offset,
+    if (fsm->buffer_size >= fsm->buffer_offset + rec_size) {
+        memcpy(fsm->request->buffer + fsm->buffer_offset,
                 data + EC_FOE_HEADER_SIZE, rec_size);
-        fsm->rx_buffer_offset += rec_size;
+        fsm->buffer_offset += rec_size;
     }
 
-    fsm->rx_last_packet =
+    fsm->last_packet =
         (rec_size + EC_MBOX_HEADER_SIZE + EC_FOE_HEADER_SIZE
          != slave->configured_rx_mailbox_size);
 
-    if (fsm->rx_last_packet ||
+    if (fsm->last_packet ||
             (slave->configured_rx_mailbox_size - EC_MBOX_HEADER_SIZE
-             - EC_FOE_HEADER_SIZE + fsm->rx_buffer_offset)
-            <= fsm->rx_buffer_size) {
+             - EC_FOE_HEADER_SIZE + fsm->buffer_offset)
+            <= fsm->buffer_size) {
         // either it was the last packet or a new packet will fit into the
         // delivered buffer
 #ifdef DEBUG_FOE
@@ -1011,12 +993,13 @@ void ec_fsm_foe_state_data_read_data(
         // no more data fits into the delivered buffer
         // ... wait for new read request
         EC_SLAVE_ERR(slave, "Data do not fit in receive buffer!\n");
-        printk("  rx_buffer_size = %d\n", fsm->rx_buffer_size);
-        printk("rx_buffer_offset = %d\n", fsm->rx_buffer_offset);
+        printk("  rx_buffer_size = %d\n", fsm->buffer_size);
+        printk("rx_buffer_offset = %d\n", fsm->buffer_offset);
         printk("        rec_size = %zd\n", rec_size);
         printk(" rx_mailbox_size = %d\n", slave->configured_rx_mailbox_size);
-        printk("  rx_last_packet = %d\n", fsm->rx_last_packet);
-        fsm->request->result = FOE_READY;
+        printk("  rx_last_packet = %d\n", fsm->last_packet);
+        fsm->request->data_size = fsm->buffer_offset;
+        ec_foe_set_rx_error(fsm, FOE_READ_OVER_ERROR);
     }
 }
 
@@ -1052,13 +1035,13 @@ void ec_fsm_foe_state_sent_ack(
 
     fsm->jiffies_start = fsm->datagram->jiffies_sent;
 
-    if (fsm->rx_last_packet) {
-        fsm->rx_expected_packet_no = 0;
-        fsm->request->data_size = fsm->rx_buffer_offset;
+    if (fsm->last_packet) {
+        fsm->packet_no = 0;
+        fsm->request->data_size = fsm->buffer_offset;
         fsm->state = ec_fsm_foe_end;
     }
     else {
-        fsm->rx_expected_packet_no++;
+        fsm->packet_no++;
 
         // mailbox read check is skipped if a read request is already ongoing
         if (ec_read_mbox_locked(slave)) {
