@@ -454,6 +454,7 @@ typedef struct {
 
 typedef struct {
     // inputs
+    uint32_t password;
     uint16_t slave_position;
     uint16_t offset;
     size_t buffer_size;
@@ -463,6 +464,7 @@ typedef struct {
     size_t data_size;
     uint32_t result;
     uint32_t error_code;
+
     char file_name[255];
 } ec_ioctl_slave_foe_t;
 

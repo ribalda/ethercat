@@ -53,7 +53,7 @@ string CommandFoeWrite::helpString(const string &binaryBaseName) const
     stringstream str;
 
     str << binaryBaseName << " " << getName()
-        << " [OPTIONS] <FILENAME>" << endl
+        << " [OPTIONS] <FILENAME> [<PASSWORD>]" << endl
         << endl
         << getBriefDescription() << endl
         << endl
@@ -63,6 +63,7 @@ string CommandFoeWrite::helpString(const string &binaryBaseName) const
         << "  FILENAME can either be a path to a file, or '-'. In" << endl
         << "           the latter case, data are read from stdin and" << endl
         << "           the --output-file option has to be specified." << endl
+        << "  PASSWORD is the numeric password defined by the vendor." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --output-file -o <file>   Target filename on the slave." << endl
@@ -89,8 +90,8 @@ void CommandFoeWrite::execute(const StringVector &args)
     SlaveList slaves;
     string storeFileName;
 
-    if (args.size() != 1) {
-        err << "'" << getName() << "' takes exactly one argument!";
+    if (args.size() < 1 || args.size() > 2) {
+        err << "'" << getName() << "' takes one or two arguments!";
         throwInvalidUsageException(err);
     }
 
@@ -140,7 +141,20 @@ void CommandFoeWrite::execute(const StringVector &args)
 
     // write data via foe to the slave
     data.offset = 0;
+    data.password = 0;
     strncpy(data.file_name, storeFileName.c_str(), sizeof(data.file_name));
+    data.file_name[sizeof(data.file_name)-1] = 0;
+    if (args.size() >= 2) {
+        stringstream strPassword;
+        strPassword << args[1];
+        strPassword
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> data.password;
+        if (strPassword.fail()) {
+            err << "Invalid password '" << args[1] << "'!";
+            throwInvalidUsageException(err);
+        }
+    }
 
     try {
         m.writeFoe(&data);

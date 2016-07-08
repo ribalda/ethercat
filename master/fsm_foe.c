@@ -281,7 +281,7 @@ int ec_foe_prepare_wrq_send(
     }
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_WRQ); // fsm write request
-    EC_WRITE_U32(data + 2, 0); // password
+    EC_WRITE_U32(data + 2, fsm->request->password); // password
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u\n",
             EC_FOE_OPCODE_WRQ);
@@ -641,7 +641,7 @@ int ec_foe_prepare_rrq_send(
     }
 
     EC_WRITE_U16(data, EC_FOE_OPCODE_RRQ); // fsm read request
-    EC_WRITE_U32(data + 2, 0x00000000); // no passwd
+    EC_WRITE_U32(data + 2, fsm->request->password); // password
     memcpy(data + EC_FOE_HEADER_SIZE, fsm->request->file_name, current_size);
 #ifdef DEBUG_FOE
     EC_SLAVE_DBG(fsm->slave, 0, "sending opcode %u\n", EC_FOE_OPCODE_RRQ);
