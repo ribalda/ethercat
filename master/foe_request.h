@@ -65,6 +65,7 @@ typedef struct {
     unsigned long jiffies_sent; /**< Jiffies, when the upload/download
                                      request was sent. */
     uint8_t *file_name; /**< Pointer to the filename. */
+    uint32_t password; /**< FoE password. */
     uint32_t result; /**< FoE request abort code. Zero on success. */
     uint32_t error_code; /**< Error code from an FoE Error Request. */
 } ec_foe_request_t;

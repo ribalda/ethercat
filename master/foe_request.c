@@ -61,6 +61,7 @@ void ec_foe_request_init(
     INIT_LIST_HEAD(&req->list);
     req->buffer = NULL;
     req->file_name = file_name;
+    req->password = 0;
     req->buffer_size = 0;
     req->data_size = 0;
     req->dir = EC_DIR_INVALID;
