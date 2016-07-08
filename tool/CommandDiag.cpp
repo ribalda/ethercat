@@ -91,54 +91,38 @@ void CommandDiag::execute(const StringVector &args)
     }
 }
 
-uint32_t CommandDiag::EscRegRead(MasterDevice &m, uint16_t slave_position, uint16_t address, size_t byteSize)
+void CommandDiag::EscRegRead(MasterDevice &m, uint16_t slave_position, uint16_t address, uint8_t *data, size_t byteSize)
 {
     ec_ioctl_slave_reg_t io;
-    uint32_t data;
 
-    if (byteSize > 4) {
-        stringstream err;
-        err << "The size argument (" << byteSize << ") is invalid (> 4)!";
-        throwInvalidUsageException(err);
-    }
-
-    data = 0;
     io.slave_position = slave_position;
     io.address = address;
     io.size = byteSize;
-    io.data = (uint8_t *) &data;
+    io.data = data;
     io.emergency = false;
 
+    memset(data, 0, byteSize);
     try {
         m.readReg(&io);
     } catch (MasterDeviceException &e) {
         fprintf(stderr, "EscRegRead %s slave = %i, address = %x, size = %zu\n", e.what(), io.slave_position, io.address, io.size);
-        return 0;
     }
-
-    return data;
 }
 
-void CommandDiag::EscRegWrite(MasterDevice &m, uint16_t slave_position, uint16_t address, size_t byteSize, uint32_t data)
+void CommandDiag::EscRegReadWrite(MasterDevice &m, uint16_t slave_position, uint16_t address, uint8_t *data, size_t byteSize)
 {
     ec_ioctl_slave_reg_t io;
-
-    if (byteSize > 4) {
-        stringstream err;
-        err << "The size argument (" << byteSize << ") is invalid (> 4)!";
-        throwInvalidUsageException(err);
-    }
 
     io.slave_position = slave_position;
     io.address = address;
     io.size = byteSize;
-    io.data = (uint8_t *) &data;
+    io.data = data;
     io.emergency = false;
 
     try {
-        m.writeReg(&io);
+        m.readWriteReg(&io);
     } catch (MasterDeviceException &e) {
-        fprintf(stderr, "EscRegWrite %s slave = %i, address = %x, size = %zu, data = 0x%x\n", e.what(), io.slave_position, io.address, io.size, data);
+        fprintf(stderr, "EscRegReadWrite %s slave = %i, address = %x, size = %zu\n", e.what(), io.slave_position, io.address, io.size);
     }
 }
 
@@ -178,7 +162,8 @@ void CommandDiag::CheckallSlaves(
 
         if (slaveInList(slave, slaves)) {
             int slave_position = i;
-            bool llc_reset = false;
+            uint8_t dl_status[2];
+            uint8_t ecat_errors[0x14];
 
             str << dec << i;
             info.pos = str.str();
@@ -207,8 +192,15 @@ void CommandDiag::CheckallSlaves(
                 str.str("");
             }
 
-            info.ESC_DL_Status = EscRegRead(m, slave_position, 0x110, 2);
+            EscRegRead(m, slave_position, 0x110, dl_status, sizeof(dl_status));
+            if (getReset()) {
+                memset(ecat_errors, 0, sizeof(ecat_errors));
+                EscRegReadWrite(m, slave_position, 0x300, ecat_errors, sizeof(ecat_errors));
+            } else {
+                EscRegRead(m, slave_position, 0x300, ecat_errors, sizeof(ecat_errors));
+            }
 
+            info.ESC_DL_Status = EC_READ_U16(dl_status);
             info.ESCerrors = 0;
 
             for (int i = 0; i < EC_MAX_PORTS; i++) {
@@ -218,18 +210,17 @@ void CommandDiag::CheckallSlaves(
                 /* some error registers are only availble when MII or EBUS port is present */
                 check_port += (slave.ports[i].desc == EC_PORT_MII) ? 1 : 0;
                 check_port += (slave.ports[i].desc == EC_PORT_EBUS) ? 1 : 0;
-                info.Invalid_Frame_Counter[i] = (check_port > 0) ? EscRegRead(m, slave_position, 0x300 + (i * 2), 1) : 0;
-                info.RX_Error_Counter[i] = (check_port > 0) ? EscRegRead(m, slave_position, 0x301 + (i * 2), 1) : 0;
-                info.Forwarded_RX_Error_Counter[i] = (check_port > 1) ? EscRegRead(m, slave_position, 0x308 + i, 1) : 0;
-                info.ECAT_Processing_Unit_Error_Counter = (check_port > 1) && (i == 0) ? EscRegRead(m, slave_position, 0x30C, 1) : 0;
-                info.Lost_Link_Counter[i] = (check_port > 1) ? EscRegRead(m, slave_position, 0x310 + i, 1) : 0;
+                info.Invalid_Frame_Counter[i] = (check_port > 0) ? EC_READ_U8(&ecat_errors[i * 2]) : 0;
+                info.RX_Error_Counter[i] = (check_port > 0) ? EC_READ_U8(&ecat_errors[0x1 + (i * 2)]) : 0;
+                info.Forwarded_RX_Error_Counter[i] = (check_port > 1) ? EC_READ_U8(&ecat_errors[0x8 + i]) : 0;
+                info.ECAT_Processing_Unit_Error_Counter = (check_port > 1) && (i == 0) ? EC_READ_U8(&ecat_errors[0xC]) : 0;
+                info.Lost_Link_Counter[i] = (check_port > 1) ? EC_READ_U8(&ecat_errors[0x10 + i]) : 0;
 
                 info.ESCerrors |= info.Invalid_Frame_Counter[i] ? 0x01 : 0x00;
                 info.ESCerrors |= info.RX_Error_Counter[i] ? 0x02 : 0x00;
                 info.ESCerrors |= info.Forwarded_RX_Error_Counter[i] ? 0x04 : 0x00;
                 info.ESCerrors |= info.ECAT_Processing_Unit_Error_Counter ? 0x08 : 0x00;
                 info.ESCerrors |= info.Lost_Link_Counter[i] ? 0x10 : 0x00;
-                llc_reset = llc_reset || ((i == 0) && (check_port > 1));
             }
 
             if (info.ESCerrors) {
@@ -265,17 +256,6 @@ void CommandDiag::CheckallSlaves(
                 maxStateWidth = info.state.length();
             if (info.sESCerrors.length() > maxESCerrorsWidth)
                 maxESCerrorsWidth = info.sESCerrors.length();
-
-            if (getReset()) {
-                /* clear all Invalid Frame Counters, RX Error Counters and Forwarded RX Error Counters */
-                EscRegWrite(m, slave_position, 0x300, 1, 0x0);
-                if (llc_reset) {
-                    /* clear all Lost Link Counters */
-                    EscRegWrite(m, slave_position, 0x310, 1, 0x0);
-                    /* clear ECAT Processing Unit Error Counter */
-                    EscRegWrite(m, slave_position, 0x30C, 1, 0x0);
-                }
-            }
         }
 
         aliasIndex++;
