@@ -31,6 +31,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 using namespace std;
 
 #include "CommandFoeRead.h"
@@ -51,7 +52,7 @@ string CommandFoeRead::helpString(const string &binaryBaseName) const
     stringstream str;
 
     str << binaryBaseName << " " << getName()
-        << " [OPTIONS] <SOURCEFILE>" << endl
+        << " [OPTIONS] <SOURCEFILE> [<PASSWORD>]" << endl
         << endl
         << getBriefDescription() << endl
         << endl
@@ -59,6 +60,7 @@ string CommandFoeRead::helpString(const string &binaryBaseName) const
         << endl
         << "Arguments:" << endl
         << "  SOURCEFILE is the name of the source file on the slave." << endl
+        << "  PASSWORD is the numeric password defined by the vendor." << endl
         << endl
         << "Command-specific options:" << endl
         << "  --output-file -o <file>   Local target filename. If" << endl
@@ -80,11 +82,12 @@ void CommandFoeRead::execute(const StringVector &args)
     SlaveList slaves;
     ec_ioctl_slave_t *slave;
     ec_ioctl_slave_foe_t data;
-    unsigned int i;
     stringstream err;
+    fstream out_file;
+    ostream* out = &cout;
 
-    if (args.size() != 1) {
-        err << "'" << getName() << "' takes exactly one argument!";
+    if (args.size() < 1 || args.size() > 2) {
+        err << "'" << getName() << "' takes one or two arguments!";
         throwInvalidUsageException(err);
     }
 
@@ -98,14 +101,36 @@ void CommandFoeRead::execute(const StringVector &args)
     slave = &slaves.front();
     data.slave_position = slave->position;
 
+    if (!getOutputFile().empty() && getOutputFile() != "-") {
+        out_file.open(getOutputFile().c_str(), ios::out | ios::trunc | ios::binary);
+        if (!out_file.good()) {
+            err << "Failed to open '" << getOutputFile() << "'";
+            throwCommandException(err);
+        }
+        out = &out_file;
+    }
+
     /* FIXME: No good idea to have a fixed buffer size.
      * Read in chunks and fill a buffer instead.
      */
+    data.password = 0;
     data.offset = 0;
     data.buffer_size = 0x8800;
     data.buffer = new uint8_t[data.buffer_size];
 
     strncpy(data.file_name, args[0].c_str(), sizeof(data.file_name));
+    data.file_name[sizeof(data.file_name)-1] = 0;
+    if (args.size() >= 2) {
+        stringstream strPassword;
+        strPassword << args[1];
+        strPassword
+            >> resetiosflags(ios::basefield) // guess base from prefix
+            >> data.password;
+        if (strPassword.fail()) {
+            err << "Invalid password '" << args[1] << "'!";
+            throwInvalidUsageException(err);
+        }
+    }
 
     try {
         m.readFoe(&data);
@@ -117,7 +142,7 @@ void CommandFoeRead::execute(const StringVector &args)
                     << setw(8) << setfill('0') << hex << data.error_code
                     << ": " << errorText(data.error_code);
             } else {
-                err << "Failed to write via FoE: "
+                err << "Failed to read via FoE: "
                     << resultText(data.result);
             }
             throwCommandException(err);
@@ -126,12 +151,7 @@ void CommandFoeRead::execute(const StringVector &args)
         }
     }
 
-    // TODO --output-file
-    for (i = 0; i < data.data_size; i++) {
-        uint8_t *w = data.buffer + i;
-        cout << *(uint8_t *) w ;
-    }
-
+    out->write((const char*) data.buffer, data.data_size);
     delete [] data.buffer;
 }
 
