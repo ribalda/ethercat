@@ -326,6 +326,7 @@ typedef struct  {
                                  bit! */
     unsigned int error_flag : 1; /**< The slave has an unrecoverable error. */
     unsigned int ready : 1; /**< The slave is ready for external requests. */
+    uint16_t position; /**< Offset of the slave in the ring. */
 } ec_slave_config_state_t;
 
 /*****************************************************************************/
