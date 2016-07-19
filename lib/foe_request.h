@@ -2,7 +2,8 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2016       Gavin Lambert
+ *  Copyright (C) 2006-2009  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -32,20 +33,19 @@
 
 /*****************************************************************************/
 
-struct ec_slave_config {
-    ec_slave_config_t *next;
-    ec_master_t *master;
-    unsigned int index;
-    uint16_t alias;
-    uint16_t position;
-    ec_sdo_request_t *first_sdo_request;
-    ec_foe_request_t *first_foe_request;
-    ec_reg_request_t *first_reg_request;
-    ec_voe_handler_t *first_voe_handler;
+struct ec_foe_request {
+    ec_foe_request_t *next; /**< List header. */
+    ec_slave_config_t *config; /**< Parent slave configuration. */
+    unsigned int index; /**< Request index (identifier). */
+    uint8_t *data; /**< Pointer to file data. */
+    size_t mem_size; /**< Size of file data memory. */
+    size_t data_size; /**< Size of file data. */
+    ec_foe_error_t result; /**< FoE request abort code. Zero on success. */
+    uint32_t error_code; /**< Error code from an FoE Error Request. */
 };
 
 /*****************************************************************************/
 
-void ec_slave_config_clear(ec_slave_config_t *);
+void ec_foe_request_clear(ec_foe_request_t *);
 
 /*****************************************************************************/

@@ -36,7 +36,6 @@
 using namespace std;
 
 #include "CommandFoeWrite.h"
-#include "foe.h"
 #include "MasterDevice.h"
 
 /*****************************************************************************/
