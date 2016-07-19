@@ -35,7 +35,6 @@
 using namespace std;
 
 #include "CommandFoeRead.h"
-#include "foe.h"
 #include "MasterDevice.h"
 
 /*****************************************************************************/

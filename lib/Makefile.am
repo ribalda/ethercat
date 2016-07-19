@@ -36,6 +36,7 @@ libethercat_la_SOURCES = \
 	common.c \
 	domain.c \
 	master.c \
+	foe_request.c \
 	reg_request.c \
 	sdo_request.c \
 	slave_config.c \
@@ -45,6 +46,7 @@ noinst_HEADERS = \
 	domain.h \
 	ioctl.h \
 	master.h \
+	foe_request.h \
 	reg_request.h \
 	sdo_request.h \
 	slave_config.h \

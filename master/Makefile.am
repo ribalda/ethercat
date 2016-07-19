@@ -40,7 +40,6 @@ noinst_HEADERS = \
 	eoe_request.c eoe_request.h \
 	ethernet.c ethernet.h \
 	fmmu_config.c fmmu_config.h \
-	foe.h \
 	foe_request.c foe_request.h \
 	fsm_change.c fsm_change.h \
 	fsm_coe.c fsm_coe.h \

@@ -38,7 +38,6 @@
 #include "master.h"
 #include "mailbox.h"
 #include "fsm_foe.h"
-#include "foe.h"
 
 /*****************************************************************************/
 
