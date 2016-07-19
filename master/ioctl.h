@@ -785,6 +785,7 @@ typedef struct {
     uint32_t request_index;
     uint32_t password;
     size_t size;
+    size_t progress;
     uint8_t *data;
     uint32_t timeout;
     ec_request_state_t state;

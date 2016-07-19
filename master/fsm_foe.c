@@ -508,6 +508,7 @@ void ec_fsm_foe_state_ack_read_data(
     if (opCode == EC_FOE_OPCODE_ACK) {
         fsm->packet_no++;
         fsm->buffer_offset += fsm->current_size;
+        fsm->request->progress = fsm->buffer_offset;
 
         if (fsm->last_packet) {
             fsm->state = ec_fsm_foe_end;
@@ -966,6 +967,7 @@ void ec_fsm_foe_state_data_read_data(
         memcpy(fsm->request->buffer + fsm->buffer_offset,
                 data + EC_FOE_HEADER_SIZE, rec_size);
         fsm->buffer_offset += rec_size;
+        fsm->request->progress = fsm->buffer_offset;
     }
 
     fsm->last_packet =

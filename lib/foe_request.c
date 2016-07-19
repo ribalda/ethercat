@@ -109,6 +109,13 @@ size_t ecrt_foe_request_data_size(const ec_foe_request_t *req)
 
 /*****************************************************************************/
 
+size_t ecrt_foe_request_progress(const ec_foe_request_t *req)
+{
+    return req->progress;
+}
+
+/*****************************************************************************/
+
 ec_request_state_t ecrt_foe_request_state(ec_foe_request_t *req)
 {
     ec_ioctl_foe_request_t data;
@@ -144,6 +151,7 @@ ec_request_state_t ecrt_foe_request_state(ec_foe_request_t *req)
         }
         req->data_size = data.size;
     }
+    req->progress = data.progress;
 
     return data.state;
 }

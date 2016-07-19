@@ -2120,6 +2120,16 @@ uint32_t ecrt_foe_request_error_code(
         const ec_foe_request_t *req /**< FoE request. */
     );
 
+/** Returns the progress of the current @EC_REQUEST_BUSY transfer.
+ *
+ * \attention Must be called after ecrt_foe_request_state().
+ *
+ * \return Progress in bytes.
+ */
+size_t ecrt_foe_request_progress(
+        const ec_foe_request_t *req /**< FoE request. */
+        );
+
 /** Schedule an FoE write operation.
  *
  * \attention This method may not be called while ecrt_foe_request_state()

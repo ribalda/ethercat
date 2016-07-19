@@ -4054,6 +4054,7 @@ static ATTRIBUTES int ec_ioctl_foe_request_state(
     }
 
     data.state = ecrt_foe_request_state(req);
+    data.progress = ecrt_foe_request_progress(req);
     if (data.state == EC_REQUEST_SUCCESS && req->dir == EC_DIR_INPUT)
         data.size = ecrt_foe_request_data_size(req);
     else
