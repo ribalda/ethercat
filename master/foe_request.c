@@ -38,7 +38,6 @@
 #include <linux/slab.h>
 
 #include "foe_request.h"
-#include "foe.h"
 
 /*****************************************************************************/
 
@@ -55,12 +54,12 @@ void ec_foe_request_clear_data(ec_foe_request_t *);
 /** FoE request constructor.
  */
 void ec_foe_request_init(
-        ec_foe_request_t *req, /**< FoE request. */
-        uint8_t* file_name /** filename */)
+        ec_foe_request_t *req /**< FoE request. */
+        )
 {
     INIT_LIST_HEAD(&req->list);
     req->buffer = NULL;
-    req->file_name = file_name;
+    req->file_name[0] = 0;
     req->password = 0;
     req->buffer_size = 0;
     req->data_size = 0;
@@ -170,11 +169,13 @@ int ec_foe_request_timed_out(
         && jiffies - req->jiffies_start > HZ * req->issue_timeout / 1000;
 }
 
-/*****************************************************************************/
+/*****************************************************************************
+ * Application interface.
+ ****************************************************************************/
 
 /** Set the request timeout.
  */
-void ec_foe_request_timeout(
+void ecrt_foe_request_timeout(
         ec_foe_request_t *req, /**< FoE request. */
         uint32_t timeout /**< Timeout in ms. */
         )
@@ -184,11 +185,25 @@ void ec_foe_request_timeout(
 
 /*****************************************************************************/
 
+/** Selects a new file for the request.
+ */
+void ecrt_foe_request_file(
+        ec_foe_request_t *req, /**< FoE request. */
+        const char* file_name, /** filename */
+        uint32_t password /** password */
+        )
+{
+    strlcpy((char*) req->file_name, file_name, sizeof(req->file_name));
+    req->password = password;
+}
+
+/*****************************************************************************/
+
 /** Returns a pointer to the request's data.
  *
  * \return Data pointer.
  */
-uint8_t *ec_foe_request_data(
+uint8_t *ecrt_foe_request_data(
         ec_foe_request_t *req /**< FoE request. */
         )
 {
@@ -201,7 +216,7 @@ uint8_t *ec_foe_request_data(
  *
  * \return Data size.
  */
-size_t ec_foe_request_data_size(
+size_t ecrt_foe_request_data_size(
         const ec_foe_request_t *req /**< FoE request. */
         )
 {
@@ -210,12 +225,34 @@ size_t ec_foe_request_data_size(
 
 /*****************************************************************************/
 
+ec_request_state_t ecrt_foe_request_state(const ec_foe_request_t *req)
+{
+    return ec_request_state_translation_table[req->state];
+}
+
+/*****************************************************************************/
+
+ec_foe_error_t ecrt_foe_request_result(const ec_foe_request_t *req)
+{
+    return req->result;
+}
+
+/*****************************************************************************/
+
+uint32_t ecrt_foe_request_error_code(const ec_foe_request_t *req)
+{
+    return req->error_code;
+}
+
+/*****************************************************************************/
+
 /** Prepares a read request (slave to master).
  */
-void ec_foe_request_read(
+void ecrt_foe_request_read(
         ec_foe_request_t *req /**< FoE request. */
         )
 {
+    req->data_size = 0;
     req->dir = EC_DIR_INPUT;
     req->state = EC_INT_REQUEST_QUEUED;
     req->result = FOE_BUSY;
@@ -226,14 +263,38 @@ void ec_foe_request_read(
 
 /** Prepares a write request (master to slave).
  */
-void ec_foe_request_write(
-        ec_foe_request_t *req /**< FoE request. */
+void ecrt_foe_request_write(
+        ec_foe_request_t *req, /**< FoE request. */
+        size_t data_size /**< Data size. */
         )
 {
+    if (data_size > req->buffer_size) {
+        EC_ERR("Request to write %zu bytes to FoE buffer of size %zu.\n",
+               data_size, req->buffer_size);
+        req->state = EC_INT_REQUEST_FAILURE;
+        return;
+    }
+    req->data_size = data_size;
     req->dir = EC_DIR_OUTPUT;
     req->state = EC_INT_REQUEST_QUEUED;
     req->result = FOE_BUSY;
     req->jiffies_start = jiffies;
 }
+
+/*****************************************************************************/
+
+/** \cond */
+
+EXPORT_SYMBOL(ecrt_foe_request_file);
+EXPORT_SYMBOL(ecrt_foe_request_timeout);
+EXPORT_SYMBOL(ecrt_foe_request_data);
+EXPORT_SYMBOL(ecrt_foe_request_data_size);
+EXPORT_SYMBOL(ecrt_foe_request_state);
+EXPORT_SYMBOL(ecrt_foe_request_result);
+EXPORT_SYMBOL(ecrt_foe_request_error_code);
+EXPORT_SYMBOL(ecrt_foe_request_read);
+EXPORT_SYMBOL(ecrt_foe_request_write);
+
+/** \endcond */
 
 /*****************************************************************************/

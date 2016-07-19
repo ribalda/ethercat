@@ -200,6 +200,7 @@ ec_slave_config_t *ecrt_master_slave_config(ec_master_t *master,
     sc->alias = alias;
     sc->position = position;
     sc->first_sdo_request = NULL;
+    sc->first_foe_request = NULL;
     sc->first_reg_request = NULL;
     sc->first_voe_handler = NULL;
 

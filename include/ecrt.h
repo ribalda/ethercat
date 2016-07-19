@@ -249,11 +249,14 @@ typedef struct ec_domain ec_domain_t; /**< \see ec_domain */
 struct ec_sdo_request;
 typedef struct ec_sdo_request ec_sdo_request_t; /**< \see ec_sdo_request. */
 
+struct ec_foe_request;
+typedef struct ec_foe_request ec_foe_request_t; /**< \see ec_foe_request. */
+
 struct ec_voe_handler;
 typedef struct ec_voe_handler ec_voe_handler_t; /**< \see ec_voe_handler. */
 
 struct ec_reg_request;
-typedef struct ec_reg_request ec_reg_request_t; /**< \see ec_sdo_request. */
+typedef struct ec_reg_request ec_reg_request_t; /**< \see ec_reg_request. */
 
 /*****************************************************************************/
 
@@ -536,6 +539,30 @@ typedef enum {
     EC_REQUEST_SUCCESS, /**< Request was processed successfully. */
     EC_REQUEST_ERROR, /**< Request processing failed. */
 } ec_request_state_t;
+
+/*****************************************************************************/
+
+/** FoE error enumeration type.
+ */
+typedef enum {
+    FOE_BUSY               = 0, /**< Busy. */
+    FOE_READY              = 1, /**< Ready. */
+    FOE_IDLE               = 2, /**< Idle. */
+    FOE_WC_ERROR           = 3, /**< Working counter error. */
+    FOE_RECEIVE_ERROR      = 4, /**< Receive error. */
+    FOE_PROT_ERROR         = 5, /**< Protocol error. */
+    FOE_NODATA_ERROR       = 6, /**< No data error. */
+    FOE_PACKETNO_ERROR     = 7, /**< Packet number error. */
+    FOE_OPCODE_ERROR       = 8, /**< OpCode error. */
+    FOE_TIMEOUT_ERROR      = 9, /**< Timeout error. */
+    FOE_SEND_RX_DATA_ERROR = 10, /**< Error sending received data. */
+    FOE_RX_DATA_ACK_ERROR  = 11, /**< Error acknowledging received data. */
+    FOE_ACK_ERROR          = 12, /**< Acknowledge error. */
+    FOE_MBOX_FETCH_ERROR   = 13, /**< Error fetching data from mailbox. */
+    FOE_READ_NODATA_ERROR  = 14, /**< No data while reading. */
+    FOE_MBOX_PROT_ERROR    = 15, /**< Mailbox protocol error. */
+    FOE_READ_OVER_ERROR    = 16, /**< Read buffer overflow. */
+} ec_foe_error_t;
 
 /*****************************************************************************/
 
@@ -1664,6 +1691,21 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_complete(
         size_t size /**< Data size to reserve. */
         );
 
+/** Create an FoE request to exchange files during realtime operation.
+ *
+ * The created FoE request object is freed automatically when the master is
+ * released.
+ *
+ * This method has to be called in non-realtime context before
+ * ecrt_master_activate().
+ *
+ * \return New FoE request, or NULL on error.
+ */
+ec_foe_request_t *ecrt_slave_config_create_foe_request(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        size_t size /**< Data size to reserve. */
+        );
+
 /** Create an VoE handler to exchange vendor-specific data during realtime
  * operation.
  *
@@ -1979,6 +2021,129 @@ void ecrt_sdo_request_write_with_size(
  */
 void ecrt_sdo_request_read(
         ec_sdo_request_t *req /**< SDO request. */
+        );
+
+/*****************************************************************************
+ * FoE request methods.
+ ****************************************************************************/
+
+/** Select the filename to use for the next FoE operation.
+ */
+void ecrt_foe_request_file(
+        ec_foe_request_t *req, /**< FoE request. */
+        const char *file_name, /**< File name. */
+        uint32_t password /**< Password. */
+        );
+
+/** Set the timeout for an FoE request.
+ *
+ * If the request cannot be processed in the specified time, if will be marked
+ * as failed.
+ *
+ * The timeout is permanently stored in the request object and is valid until
+ * the next call of this method.
+ */
+void ecrt_foe_request_timeout(
+        ec_foe_request_t *req, /**< FoE request. */
+        uint32_t timeout /**< Timeout in milliseconds. Zero means no
+                           timeout. */
+        );
+
+/** Access to the FoE request's data.
+ *
+ * This function returns a pointer to the request's internal data memory.
+ *
+ * - After a read operation was successful, the data can be read from this
+ *   buffer up to the ecrt_foe_request_data_size().
+ * - If a write operation shall be triggered, the data has to be written to
+ *   the internal memory. Be sure that the data fit into the memory. The
+ *   memory size is a parameter of ecrt_slave_config_create_foe_request().
+ *
+ * \attention The return value can be invalid during a read operation, because
+ * the internal data memory could be re-allocated if the read data does not
+ * fit inside.
+ *
+ * \return Pointer to the internal file data memory.
+ */
+uint8_t *ecrt_foe_request_data(
+        ec_foe_request_t *req /**< FoE request. */
+        );
+
+/** Returns the current FoE data size.
+ *
+ * When the FoE request is created, the data size is set to the size of the
+ * reserved memory. After a read operation completes the size is set to the
+ * size of the read data. After a write operation starts the size is set to
+ * the size of the data to write.
+ *
+ * \return FoE data size in bytes.
+ */
+size_t ecrt_foe_request_data_size(
+        const ec_foe_request_t *req /**< FoE request. */
+        );
+
+/** Get the current state of the FoE request.
+ *
+ * \return Request state.
+ */
+#ifdef __KERNEL__
+ec_request_state_t ecrt_foe_request_state(
+        const ec_foe_request_t *req /**< FoE request. */
+    );
+#else
+ec_request_state_t ecrt_foe_request_state(
+        ec_foe_request_t *req /**< FoE request. */
+    );
+#endif
+
+/** Get the result of the FoE request.
+ *
+ * \attention This method may not be called while ecrt_foe_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \return FoE transfer result.
+ */
+ec_foe_error_t ecrt_foe_request_result(
+        const ec_foe_request_t *req /**< FoE request. */
+    );
+
+/** Get the FoE error code from the FoE request.
+ *
+ * \attention This value is only valid when ecrt_foe_request_result()
+ * returns FOE_OPCODE_ERROR.
+ *
+ * \return FoE error code.  If the returned value is zero, then the error
+ * is that an unexpected opcode was received; if it is non-zero then the
+ * value is the code reported by the slave in the FoE ERROR opcode.
+ */
+uint32_t ecrt_foe_request_error_code(
+        const ec_foe_request_t *req /**< FoE request. */
+    );
+
+/** Schedule an FoE write operation.
+ *
+ * \attention This method may not be called while ecrt_foe_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \attention The size must be less than or equal to the size specified
+ * when the request was created.
+ */
+void ecrt_foe_request_write(
+        ec_foe_request_t *req, /**< FoE request. */
+        size_t size /**< Size of data to write. */
+        );
+
+/** Schedule an FoE read operation.
+ *
+ * \attention This method may not be called while ecrt_foe_request_state()
+ * returns EC_REQUEST_BUSY.
+ *
+ * \attention After calling this function, the return value of
+ * ecrt_foe_request_data() must be considered as invalid while
+ * ecrt_foe_request_state() returns EC_REQUEST_BUSY.
+ */
+void ecrt_foe_request_read(
+        ec_foe_request_t *req /**< FoE request. */
         );
 
 /*****************************************************************************

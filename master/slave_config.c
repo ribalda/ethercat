@@ -87,6 +87,7 @@ void ec_slave_config_init(
 
     INIT_LIST_HEAD(&sc->sdo_configs);
     INIT_LIST_HEAD(&sc->sdo_requests);
+    INIT_LIST_HEAD(&sc->foe_requests);
     INIT_LIST_HEAD(&sc->reg_requests);
     INIT_LIST_HEAD(&sc->voe_handlers);
     INIT_LIST_HEAD(&sc->soe_configs);
@@ -106,6 +107,7 @@ void ec_slave_config_clear(
 {
     unsigned int i;
     ec_sdo_request_t *req, *next_req;
+    ec_foe_request_t *foe, *next_foe;
     ec_voe_handler_t *voe, *next_voe;
     ec_reg_request_t *reg, *next_reg;
     ec_soe_request_t *soe, *next_soe;
@@ -128,6 +130,13 @@ void ec_slave_config_clear(
         list_del(&req->list);
         ec_sdo_request_clear(req);
         kfree(req);
+    }
+
+    // free all FoE requests
+    list_for_each_entry_safe(foe, next_foe, &sc->foe_requests, list) {
+        list_del(&foe->list);
+        ec_foe_request_clear(foe);
+        kfree(foe);
     }
 
     // free all register requests
@@ -524,6 +533,28 @@ ec_sdo_request_t *ec_slave_config_find_sdo_request(
 
 /*****************************************************************************/
 
+/** Finds an FoE handler via its position in the list.
+ *
+ * \return Search result, or NULL.
+ */
+ec_foe_request_t *ec_slave_config_find_foe_request(
+        ec_slave_config_t *sc, /**< Slave configuration. */
+        unsigned int pos /**< Position in the list. */
+        )
+{
+    ec_foe_request_t *req;
+
+    list_for_each_entry(req, &sc->foe_requests, list) {
+        if (pos--)
+            continue;
+        return req;
+    }
+
+    return NULL;
+}
+
+/*****************************************************************************/
+
 /** Finds a register handler via its position in the list.
  *
  * \return Search result, or NULL.
@@ -575,10 +606,11 @@ void ec_slave_config_expire_disconnected_requests(
         )
 {
     ec_sdo_request_t *sdo_req;
+    ec_foe_request_t *foe_req;
     ec_reg_request_t *reg_req;
 
     if (sc->slave) { return; }
-    
+
     list_for_each_entry(sdo_req, &sc->sdo_requests, list) {
         if (sdo_req->state == EC_INT_REQUEST_QUEUED ||
                 sdo_req->state == EC_INT_REQUEST_BUSY) {
@@ -586,7 +618,15 @@ void ec_slave_config_expire_disconnected_requests(
             sdo_req->state = EC_INT_REQUEST_FAILURE;
         }
     }
-    
+
+    list_for_each_entry(foe_req, &sc->foe_requests, list) {
+        if (foe_req->state == EC_INT_REQUEST_QUEUED ||
+                foe_req->state == EC_INT_REQUEST_BUSY) {
+            EC_CONFIG_DBG(sc, 1, "Aborting FoE request; no slave attached.\n");
+            foe_req->state = EC_INT_REQUEST_FAILURE;
+        }
+    }
+
     list_for_each_entry(reg_req, &sc->reg_requests, list) {
         if (reg_req->state == EC_INT_REQUEST_QUEUED ||
                 reg_req->state == EC_INT_REQUEST_BUSY) {
@@ -1201,6 +1241,57 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_complete(
 
 /*****************************************************************************/
 
+/** Same as ecrt_slave_config_create_foe_request(), but with ERR_PTR() return
+ * value.
+ */
+ec_foe_request_t *ecrt_slave_config_create_foe_request_err(
+        ec_slave_config_t *sc, size_t size)
+{
+    ec_foe_request_t *req;
+    int ret;
+
+    EC_CONFIG_DBG(sc, 1, "%s(sc = 0x%p, size = %zu)\n",
+            __func__, sc, size);
+
+    if (!(req = (ec_foe_request_t *)
+                kmalloc(sizeof(ec_foe_request_t), GFP_KERNEL))) {
+        EC_CONFIG_ERR(sc, "Failed to allocate FoE request memory!\n");
+        return ERR_PTR(-ENOMEM);
+    }
+
+    ec_foe_request_init(req);
+
+    ret = ec_foe_request_alloc(req, size);
+    if (ret < 0) {
+        ec_foe_request_clear(req);
+        kfree(req);
+        EC_CONFIG_ERR(sc, "Failed to allocate FoE request data "
+                "memory (size=%zu)!\n", size);
+        return ERR_PTR(ret);
+    }
+
+    // prepare data for optional writing
+    memset(req->buffer, 0x00, size);
+    req->data_size = size;
+
+    ec_lock_down(&sc->master->master_sem);
+    list_add_tail(&req->list, &sc->foe_requests);
+    ec_lock_up(&sc->master->master_sem);
+
+    return req;
+}
+
+/*****************************************************************************/
+
+ec_foe_request_t *ecrt_slave_config_create_foe_request(
+        ec_slave_config_t *sc, size_t size)
+{
+    ec_foe_request_t *s = ecrt_slave_config_create_foe_request_err(sc, size);
+    return IS_ERR(s) ? NULL : s;
+}
+
+/*****************************************************************************/
+
 /** Same as ecrt_slave_config_create_reg_request(), but with ERR_PTR() return
  * value.
  */
@@ -1386,6 +1477,7 @@ EXPORT_SYMBOL(ecrt_slave_config_emerg_clear);
 EXPORT_SYMBOL(ecrt_slave_config_emerg_overruns);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request);
 EXPORT_SYMBOL(ecrt_slave_config_create_sdo_request_complete);
+EXPORT_SYMBOL(ecrt_slave_config_create_foe_request);
 EXPORT_SYMBOL(ecrt_slave_config_create_voe_handler);
 EXPORT_SYMBOL(ecrt_slave_config_create_reg_request);
 EXPORT_SYMBOL(ecrt_slave_config_state);

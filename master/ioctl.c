@@ -3278,6 +3278,56 @@ static ATTRIBUTES int ec_ioctl_sc_create_sdo_request(
 
 /*****************************************************************************/
 
+/** Create an FoE request.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_sc_create_foe_request(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    data.request_index = 0;
+
+    if (ec_lock_down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    sc = ec_master_get_config(master, data.config_index);
+    if (!sc) {
+        ec_lock_up(&master->master_sem);
+        return -ENOENT;
+    }
+
+    list_for_each_entry(req, &sc->foe_requests, list) {
+        data.request_index++;
+    }
+
+    ec_lock_up(&master->master_sem); /** \todo sc could be invalidated */
+
+    req = ecrt_slave_config_create_foe_request_err(sc, data.size);
+    if (IS_ERR(req))
+        return PTR_ERR(req);
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Create a register request.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -3898,6 +3948,249 @@ static ATTRIBUTES int ec_ioctl_sdo_request_data(
 
 /*****************************************************************************/
 
+/** Sets an FoE request's FoE filename and password.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_foe_request_file(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    /* no locking of master_sem needed, because neither sc nor req will not be
+     * deleted in the meantime. */
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_foe_request(sc, data.request_index))) {
+        return -ENOENT;
+    }
+
+    ecrt_foe_request_file(req, data.file_name, data.password);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sets an FoE request's timeout.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_foe_request_timeout(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    /* no locking of master_sem needed, because neither sc nor req will not be
+     * deleted in the meantime. */
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_foe_request(sc, data.request_index))) {
+        return -ENOENT;
+    }
+
+    ecrt_foe_request_timeout(req, data.timeout);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Gets an FoE request's state.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_foe_request_state(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    /* no locking of master_sem needed, because neither sc nor req will not be
+     * deleted in the meantime. */
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_foe_request(sc, data.request_index))) {
+        return -ENOENT;
+    }
+
+    data.state = ecrt_foe_request_state(req);
+    if (data.state == EC_REQUEST_SUCCESS && req->dir == EC_DIR_INPUT)
+        data.size = ecrt_foe_request_data_size(req);
+    else
+        data.size = 0;
+    data.result = req->result;
+    data.error_code = req->error_code;
+
+    if (copy_to_user((void __user *) arg, &data, sizeof(data)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Starts an FoE read operation.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_foe_request_read(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    /* no locking of master_sem needed, because neither sc nor req will not be
+     * deleted in the meantime. */
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_foe_request(sc, data.request_index))) {
+        return -ENOENT;
+    }
+
+    ecrt_foe_request_read(req);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Starts an FoE write operation.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_foe_request_write(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+    int ret;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    /* no locking of master_sem needed, because neither sc nor req will not be
+     * deleted in the meantime. */
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_foe_request(sc, data.request_index))) {
+        return -ENOENT;
+    }
+
+    ret = ec_foe_request_alloc(req, data.size);
+    if (ret)
+        return ret;
+
+    if (copy_from_user(ecrt_foe_request_data(req), (void __user *) data.data, data.size))
+        return -EFAULT;
+
+    ecrt_foe_request_write(req, data.size);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Read FoE data.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_foe_request_data(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_foe_request_t data;
+    ec_slave_config_t *sc;
+    ec_foe_request_t *req;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data)))
+        return -EFAULT;
+
+    /* no locking of master_sem needed, because neither sc nor req will not be
+     * deleted in the meantime. */
+
+    if (!(sc = ec_master_get_config(master, data.config_index))) {
+        return -ENOENT;
+    }
+
+    if (!(req = ec_slave_config_find_foe_request(sc, data.request_index))) {
+        return -ENOENT;
+    }
+
+    if (copy_to_user((void __user *) data.data, ecrt_foe_request_data(req),
+                ecrt_foe_request_data_size(req)))
+        return -EFAULT;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Read register data.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -4446,15 +4739,15 @@ static ATTRIBUTES int ec_ioctl_slave_foe_read(
         return -EFAULT;
     }
 
-    ec_foe_request_init(&request, io.file_name);
+    ec_foe_request_init(&request);
     ret = ec_foe_request_alloc(&request, io.buffer_size);
     if (ret) {
         ec_foe_request_clear(&request);
         return ret;
     }
 
-    request.password = io.password;
-    ec_foe_request_read(&request);
+    ecrt_foe_request_file(&request, io.file_name, io.password);
+    ecrt_foe_request_read(&request);
 
     if (ec_lock_down_interruptible(&master->master_sem)) {
         ec_foe_request_clear(&request);
@@ -4543,7 +4836,7 @@ static ATTRIBUTES int ec_ioctl_slave_foe_write(
         return -EFAULT;
     }
 
-    ec_foe_request_init(&request, io.file_name);
+    ec_foe_request_init(&request);
 
     ret = ec_foe_request_alloc(&request, io.buffer_size);
     if (ret) {
@@ -4557,9 +4850,8 @@ static ATTRIBUTES int ec_ioctl_slave_foe_write(
         return -EFAULT;
     }
 
-    request.data_size = io.buffer_size;
-    request.password = io.password;
-    ec_foe_request_write(&request);
+    ecrt_foe_request_file(&request, io.file_name, io.password);
+    ecrt_foe_request_write(&request, io.buffer_size);
 
     if (ec_lock_down_interruptible(&master->master_sem)) {
         ec_foe_request_clear(&request);
@@ -5158,6 +5450,13 @@ long EC_IOCTL(
             }
             ret = ec_ioctl_sc_create_sdo_request(master, arg, ctx);
             break;
+        case EC_IOCTL_SC_FOE_REQUEST:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sc_create_foe_request(master, arg, ctx);
+            break;
         case EC_IOCTL_SC_REG_REQUEST:
             if (!ctx->writable) {
                 ret = -EPERM;
@@ -5238,6 +5537,40 @@ long EC_IOCTL(
             break;
         case EC_IOCTL_SDO_REQUEST_DATA:
             ret = ec_ioctl_sdo_request_data(master, arg, ctx);
+            break;
+        case EC_IOCTL_FOE_REQUEST_FILE:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_foe_request_file(master, arg, ctx);
+            break;
+        case EC_IOCTL_FOE_REQUEST_TIMEOUT:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_foe_request_timeout(master, arg, ctx);
+            break;
+        case EC_IOCTL_FOE_REQUEST_STATE:
+            ret = ec_ioctl_foe_request_state(master, arg, ctx);
+            break;
+        case EC_IOCTL_FOE_REQUEST_READ:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_foe_request_read(master, arg, ctx);
+            break;
+        case EC_IOCTL_FOE_REQUEST_WRITE:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_foe_request_write(master, arg, ctx);
+            break;
+        case EC_IOCTL_FOE_REQUEST_DATA:
+            ret = ec_ioctl_foe_request_data(master, arg, ctx);
             break;
         case EC_IOCTL_REG_REQUEST_DATA:
             ret = ec_ioctl_reg_request_data(master, arg, ctx);

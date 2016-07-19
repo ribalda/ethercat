@@ -504,30 +504,43 @@ int ec_fsm_slave_action_process_foe(
     ec_slave_t *slave = fsm->slave;
     ec_foe_request_t *request;
 
-    if (list_empty(&slave->foe_requests)) {
-        return 0;
+    if (slave->config) {
+        // search the first internal file request to be processed
+        list_for_each_entry(request, &slave->config->foe_requests, list) {
+            if (request->state == EC_INT_REQUEST_QUEUED) {
+                fsm->foe_request = request;
+                break;
+            }
+        }
     }
 
-    // take the first request to be processed
-    request = list_entry(slave->foe_requests.next, ec_foe_request_t, list);
-    list_del_init(&request->list); // dequeue
+    if (!fsm->foe_request && !list_empty(&slave->foe_requests)) {
+        // take the first external request to be processed
+        fsm->foe_request =
+            list_entry(slave->foe_requests.next, ec_foe_request_t, list);
+        list_del_init(&fsm->foe_request->list); // dequeue
+    }
+
+    if (!fsm->foe_request) {
+        return 0;
+    }
 
     if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
         EC_SLAVE_WARN(slave, "Aborting FoE request,"
                 " slave has error flag set.\n");
-        request->state = EC_INT_REQUEST_FAILURE;
+        fsm->foe_request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&slave->master->request_queue);
+        fsm->foe_request = NULL;
         fsm->state = ec_fsm_slave_state_idle;
         return 0;
     }
 
-    request->state = EC_INT_REQUEST_BUSY;
-    fsm->foe_request = request;
+    fsm->foe_request->state = EC_INT_REQUEST_BUSY;
 
     EC_SLAVE_DBG(slave, 1, "Processing FoE request.\n");
 
     fsm->state = ec_fsm_slave_state_foe_request;
-    ec_fsm_foe_transfer(&fsm->fsm_foe, slave, request);
+    ec_fsm_foe_transfer(&fsm->fsm_foe, slave, fsm->foe_request);
     ec_fsm_foe_exec(&fsm->fsm_foe, datagram);
     return 1;
 }

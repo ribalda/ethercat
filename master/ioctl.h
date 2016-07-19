@@ -165,6 +165,13 @@
 #define EC_IOCTL_DEACTIVATE_SLAVES      EC_IO(0x61)
 #define EC_IOCTL_64_REF_CLK_TIME_QUEUE  EC_IO(0x62)
 #define EC_IOCTL_64_REF_CLK_TIME       EC_IOR(0x63, uint64_t)
+#define EC_IOCTL_SC_FOE_REQUEST       EC_IOWR(0x64, ec_ioctl_foe_request_t)
+#define EC_IOCTL_FOE_REQUEST_FILE     EC_IOWR(0x65, ec_ioctl_foe_request_t)
+#define EC_IOCTL_FOE_REQUEST_TIMEOUT  EC_IOWR(0x66, ec_ioctl_foe_request_t)
+#define EC_IOCTL_FOE_REQUEST_STATE    EC_IOWR(0x67, ec_ioctl_foe_request_t)
+#define EC_IOCTL_FOE_REQUEST_READ     EC_IOWR(0x68, ec_ioctl_foe_request_t)
+#define EC_IOCTL_FOE_REQUEST_WRITE    EC_IOWR(0x69, ec_ioctl_foe_request_t)
+#define EC_IOCTL_FOE_REQUEST_DATA     EC_IOWR(0x6a, ec_ioctl_foe_request_t)
 
 /*****************************************************************************/
 
@@ -767,6 +774,25 @@ typedef struct {
     uint32_t timeout;
     ec_request_state_t state;
 } ec_ioctl_sdo_request_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // inputs
+    uint32_t config_index;
+
+    // inputs/outputs
+    uint32_t request_index;
+    uint32_t password;
+    size_t size;
+    uint8_t *data;
+    uint32_t timeout;
+    ec_request_state_t state;
+    ec_foe_error_t result;
+    uint32_t error_code;
+
+    char file_name[255];
+} ec_ioctl_foe_request_t;
 
 /*****************************************************************************/
 

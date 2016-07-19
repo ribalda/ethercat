@@ -35,6 +35,7 @@
 #include "slave_config.h"
 #include "domain.h"
 #include "sdo_request.h"
+#include "foe_request.h"
 #include "reg_request.h"
 #include "voe_handler.h"
 #include "master.h"
@@ -44,6 +45,7 @@
 void ec_slave_config_clear(ec_slave_config_t *sc)
 {
     ec_sdo_request_t *r, *next_r;
+    ec_foe_request_t *f, *next_f;
     ec_reg_request_t *e, *next_e;
     ec_voe_handler_t *v, *next_v;
 
@@ -55,6 +57,13 @@ void ec_slave_config_clear(ec_slave_config_t *sc)
         r = next_r;
     }
     sc->first_sdo_request = NULL;
+
+    f = sc->first_foe_request;
+    while (f) {
+        next_f = f->next;
+        ec_foe_request_clear(f);
+        f = next_f;
+    }
 
     e = sc->first_reg_request;
     while (e) {
@@ -674,6 +683,72 @@ ec_sdo_request_t *ecrt_slave_config_create_sdo_request_complete(ec_slave_config_
     req->mem_size = size;
 
     ec_slave_config_add_sdo_request(sc, req);
+
+    return req;
+}
+
+/*****************************************************************************/
+
+void ec_slave_config_add_foe_request(ec_slave_config_t *sc,
+        ec_foe_request_t *req)
+{
+    if (sc->first_foe_request) {
+        ec_foe_request_t *r = sc->first_foe_request;
+        while (r->next) {
+            r = r->next;
+        }
+        r->next = req;
+    } else {
+        sc->first_foe_request = req;
+    }
+}
+
+/*****************************************************************************/
+
+ec_foe_request_t *ecrt_slave_config_create_foe_request(ec_slave_config_t *sc,
+        size_t size)
+{
+    ec_ioctl_foe_request_t data;
+    ec_foe_request_t *req;
+    int ret;
+
+    req = malloc(sizeof(ec_foe_request_t));
+    if (!req) {
+        EC_PRINT_ERR("Failed to allocate memory.\n");
+        return 0;
+    }
+
+    if (size) {
+        req->data = malloc(size);
+        if (!req->data) {
+            EC_PRINT_ERR("Failed to allocate %zu bytes of FoE data"
+                    " memory.\n", size);
+            free(req);
+            return 0;
+        }
+    } else {
+        req->data = NULL;
+    }
+
+    data.config_index = sc->index;
+    data.size = size;
+
+    ret = ioctl(sc->master->fd, EC_IOCTL_SC_FOE_REQUEST, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to create FoE request: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        ec_foe_request_clear(req);
+        free(req);
+        return NULL;
+    }
+
+    req->next = NULL;
+    req->config = sc;
+    req->index = data.request_index;
+    req->data_size = size;
+    req->mem_size = size;
+
+    ec_slave_config_add_foe_request(sc, req);
 
     return req;
 }

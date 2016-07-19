@@ -47,7 +47,7 @@
 
 /** FoE request.
  */
-typedef struct {
+struct ec_foe_request {
     struct list_head list; /**< List item. */
     uint8_t *buffer; /**< Pointer to FoE data. */
     size_t buffer_size; /**< Size of FoE data memory. */
@@ -64,23 +64,20 @@ typedef struct {
     unsigned long jiffies_start; /**< Jiffies, when the request was issued. */
     unsigned long jiffies_sent; /**< Jiffies, when the upload/download
                                      request was sent. */
-    uint8_t *file_name; /**< Pointer to the filename. */
     uint32_t password; /**< FoE password. */
-    uint32_t result; /**< FoE request abort code. Zero on success. */
+    ec_foe_error_t result; /**< FoE request abort code. Zero on success. */
     uint32_t error_code; /**< Error code from an FoE Error Request. */
-} ec_foe_request_t;
+    uint8_t file_name[255]; /**< FoE filename. */
+};
 
 /*****************************************************************************/
 
-void ec_foe_request_init(ec_foe_request_t *, uint8_t *file_name);
+void ec_foe_request_init(ec_foe_request_t *);
 void ec_foe_request_clear(ec_foe_request_t *);
 
 int ec_foe_request_alloc(ec_foe_request_t *, size_t);
 int ec_foe_request_copy_data(ec_foe_request_t *, const uint8_t *, size_t);
 int ec_foe_request_timed_out(const ec_foe_request_t *);
-
-void ec_foe_request_write(ec_foe_request_t *);
-void ec_foe_request_read(ec_foe_request_t *);
 
 /*****************************************************************************/
 
