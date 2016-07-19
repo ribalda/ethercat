@@ -52,6 +52,7 @@ struct ec_foe_request {
     uint8_t *buffer; /**< Pointer to FoE data. */
     size_t buffer_size; /**< Size of FoE data memory. */
     size_t data_size; /**< Size of FoE data. */
+    size_t progress; /**< Current position of a BUSY request. */
 
     uint32_t issue_timeout; /**< Maximum time in ms, the processing of the
                               request may take. */
