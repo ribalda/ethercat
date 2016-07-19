@@ -40,6 +40,7 @@ struct ec_foe_request {
     uint8_t *data; /**< Pointer to file data. */
     size_t mem_size; /**< Size of file data memory. */
     size_t data_size; /**< Size of file data. */
+    size_t progress; /**< Current position of a BUSY request. */
     ec_foe_error_t result; /**< FoE request abort code. Zero on success. */
     uint32_t error_code; /**< Error code from an FoE Error Request. */
 };
