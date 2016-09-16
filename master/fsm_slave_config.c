@@ -1365,6 +1365,7 @@ void ec_fsm_slave_config_state_dc_sync_check(
     uint32_t abs_sync_diff;
     unsigned long diff_ms;
     ec_sync_signal_t *sync0 = &config->dc_sync[0];
+    ec_sync_signal_t *sync1 = &config->dc_sync[1];
     u64 start_time;
 
     if (!config) { // config removed in the meantime
@@ -1424,19 +1425,19 @@ void ec_fsm_slave_config_state_dc_sync_check(
         // find correct phase
         if (master->has_app_time) {
             u64 diff, start;
-            u32 remainder;
+            u32 remainder, cycle;
 
             diff = start_time - master->app_start_time;
-            remainder = do_div(diff, sync0->cycle_time);
+            cycle = sync0->cycle_time + sync1->cycle_time;
+            remainder = do_div(diff, cycle);
 
-            start = start_time +
-                sync0->cycle_time - remainder + sync0->shift_time;
+            start = start_time + cycle - remainder + sync0->shift_time;
 
             EC_SLAVE_DBG(slave, 1, "app_start_time=%llu\n",
                     master->app_start_time);
             EC_SLAVE_DBG(slave, 1, "      app_time=%llu\n", master->app_time);
             EC_SLAVE_DBG(slave, 1, "    start_time=%llu\n", start_time);
-            EC_SLAVE_DBG(slave, 1, "    cycle_time=%u\n", sync0->cycle_time);
+            EC_SLAVE_DBG(slave, 1, "         cycle=%u\n", cycle);
             EC_SLAVE_DBG(slave, 1, "    shift_time=%i\n", sync0->shift_time);
             EC_SLAVE_DBG(slave, 1, "     remainder=%u\n", remainder);
             EC_SLAVE_DBG(slave, 1, "         start=%llu\n", start);
