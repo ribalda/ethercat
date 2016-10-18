@@ -337,7 +337,11 @@ void ec_tty_wakeup(unsigned long data)
     to_recv = ec_tty_rx_size(tty);
     if (to_recv && tty->tty) {
         unsigned char *cbuf;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0)
+        int space = tty_prepare_flip_string(tty->tty->port, &cbuf, to_recv);
+#else
         int space = tty_prepare_flip_string(tty->tty, &cbuf, to_recv);
+#endif
 
         if (space < to_recv) {
             printk(KERN_WARNING PFX "Insufficient space to_recv=%d space=%d\n",
@@ -362,7 +366,11 @@ void ec_tty_wakeup(unsigned long data)
                 tty->rx_read_idx =
                     (tty->rx_read_idx + 1) % EC_TTY_RX_BUFFER_SIZE;
             }
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0)
+            tty_flip_buffer_push(tty->tty->port);
+#else
             tty_flip_buffer_push(tty->tty);
+#endif
         }
     }
 
