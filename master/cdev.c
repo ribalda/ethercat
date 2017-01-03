@@ -282,8 +282,12 @@ static int eccdev_vma_fault(
     get_page(page);
     vmf->page = page;
 
-    EC_MASTER_DBG(priv->cdev->master, 1, "Vma fault,"
-            " offset = %lu, page = %p\n", offset, page);
+    EC_MASTER_DBG(priv->cdev->master, 1, "Vma fault, virtual_address = %p,"
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0))
+            " offset = %lu, page = %p\n", (void*)vmf->address, offset, page);
+#else
+            " offset = %lu, page = %p\n", vmf->virtual_address, offset, page);
+#endif
 
     return 0;
 }
