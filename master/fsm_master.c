@@ -1138,7 +1138,7 @@ void ec_fsm_master_state_scan_slave(
     // Attach slave configurations
     ec_master_attach_slave_configs(master);
 
-    // Set DC ref slave and clac topology and transmission delays
+    // Set DC ref slave and calc topology and transmission delays
     // Note: must come after attach_slave_configs for application
     //       selected dc_ref_config to return its slave
     ec_master_calc_dc(master);
