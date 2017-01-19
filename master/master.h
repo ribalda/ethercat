@@ -242,6 +242,8 @@ struct ec_master {
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
                                    compensation. */
+    ec_datagram_t sync64_datagram; /**< Datagram used to retrieve 64bit ref
+                                     slave system clock time. */
     ec_datagram_t sync_mon_datagram; /**< Datagram used for DC synchronisation
                                        monitoring. */
     ec_slave_config_t *dc_ref_config; /**< Application-selected DC reference

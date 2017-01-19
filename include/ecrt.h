@@ -1120,6 +1120,33 @@ int ecrt_master_reference_clock_time(
         uint32_t *time /**< Pointer to store the queried system time. */
         );
 
+/** Queues the 64bit dc reference slave clock time value datagram for sending.
+ *
+ * The datagram read the 64bit dc timestamp of the DC reference slave.
+ * (register \a 0x0910:0x0917). The result can be checked with the 
+ * ecrt_master_64bit_reference_clock_time() method.
+ */
+void ecrt_master_64bit_reference_clock_time_queue(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Get the 64bit dc reference slave clock time.
+ * 
+ * ecrt_master_64bit_reference_clock_time_queue() must be called in the cycle
+ * prior to calling this method
+ *
+ * \attention The returned time is the system time of the reference clock
+ * minus the transmission delay of the reference clock.
+ *
+ * \retval 0 success, system time was written into \a time.
+ * \retval -ENXIO No reference clock found.
+ * \retval -EIO Slave synchronization datagram was not received.
+ */
+int ecrt_master_64bit_reference_clock_time(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint64_t *time /**< Pointer to store the queried time. */
+        );
+
 /** Queues the DC synchrony monitoring datagram for sending.
  *
  * The datagram broadcast-reads all "System time difference" registers (\a

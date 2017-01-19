@@ -2242,6 +2242,57 @@ static ATTRIBUTES int ec_ioctl_ref_clock_time(
 
 /*****************************************************************************/
 
+/** Queue the 64bit dc reference slave clock datagram.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_64bit_ref_clock_time_queue(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    ecrt_master_64bit_reference_clock_time_queue(master);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Get the 64bit system time of the reference clock.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_64bit_ref_clock_time(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    uint64_t time;
+    int ret;
+
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    ret = ecrt_master_64bit_reference_clock_time(master, &time);
+    if (ret) {
+        return ret;
+    }
+
+    if (copy_to_user((void __user *) arg, &time, sizeof(time))) {
+        return -EFAULT;
+    }
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Queue the sync monitoring datagram.
  *
  * \return Zero on success, otherwise a negative error code.
@@ -4625,6 +4676,20 @@ long EC_IOCTL(
                 break;
             }
             ret = ec_ioctl_ref_clock_time(master, arg, ctx);
+            break;
+        case EC_IOCTL_64_REF_CLK_TIME_QUEUE:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_64bit_ref_clock_time_queue(master, arg, ctx);
+            break;
+        case EC_IOCTL_64_REF_CLK_TIME:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_64bit_ref_clock_time(master, arg, ctx);
             break;
         case EC_IOCTL_SYNC_MON_QUEUE:
             if (!ctx->writable) {

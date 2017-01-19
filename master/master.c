@@ -302,6 +302,17 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         goto out_clear_ref_sync;
     }
 
+    // init sync64 datagram
+    ec_datagram_init(&master->sync64_datagram);
+    snprintf(master->sync64_datagram.name, EC_DATAGRAM_NAME_SIZE, "sync64");
+    ret = ec_datagram_prealloc(&master->sync64_datagram, 8);
+    if (ret < 0) {
+        ec_datagram_clear(&master->sync_datagram);
+        EC_MASTER_ERR(master, "Failed to allocate 64bit ref slave"
+                " system clock datagram.\n");
+        goto out_clear_sync;
+    }
+
     // init sync monitor datagram
     ec_datagram_init(&master->sync_mon_datagram);
     snprintf(master->sync_mon_datagram.name, EC_DATAGRAM_NAME_SIZE,
@@ -311,7 +322,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
         ec_datagram_clear(&master->sync_mon_datagram);
         EC_MASTER_ERR(master, "Failed to allocate sync"
                 " monitoring datagram.\n");
-        goto out_clear_sync;
+        goto out_clear_sync64;
     }
 
     master->dc_ref_config = NULL;
@@ -367,6 +378,8 @@ out_clear_cdev:
     ec_cdev_clear(&master->cdev);
 out_clear_sync_mon:
     ec_datagram_clear(&master->sync_mon_datagram);
+out_clear_sync64:
+    ec_datagram_clear(&master->sync64_datagram);
 out_clear_sync:
     ec_datagram_clear(&master->sync_datagram);
 out_clear_ref_sync:
@@ -414,6 +427,7 @@ void ec_master_clear(
     ec_master_clear_slaves(master);
 
     ec_datagram_clear(&master->sync_mon_datagram);
+    ec_datagram_clear(&master->sync64_datagram);
     ec_datagram_clear(&master->sync_datagram);
     ec_datagram_clear(&master->ref_sync_datagram);
 
@@ -2120,6 +2134,8 @@ void ec_master_find_dc_ref_clock(
             ref ? ref->station_address : 0xffff, 0x0910, 4);
     ec_datagram_frmw(&master->sync_datagram,
             ref ? ref->station_address : 0xffff, 0x0910, 4);
+    ec_datagram_fprd(&master->sync64_datagram,
+            ref ? ref->station_address : 0xffff, 0x0910, 8);
 }
 
 /*****************************************************************************/
@@ -2919,6 +2935,39 @@ void ecrt_master_sync_slave_clocks(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_64bit_reference_clock_time_queue(ec_master_t *master)
+{
+    if (master->dc_ref_clock && master->dc_offset_valid) {
+        ec_datagram_zero(&master->sync64_datagram);
+        ec_master_queue_datagram(master, &master->sync64_datagram);
+    }
+}
+
+/*****************************************************************************/
+
+int ecrt_master_64bit_reference_clock_time(ec_master_t *master, uint64_t *time)
+{
+    if (!master->dc_ref_clock) {
+        return -ENXIO;
+    }
+
+    if (master->sync64_datagram.state != EC_DATAGRAM_RECEIVED) {
+        return -EIO;
+    }
+
+    if (!master->dc_offset_valid) {
+    	return -EAGAIN;
+    }
+
+    // Get returned datagram time, transmission delay removed.
+    *time = EC_READ_U64(master->sync64_datagram.data) -
+        master->dc_ref_clock->transmission_delay;
+
+    return 0;
+}
+
+/*****************************************************************************/
+
 void ecrt_master_sync_monitor_queue(ec_master_t *master)
 {
     ec_datagram_zero(&master->sync_mon_datagram);
@@ -3386,6 +3435,8 @@ EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
 EXPORT_SYMBOL(ecrt_master_sync_reference_clock_to);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 EXPORT_SYMBOL(ecrt_master_reference_clock_time);
+EXPORT_SYMBOL(ecrt_master_64bit_reference_clock_time_queue);
+EXPORT_SYMBOL(ecrt_master_64bit_reference_clock_time);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_process);
 EXPORT_SYMBOL(ecrt_master_sdo_download);
