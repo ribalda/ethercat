@@ -37,6 +37,7 @@ using namespace std;
 
 #include "CommandAlias.h"
 #include "CommandConfig.h"
+#include "CommandCrc.h"
 #include "CommandCStruct.h"
 #include "CommandData.h"
 #include "CommandDebug.h"
@@ -278,6 +279,7 @@ int main(int argc, char **argv)
 
     commandList.push_back(new CommandAlias());
     commandList.push_back(new CommandConfig());
+    commandList.push_back(new CommandCrc());
     commandList.push_back(new CommandCStruct());
     commandList.push_back(new CommandData());
     commandList.push_back(new CommandDebug());

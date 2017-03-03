@@ -39,6 +39,7 @@ ethercat_SOURCES = \
 	../master/soe_errors.c \
 	Command.cpp \
 	CommandAlias.cpp \
+	CommandCrc.cpp \
 	CommandCStruct.cpp \
 	CommandConfig.cpp \
 	CommandData.cpp \
@@ -82,6 +83,7 @@ endif
 noinst_HEADERS = \
 	Command.h \
 	CommandAlias.h \
+	CommandCrc.h \
 	CommandCStruct.h \
 	CommandConfig.h \
 	CommandData.h \
