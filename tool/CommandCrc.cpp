@@ -67,7 +67,6 @@ string CommandCrc::helpString(const string &binaryBaseName) const
 
 /****************************************************************************/
 
-#define NUM_PORTS (4)
 #define REG_SIZE  (20)
 
 void CommandCrc::execute(const StringVector &args)
@@ -124,13 +123,13 @@ void CommandCrc::execute(const StringVector &args)
     }
 
     cout << "   |";
-    for (unsigned int port = 0; port < NUM_PORTS; port++) {
+    for (unsigned int port = 0; port < EC_MAX_PORTS; port++) {
         cout << "Port " << port << "         |";
     }
     cout << endl;
 
     cout << "   |";
-    for (unsigned int port = 0; port < NUM_PORTS; port++) {
+    for (unsigned int port = 0; port < EC_MAX_PORTS; port++) {
         cout << "CRC PHY FWD LNK|";
     }
     cout << endl;
