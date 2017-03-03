@@ -120,9 +120,18 @@ void CommandGraph::execute(const StringVector &args)
     }
     cout << endl;
 
+    uint16_t alias = 0x0000;
+    uint16_t pos = 0;
+
     for (si = slaves.begin(); si != slaves.end(); si++) {
+        if (si->alias) {
+            alias = si->alias;
+            pos = 0;
+        }
+
         cout << "    slave" << si->position << " [shape=\"box\""
-            << ",label=\"" << si->position;
+            << ",label=\"" << si->position
+            << " / " << alias << ":" << pos;
         if (string(si->order).size())
             cout << "\\n" << si->order;
         if (si->dc_supported) {
@@ -188,6 +197,7 @@ void CommandGraph::execute(const StringVector &args)
         }
 
         cout << endl;
+        pos++;
     }
 
     cout << "}" << endl;
