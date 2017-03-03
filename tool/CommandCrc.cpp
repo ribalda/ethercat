@@ -58,8 +58,7 @@ string CommandCrc::helpString(const string &binaryBaseName) const
         << endl
         << "FWD - Forwarded RX Error Counter       0x308, 0x309, 0x30a, 0x30b"
         << endl
-        << "LNK - Lost Link Counter                0x310, 0x311, 0x312, 0x313"
-        << endl
+        << "NXT - Next slave" << endl
         << endl;
 
     return str.str();
@@ -130,11 +129,14 @@ void CommandCrc::execute(const StringVector &args)
 
     cout << "   |";
     for (unsigned int port = 0; port < EC_MAX_PORTS; port++) {
-        cout << "CRC PHY FWD LNK|";
+        cout << "CRC PHY FWD NXT|";
     }
     cout << endl;
 
     for (unsigned int i = 0; i < master.slave_count; i++) {
+
+        ec_ioctl_slave_t slave;
+        m.getSlave(&slave, i);
 
         io.slave_position = i;
         try {
@@ -145,15 +147,30 @@ void CommandCrc::execute(const StringVector &args)
 
         cout << setw(3) << i << "|";
         for (int port = 0; port < 4; port++) {
+            if (slave.ports[port].link.loop_closed) {
+                cout << "               |";
+                continue;
+            }
+
             cout << setw(3) << (unsigned int) io.data[ 0 + port * 2]; // CRC
             cout << setw(4) << (unsigned int) io.data[ 1 + port * 2]; // PHY
             cout << setw(4) << (unsigned int) io.data[ 8 + port]; // FWD
-            cout << setw(4) << (unsigned int) io.data[16 + port]; // LNK
+            if (slave.ports[port].next_slave == i - 1) {
+                cout << "   ↑";
+            }
+            else if (slave.ports[port].next_slave == i + 1) {
+                cout << "   ↓";
+            }
+            else if (slave.ports[port].next_slave != 0xffff) {
+                cout << setw(4) << slave.ports[port].next_slave;
+            }
+            else {
+                cout << "    ";
+            }
+
             cout << "|";
         }
 
-        ec_ioctl_slave_t slave;
-        m.getSlave(&slave, i);
         std::string slaveName(slave.name);
         slaveName = slaveName.substr(0, 11);
         cout << slaveName << endl;
