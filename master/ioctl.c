@@ -2575,6 +2575,61 @@ static ATTRIBUTES int ec_ioctl_sync_mon_process(
 
 /*****************************************************************************/
 
+/** Call to set whether processing slave requests explicitly from the
+ * application is active or not.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_rt_slave_requests(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    unsigned long rt_slave_requests = (unsigned long) arg;
+    int ret = 0;
+
+    if (unlikely(!ctx->requested)) {
+        ret = -EPERM;
+        goto out_return;
+    }
+
+    if (ec_lock_down_interruptible(&master->master_sem)) {
+        ret = -EINTR;
+        goto out_return;
+    }
+
+    ecrt_master_rt_slave_requests(master, rt_slave_requests);
+
+    ec_lock_up(&master->master_sem);
+    
+out_return:
+    return ret;
+}
+
+/*****************************************************************************/
+
+/** Call to process slave requests explicitly from application.
+ *
+ * \return Always zero (success).
+ */
+static ATTRIBUTES int ec_ioctl_exec_slave_requests(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    ecrt_master_exec_slave_requests(master);
+    
+    return 0;
+}
+
+/*****************************************************************************/
+
 /** Reset configuration.
  *
  * \return Always zero (success).
@@ -5336,6 +5391,20 @@ long EC_IOCTL(
                 break;
             }
             ret = ec_ioctl_sync_mon_process(master, arg, ctx);
+            break;
+        case EC_IOCTL_RT_SLAVE_REQUESTS:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_rt_slave_requests(master, arg, ctx);
+            break;
+        case EC_IOCTL_EXEC_SLAVE_REQUESTS:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_exec_slave_requests(master, arg, ctx);
             break;
         case EC_IOCTL_RESET:
             if (!ctx->writable) {

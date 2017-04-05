@@ -1224,6 +1224,34 @@ uint32_t ecrt_master_sync_monitor_process(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+/** Selects whether to process slave requests by the application or the master
+ *
+ * if rt_slave_requests \a True, slave requests are to be handled by calls to 
+ * ecrt_master_exec_requests() from the applications realtime context,
+ * otherwise the master will handle them from its operation thread
+ *
+ * \return 0 on success, otherwise negative error code.
+ */
+int ecrt_master_rt_slave_requests(
+        ec_master_t *master, /**< EtherCAT master. */
+        unsigned int rt_slave_requests /**< if \a True, slave requests are
+                                       to be handled by calls to 
+                                      ecrt_master_exec_requests() from
+                                      the applications realtime context. */
+        );
+
+/** Explicit call to process slave requests.
+ *
+ * This needs to be called on a cyclical period by the applications
+ * realtime context if ecrt_master_rt_slave_requests() has been called
+ * with rt_slave_requests set to true.  If rt_slave_requests is \a False
+ * (the default) slave requests will be processed within the master and
+ * this call will be ignored.
+ */
+void ecrt_master_exec_slave_requests(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
 /** Retry configuring slaves.
  *
  * Via this method, the application can tell the master to bring all slaves to

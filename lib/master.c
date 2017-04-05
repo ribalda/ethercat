@@ -917,6 +917,37 @@ uint32_t ecrt_master_sync_monitor_process(ec_master_t *master)
 
 /****************************************************************************/
 
+int ecrt_master_rt_slave_requests(ec_master_t *master,
+        unsigned int rt_slave_requests)
+{
+    int ret;
+
+    ret = ioctl(master->fd, EC_IOCTL_RT_SLAVE_REQUESTS, rt_slave_requests);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to set rt slave request (%s): %s\n",
+                (rt_slave_requests) ? "True" : "False",
+                strerror(EC_IOCTL_ERRNO(ret)));
+        return -EC_IOCTL_ERRNO(ret);
+    }
+
+    return 0;
+}
+
+/****************************************************************************/
+
+void ecrt_master_exec_slave_requests(ec_master_t *master)
+{
+    int ret;
+
+    ret = ioctl(master->fd, EC_IOCTL_EXEC_SLAVE_REQUESTS, NULL);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to process slave requests: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+}
+
+/****************************************************************************/
+
 void ecrt_master_reset(ec_master_t *master)
 {
     int ret;

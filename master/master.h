@@ -279,6 +279,16 @@ struct ec_master {
     unsigned int send_interval; /**< Interval between two calls to
                                   ecrt_master_send(). */
     size_t max_queue_size; /**< Maximum size of datagram queue */
+    unsigned int rt_slave_requests; /**< if \a True, slave requests are to be
+                                      handled by calls to 
+                                      ecrt_master_exec_requests() from
+                                      the applications realtime context. */
+    unsigned int rt_slaves_available; /**< if \a True, slave requests
+                                        can be handled by calls to 
+                                        ecrt_master_exec_requests() from
+                                        the applications realtime context.
+                                        Otherwise the master is currently
+                                        configuring the slaves */
 
     ec_slave_t *fsm_slave; /**< Slave that is queried next for FSM exec. */
     struct list_head fsm_exec_list; /**< Slave FSM execution list. */
@@ -362,6 +372,8 @@ void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
 void ec_master_clear_eoe_handlers(ec_master_t *);
 #endif
+void ec_master_slaves_not_available(ec_master_t *);
+void ec_master_slaves_available(ec_master_t *);
 void ec_master_clear_slaves(ec_master_t *);
 void ec_master_clear_sii_images(ec_master_t *);
 void ec_master_reboot_slaves(ec_master_t *);
