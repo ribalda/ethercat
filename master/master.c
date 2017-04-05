@@ -203,6 +203,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
 
     master->ext_ring_idx_rt = 0;
     master->ext_ring_idx_fsm = 0;
+    master->rt_slave_requests = 0;
+    master->rt_slaves_available = 0;
 
     // init external datagram ring
     for (i = 0; i < EC_EXT_RING_SIZE; i++) {
@@ -417,6 +419,7 @@ void ec_master_clear(
 
     ec_cdev_clear(&master->cdev);
 
+    ec_master_slaves_not_available(master);
 #ifdef EC_EOE
     ec_master_clear_eoe_handlers(master);
 #endif
@@ -537,6 +540,26 @@ void ec_master_clear_sii_images(
             kfree(sii_image);
         }
     }
+}
+
+/*****************************************************************************/
+
+/** Set flag to say that the slaves are not available for slave request
+ * processing.
+ */
+void ec_master_slaves_not_available(ec_master_t *master)
+{
+    master->rt_slaves_available = 0;
+}
+
+/*****************************************************************************/
+
+/** Set flag to say that the slaves are now available for slave request
+ * processing.
+ */
+void ec_master_slaves_available(ec_master_t *master)
+{
+    master->rt_slaves_available = 1;
 }
 
 /*****************************************************************************/
@@ -740,6 +763,7 @@ void ec_master_leave_idle_phase(ec_master_t *master /**< EtherCAT master */)
 
     master->phase = EC_ORPHANED;
 
+    ec_master_slaves_not_available(master);
 #ifdef EC_EOE
     ec_master_eoe_stop(master);
 #endif
@@ -1654,6 +1678,12 @@ void ec_master_exec_slave_fsms(
     ec_fsm_slave_t *fsm, *next;
     unsigned int count = 0;
 
+    // return if the slaves are not configured
+    if (master->rt_slave_requests && 
+            !master->rt_slaves_available) {
+        return;
+    }
+    
     list_for_each_entry_safe(fsm, next, &master->fsm_exec_list, list) {
         if (!fsm->datagram) {
             EC_MASTER_WARN(master, "Slave %s-%u FSM has zero datagram."
@@ -1767,6 +1797,7 @@ static int ec_master_idle_thread(void *priv_data)
 
         fsm_exec = ec_fsm_master_exec(&master->fsm);
 
+        // idle thread will still be in charge of calling the slave requests
         ec_master_exec_slave_fsms(master);
 
         ec_lock_up(&master->master_sem);
@@ -1831,7 +1862,11 @@ static int ec_master_operation_thread(void *priv_data)
                 master->injection_seq_fsm++;
             }
 
-            ec_master_exec_slave_fsms(master);
+            // if rt_slave_requests is true this will be handled by the
+            // app explicitly by calling ecrt_master_exec_slave_request()
+            if (!master->rt_slave_requests) {
+                ec_master_exec_slave_fsms(master);
+            }
 
             ec_lock_up(&master->master_sem);
         }
@@ -3740,6 +3775,38 @@ int ecrt_master_read_idn(ec_master_t *master, uint16_t slave_position,
 
 /*****************************************************************************/
 
+int ecrt_master_rt_slave_requests(ec_master_t *master, 
+        unsigned int rt_slave_requests)
+{
+    // set flag as to whether the master or the external application
+    // should be handling processing the slave request
+    master->rt_slave_requests = rt_slave_requests;
+    
+    if (master->rt_slave_requests) {
+        EC_MASTER_INFO(master, "Application selected to process"
+                " slave request by the application.\n");
+    }
+    else {
+        EC_MASTER_INFO(master, "Application selected to process"
+                " slave request by the master.\n");
+    }
+    
+    return 0;
+}
+
+/*****************************************************************************/
+
+void ecrt_master_exec_slave_requests(ec_master_t *master)
+{
+    // ignore this call if the master is not operational or not set to
+    // handle the slave requests from the application
+    if (master->rt_slave_requests && (master->phase == EC_OPERATION)) {
+        ec_master_exec_slave_fsms(master);
+    }
+}
+
+/*****************************************************************************/
+
 void ecrt_master_reset(ec_master_t *master)
 {
     ec_slave_config_t *sc;
@@ -3784,6 +3851,8 @@ EXPORT_SYMBOL(ecrt_master_sdo_upload);
 EXPORT_SYMBOL(ecrt_master_sdo_upload_complete);
 EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
+EXPORT_SYMBOL(ecrt_master_rt_slave_requests);
+EXPORT_SYMBOL(ecrt_master_exec_slave_requests);
 EXPORT_SYMBOL(ecrt_master_reset);
 
 /** \endcond */
