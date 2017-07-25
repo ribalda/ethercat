@@ -239,12 +239,12 @@ int ec_mac_equal(
  *
  * \return number of bytes written.
  */
-ssize_t ec_mac_print(
+size_t ec_mac_print(
         const uint8_t *mac, /**< MAC address */
         char *buffer /**< Target buffer. */
         )
 {
-    off_t off = 0;
+    size_t off = 0;
     unsigned int i;
 
     for (i = 0; i < ETH_ALEN; i++) {
