@@ -37,7 +37,8 @@
 EXTRA_DIST = \
 	Kbuild.in \
 	LICENSE \
-	cx2100-2.6.32-ethercat.c
+	cx2100-2.6.32-ethercat.c \
+	cx2100-4.9-ethercat.c
 
 BUILT_SOURCES = \
 	Kbuild
