@@ -287,24 +287,24 @@ int main(int argc, char **argv)
     if (off_dig_out < 0)
         return -1;
 
-	if (!(sc = ecrt_master_slave_config(master,
-					CounterSlavePos, IDS_Counter))) {
+    if (!(sc = ecrt_master_slave_config(master,
+            CounterSlavePos, IDS_Counter))) {
         fprintf(stderr, "Failed to get slave configuration.\n");
         return -1;
-	}
+    }
 
-	off_counter_in = ecrt_slave_config_reg_pdo_entry(sc,
-			0x6020, 0x11, domain1, NULL);
-	if (off_counter_in < 0)
+    off_counter_in = ecrt_slave_config_reg_pdo_entry(sc,
+            0x6020, 0x11, domain1, NULL);
+    if (off_counter_in < 0)
         return -1;
 
-	off_counter_out = ecrt_slave_config_reg_pdo_entry(sc,
-			0x7020, 1, domain1, NULL);
-	if (off_counter_out < 0)
+    off_counter_out = ecrt_slave_config_reg_pdo_entry(sc,
+            0x7020, 1, domain1, NULL);
+    if (off_counter_out < 0)
         return -1;
 
     // configure SYNC signals for this slave
-	ecrt_slave_config_dc(sc, 0x0700, PERIOD_NS, 4400000, 0, 0);
+    ecrt_slave_config_dc(sc, 0x0700, PERIOD_NS, 4400000, 0, 0);
 
     printf("Activating master...\n");
     if (ecrt_master_activate(master))
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
         perror("sched_setscheduler failed");
     }
 
-	printf("Starting cyclic function.\n");
+    printf("Starting cyclic function.\n");
     cyclic_task();
 
     return 0;
