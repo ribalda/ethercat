@@ -50,7 +50,7 @@ noinst_HEADERS = \
 	slave_config.h \
 	voe_handler.h
 
-libethercat_la_CFLAGS = -fno-strict-aliasing -Wall
+libethercat_la_CFLAGS = -fno-strict-aliasing -Wall -I$(top_srcdir)
 libethercat_la_LDFLAGS = -version-info 1:0:0
 
 #------------------------------------------------------------------------------
