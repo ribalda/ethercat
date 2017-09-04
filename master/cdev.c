@@ -253,10 +253,15 @@ int eccdev_mmap(
  * \return Zero on success, otherwise a negative error code.
  */
 static int eccdev_vma_fault(
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0)
         struct vm_area_struct *vma, /**< Virtual memory area. */
+#endif
         struct vm_fault *vmf /**< Fault data. */
         )
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+    struct vm_area_struct *vma = vmf->vma;
+#endif
     unsigned long offset = vmf->pgoff << PAGE_SHIFT;
     ec_cdev_priv_t *priv = (ec_cdev_priv_t *) vma->vm_private_data;
     struct page *page;
