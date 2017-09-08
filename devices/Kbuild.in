@@ -85,6 +85,13 @@ ifeq (@ENABLE_R8169@,1)
 	CFLAGS_$(EC_R8169_OBJ) = -DREV=$(REV)
 endif
 
+ifeq (@ENABLE_R8152@,1)
+	EC_R8152_OBJ := r8152-@KERNEL_R8152@-ethercat.o
+	obj-m += ec_r8152.o
+	ec_r8152-objs := $(EC_R8152_OBJ)
+	CFLAGS_$(EC_R8152_OBJ) = -DREV=$(REV)
+endif
+
 KBUILD_EXTRA_SYMBOLS := \
 	@abs_top_builddir@/$(LINUX_SYMVERS) \
 	@abs_top_builddir@/master/$(LINUX_SYMVERS)

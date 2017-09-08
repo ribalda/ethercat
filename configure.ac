@@ -589,6 +589,61 @@ fi
 AC_SUBST(KERNEL_R8169,[$kernel_r8169])
 
 #------------------------------------------------------------------------------
+# r8152 driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([r8152],
+    AS_HELP_STRING([--enable-r8152],
+                   [Enable r8152 driver]),
+    [
+        case "${enableval}" in
+            yes) enable_r8152=1
+                ;;
+            no) enable_r8152=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-r8152])
+                ;;
+        esac
+    ],
+    [enable_r8152=0] # disabled by default
+)
+
+AM_CONDITIONAL(ENABLE_R8152, test "x$enable_r8152" = "x1")
+AC_SUBST(ENABLE_R8152,[$enable_r8152])
+
+AC_ARG_WITH([r8152-kernel],
+    AC_HELP_STRING(
+        [--with-r8152-kernel=<X.Y.Z>],
+        [r8152 kernel (only if differing)]
+    ),
+    [
+        kernel_r8152=[$withval]
+    ],
+    [
+        kernel_r8152=$linuxversion
+    ]
+)
+
+if test "x${enable_r8152}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for r8152 driver])
+
+    kernels=`ls -1 ${srcdir}/devices/ | grep -oE "^r8152-.*-" | cut -d "-" -f 2 | uniq`
+    found=0
+    for k in $kernels; do
+        if test "$kernel_r8152" = "$k"; then
+            found=1
+        fi
+    done
+    if test $found -ne 1; then
+        AC_MSG_ERROR([kernel $kernel_r8152 not available for r8152 driver!])
+    fi
+
+    AC_MSG_RESULT([$kernel_r8152])
+fi
+
+AC_SUBST(KERNEL_R8152,[$kernel_r8152])
+
+#------------------------------------------------------------------------------
 # CCAT driver
 #------------------------------------------------------------------------------
 
