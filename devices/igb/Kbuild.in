@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-#  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+#  Copyright (C) 2006-2017  Florian Pose, Ingenieurgemeinschaft IgH
 #
 #  This file is part of the IgH EtherCAT Master.
 #
@@ -31,54 +31,30 @@
 #
 #------------------------------------------------------------------------------
 
-REV := $(shell if test -s $(src)/../revision; then \
-		cat $(src)/../revision; \
+TOPDIR := $(src)/../..
+
+REV := $(shell if test -s $(TOPDIR)/revision; then \
+		cat $(TOPDIR)/revision; \
 	else \
-		hg id -i $(src)/.. 2>/dev/null || echo "unknown"; \
+		hg id -i $(TOPDIR) 2>/dev/null || echo "unknown"; \
 	fi)
 
-ifeq (@ENABLE_GENERIC@,1)
-	EC_GENERIC_OBJ := generic.o
-	obj-m += ec_generic.o
-	ec_generic-objs := $(EC_GENERIC_OBJ)
-	CFLAGS_$(EC_GENERIC_OBJ) = -DREV=$(REV)
-endif
-
-ifeq (@ENABLE_8139TOO@,1)
-	EC_8139TOO_OBJ := 8139too-@KERNEL_8139TOO@-ethercat.o
-	obj-m += ec_8139too.o
-	ec_8139too-objs := $(EC_8139TOO_OBJ)
-	CFLAGS_$(EC_8139TOO_OBJ) = -DREV=$(REV)
-endif
-
-ifeq (@ENABLE_CCAT@,1)
-	obj-m += ccat/
-endif
-
-ifeq (@ENABLE_E100@,1)
-	EC_E100_OBJ := e100-@KERNEL_E100@-ethercat.o
-	obj-m += ec_e100.o
-	ec_e100-objs := $(EC_E100_OBJ)
-	CFLAGS_$(EC_E100_OBJ) = -DREV=$(REV)
-endif
-
-ifeq (@ENABLE_E1000@,1)
-	obj-m += e1000/
-endif
-
-ifeq (@ENABLE_E1000E@,1)
-	obj-m += e1000e/
-endif
-
 ifeq (@ENABLE_IGB@,1)
-	obj-m += igb/
-endif
+	obj-m += ec_igb.o
 
-ifeq (@ENABLE_R8169@,1)
-	EC_R8169_OBJ := r8169-@KERNEL_R8169@-ethercat.o
-	obj-m += ec_r8169.o
-	ec_r8169-objs := $(EC_R8169_OBJ)
-	CFLAGS_$(EC_R8169_OBJ) = -DREV=$(REV)
+	ec_igb-objs := \
+		e1000_82575-@KERNEL_IGB@-ethercat.o \
+		e1000_i210-@KERNEL_IGB@-ethercat.o \
+		e1000_mac-@KERNEL_IGB@-ethercat.o \
+		e1000_mbx-@KERNEL_IGB@-ethercat.o \
+		e1000_nvm-@KERNEL_IGB@-ethercat.o \
+		e1000_phy-@KERNEL_IGB@-ethercat.o \
+		igb_ethtool-@KERNEL_IGB@-ethercat.o \
+		igb_hwmon-@KERNEL_IGB@-ethercat.o \
+		igb_main-@KERNEL_IGB@-ethercat.o \
+		igb_ptp-@KERNEL_IGB@-ethercat.o
+
+	CFLAGS_igb_main-@KERNEL_IGB@-ethercat.o = -DREV=$(REV)
 endif
 
 KBUILD_EXTRA_SYMBOLS := \

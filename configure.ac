@@ -432,6 +432,54 @@ AC_SUBST(KERNEL_E1000E,[$kernele1000e])
 AC_SUBST(E1000E_LAYOUT, [$e1000elayout])
 
 #------------------------------------------------------------------------------
+# igb driver
+#------------------------------------------------------------------------------
+
+AC_ARG_ENABLE([igb],
+    AS_HELP_STRING([--enable-igb],
+                   [Enable igb driver]),
+    [
+        case "${enableval}" in
+            yes) enableigb=1
+                ;;
+            no) enableigb=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-igb])
+                ;;
+        esac
+    ],
+    [enableigb=0] # disabled by default
+)
+
+AM_CONDITIONAL(ENABLE_IGB, test "x$enableigb" = "x1")
+AC_SUBST(ENABLE_IGB,[$enableigb])
+
+AC_ARG_WITH([igb-kernel],
+    AC_HELP_STRING(
+        [--with-igb-kernel=<X.Y.Z>],
+        [igb kernel (only if differing)]
+    ),
+    [
+        kerneligb=[$withval]
+    ],
+    [
+        kerneligb=$linuxversion
+    ]
+)
+
+if test "x${enableigb}" = "x1"; then
+    AC_MSG_CHECKING([for kernel for igb driver])
+
+    if test ! -f "${srcdir}/devices/igb/igb_main-${kerneligb}-orig.c"; then
+        AC_MSG_ERROR([kernel $kerneligb not available for igb driver!])
+    fi
+
+    AC_MSG_RESULT([$kerneligb])
+fi
+
+AC_SUBST(KERNEL_IGB,[$kerneligb])
+
+#------------------------------------------------------------------------------
 # r8169 driver
 #------------------------------------------------------------------------------
 
@@ -1102,6 +1150,8 @@ AC_CONFIG_FILES([
         devices/e1000/Makefile
         devices/e1000e/Kbuild
         devices/e1000e/Makefile
+        devices/igb/Kbuild
+        devices/igb/Makefile
         ethercat.spec
         examples/Kbuild
         examples/Makefile
