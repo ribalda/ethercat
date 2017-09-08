@@ -54,7 +54,9 @@ static const struct ccat_driver *const drivers[] = {
 	&eth_dma_driver,	/* load Ethernet MAC/EtherCAT Master driver with DMA support from netdev.c */
 #endif
 	&eth_eim_driver,	/* load Ethernet MAC/EtherCAT Master driver without DMA support from */
+#ifdef CONFIG_GPIO
 	&gpio_driver,		/* load GPIO driver from gpio.c */
+#endif
 	&sram_driver,		/* load SRAM driver from sram.c */
 	&update_driver,		/* load Update driver from update.c */
 };
