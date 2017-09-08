@@ -37,9 +37,12 @@
 
 extern const struct ccat_driver eth_eim_driver;
 extern const struct ccat_driver eth_dma_driver;
+#ifdef CONFIG_GPIO
 extern const struct ccat_driver gpio_driver;
+#endif
 extern const struct ccat_driver sram_driver;
 extern const struct ccat_driver update_driver;
+
 
 /**
  * CCAT function type identifiers (u16)

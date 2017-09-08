@@ -34,14 +34,18 @@
 TOPDIR := $(src)/../..
 
 ifeq (@ENABLE_CCAT@,1)
-	EC_CCAT_OBJ := \
-		gpio.o \
+	obj-m += ec_ccat.o
+
+	ec_ccat-objs := \
 		module.o \
 		netdev.o \
 		sram.o \
 		update.o
-	obj-m += ec_ccat.o
-	ec_ccat-objs := $(EC_CCAT_OBJ)
+
+ifdef CONFIG_GPIO
+	ec_ccat-objs += gpio.o
+endif
+
 	CFLAGS_ccat_main-ethercat.o = -DREV=$(REV)
 endif
 
