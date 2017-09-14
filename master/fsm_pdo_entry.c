@@ -93,11 +93,11 @@ void ec_fsm_pdo_entry_print(
         ec_fsm_pdo_entry_t *fsm /**< PDO mapping state machine. */
         )
 {
-    printk("Currently mapped PDO entries: ");
+    printk(KERN_CONT "Currently mapped PDO entries: ");
     ec_pdo_print_entries(fsm->cur_pdo);
-    printk(". Entries to map: ");
+    printk(KERN_CONT ". Entries to map: ");
     ec_pdo_print_entries(fsm->source_pdo);
-    printk("\n");
+    printk(KERN_CONT "\n");
 }
 
 /*****************************************************************************/
