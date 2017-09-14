@@ -105,11 +105,11 @@ void ec_fsm_pdo_print(
         ec_fsm_pdo_t *fsm /**< PDO configuration state machine. */
         )
 {
-    printk("Currently assigned PDOs: ");
+    printk(KERN_CONT "Currently assigned PDOs: ");
     ec_pdo_list_print(&fsm->sync->pdos);
-    printk(". PDOs to assign: ");
+    printk(KERN_CONT ". PDOs to assign: ");
     ec_pdo_list_print(&fsm->pdos);
-    printk("\n");
+    printk(KERN_CONT "\n");
 }
 
 /*****************************************************************************/
@@ -544,11 +544,11 @@ void ec_fsm_pdo_conf_action_check_mapping(
         EC_SLAVE_WARN(fsm->slave, "Slave does not support"
                 " changing the PDO mapping!\n");
         EC_SLAVE_WARN(fsm->slave, "");
-        printk("Currently mapped PDO entries: ");
+        printk(KERN_CONT "Currently mapped PDO entries: ");
         ec_pdo_print_entries(&fsm->slave_pdo);
-        printk(". Entries to map: ");
+        printk(KERN_CONT ". Entries to map: ");
         ec_pdo_print_entries(fsm->pdo);
-        printk("\n");
+        printk(KERN_CONT "\n");
     }
 
     ec_fsm_pdo_conf_action_next_pdo_mapping(fsm, datagram);
