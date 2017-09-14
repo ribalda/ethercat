@@ -566,31 +566,31 @@ void ec_datagram_print_state(
         const ec_datagram_t *datagram /**< EtherCAT datagram */
         )
 {
-    printk("Datagram ");
+    printk(KERN_CONT "Datagram ");
     switch (datagram->state) {
         case EC_DATAGRAM_INIT:
-            printk("initialized");
+            printk(KERN_CONT "initialized");
             break;
         case EC_DATAGRAM_QUEUED:
-            printk("queued");
+            printk(KERN_CONT "queued");
             break;
         case EC_DATAGRAM_SENT:
-            printk("sent");
+            printk(KERN_CONT "sent");
             break;
         case EC_DATAGRAM_RECEIVED:
-            printk("received");
+            printk(KERN_CONT "received");
             break;
         case EC_DATAGRAM_TIMED_OUT:
-            printk("timed out");
+            printk(KERN_CONT "timed out");
             break;
         case EC_DATAGRAM_ERROR:
-            printk("error");
+            printk(KERN_CONT "error");
             break;
         default:
-            printk("???");
+            printk(KERN_CONT "???");
     }
 
-    printk(".\n");
+    printk(KERN_CONT ".\n");
 }
 
 /*****************************************************************************/
@@ -604,12 +604,12 @@ void ec_datagram_print_wc_error(
         )
 {
     if (datagram->working_counter == 0)
-        printk("No response.");
+        printk(KERN_CONT "No response.");
     else if (datagram->working_counter > 1)
-        printk("%u slaves responded!", datagram->working_counter);
+        printk(KERN_CONT "%u slaves responded!", datagram->working_counter);
     else
-        printk("Success.");
-    printk("\n");
+        printk(KERN_CONT "Success.");
+    printk(KERN_CONT "\n");
 }
 
 /*****************************************************************************/

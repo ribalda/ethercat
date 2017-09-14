@@ -303,13 +303,13 @@ void ec_pdo_print_entries(
     const ec_pdo_entry_t *entry;
 
     if (list_empty(&pdo->entries)) {
-        printk("(none)");
+        printk(KERN_CONT "(none)");
     } else {
         list_for_each_entry(entry, &pdo->entries, list) {
-            printk("0x%04X:%02X/%u",
+            printk(KERN_CONT "0x%04X:%02X/%u",
                     entry->index, entry->subindex, entry->bit_length);
             if (entry->list.next != &pdo->entries)
-                printk(" ");
+                printk(KERN_CONT " ");
         }
     }
 }
