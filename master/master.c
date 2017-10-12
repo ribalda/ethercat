@@ -1298,9 +1298,13 @@ void ec_master_clear_device_stats(
 
     for (i = 0; i < EC_RATE_COUNT; i++) {
         master->device_stats.tx_frame_rates[i] = 0;
+        master->device_stats.rx_frame_rates[i] = 0;
         master->device_stats.tx_byte_rates[i] = 0;
+        master->device_stats.rx_byte_rates[i] = 0;
         master->device_stats.loss_rates[i] = 0;
     }
+
+    master->device_stats.jiffies = 0;
 }
 
 /*****************************************************************************/
