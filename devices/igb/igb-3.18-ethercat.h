@@ -19,12 +19,17 @@
  * Contact Information:
  * e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+ *
+ * vim: noexpandtab
  */
 
 /* Linux PRO/1000 Ethernet Driver main header file */
 
 #ifndef _IGB_H_
 #define _IGB_H_
+
+/* EtherCAT header file */
+#include "../ecdev.h"
 
 #include "e1000_mac-3.18-ethercat.h"
 #include "e1000_82575-3.18-ethercat.h"
@@ -454,6 +459,10 @@ struct igb_adapter {
 	int copper_tries;
 	struct e1000_info ei;
 	u16 eee_advert;
+
+	/* EtherCAT device variables */
+	ec_device_t *ecdev;
+	unsigned long ec_watchdog_jiffies;
 };
 
 #define IGB_FLAG_HAS_MSI		(1 << 0)
