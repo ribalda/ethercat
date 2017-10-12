@@ -19,6 +19,8 @@
  * Contact Information:
  * e1000-devel Mailing List <e1000-devel@lists.sourceforge.net>
  * Intel Corporation, 5200 N.E. Elam Young Parkway, Hillsboro, OR 97124-6497
+ *
+ * vim: noexpandtab
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -60,11 +62,11 @@
 #define MIN 2
 #define BUILD 15
 #define DRV_VERSION __stringify(MAJ) "." __stringify(MIN) "." \
-__stringify(BUILD) "-k"
-char igb_driver_name[] = "igb";
+__stringify(BUILD) "-k-EtherCAT"
+char igb_driver_name[] = "ec_igb";
 char igb_driver_version[] = DRV_VERSION;
 static const char igb_driver_string[] =
-				"Intel(R) Gigabit Ethernet Network Driver";
+	"Intel(R) Gigabit Ethernet Network Driver (EtherCAT-enabled)";
 static const char igb_copyright[] =
 				"Copyright (c) 2007-2014 Intel Corporation.";
 
@@ -112,7 +114,7 @@ static const struct pci_device_id igb_pci_tbl[] = {
 	{0, }
 };
 
-MODULE_DEVICE_TABLE(pci, igb_pci_tbl);
+// MODULE_DEVICE_TABLE(pci, igb_pci_tbl);
 
 static int igb_setup_all_tx_resources(struct igb_adapter *);
 static int igb_setup_all_rx_resources(struct igb_adapter *);
@@ -949,6 +951,11 @@ static int igb_request_msix(struct igb_adapter *adapter)
 	struct e1000_hw *hw = &adapter->hw;
 	int i, err = 0, vector = 0, free_vector = 0;
 
+	if (adapter->ecdev) {
+		/* avoid requesting MSI-X. */
+		return 0;
+	}
+
 	err = request_irq(adapter->msix_entries[vector].vector,
 			  igb_msix_other, 0, netdev->name, adapter);
 	if (err)
@@ -1040,7 +1047,9 @@ static void igb_reset_q_vector(struct igb_adapter *adapter, int v_idx)
 	if (q_vector->rx.ring)
 		adapter->tx_ring[q_vector->rx.ring->queue_index] = NULL;
 
-	netif_napi_del(&q_vector->napi);
+	if (!adapter->ecdev) {
+		netif_napi_del(&q_vector->napi);
+	}
 
 }
 
@@ -1212,9 +1221,11 @@ static int igb_alloc_q_vector(struct igb_adapter *adapter,
 	if (!q_vector)
 		return -ENOMEM;
 
-	/* initialize NAPI */
-	netif_napi_add(adapter->netdev, &q_vector->napi,
-		       igb_poll, 64);
+	if (!adapter->ecdev) {
+		/* initialize NAPI */
+		netif_napi_add(adapter->netdev, &q_vector->napi,
+				igb_poll, 64);
+	}
 
 	/* tie q_vector and adapter together */
 	adapter->q_vector[v_idx] = q_vector;
@@ -1426,7 +1437,7 @@ static int igb_request_irq(struct igb_adapter *adapter)
 
 	igb_assign_vector(adapter->q_vector[0], 0);
 
-	if (adapter->flags & IGB_FLAG_HAS_MSI) {
+	if (!adapter->ecdev && adapter->flags & IGB_FLAG_HAS_MSI) {
 		err = request_irq(pdev->irq, igb_intr_msi, 0,
 				  netdev->name, adapter);
 		if (!err)
@@ -1437,12 +1448,14 @@ static int igb_request_irq(struct igb_adapter *adapter)
 		adapter->flags &= ~IGB_FLAG_HAS_MSI;
 	}
 
-	err = request_irq(pdev->irq, igb_intr, IRQF_SHARED,
-			  netdev->name, adapter);
+	if (!adapter->ecdev) {
+		err = request_irq(pdev->irq, igb_intr, IRQF_SHARED,
+				netdev->name, adapter);
 
-	if (err)
-		dev_err(&pdev->dev, "Error %d getting interrupt\n",
-			err);
+		if (err)
+			dev_err(&pdev->dev, "Error %d getting interrupt\n",
+					err);
+	}
 
 request_done:
 	return err;
@@ -1450,6 +1463,11 @@ request_done:
 
 static void igb_free_irq(struct igb_adapter *adapter)
 {
+	if (adapter->ecdev) {
+		/* no IRQ to free in EtherCAT operation */
+		return;
+	}
+
 	if (adapter->flags & IGB_FLAG_HAS_MSIX) {
 		int vector = 0, i;
 
@@ -1487,6 +1505,12 @@ static void igb_irq_disable(struct igb_adapter *adapter)
 	wr32(E1000_IAM, 0);
 	wr32(E1000_IMC, ~0);
 	wrfl();
+
+	if (adapter->ecdev) {
+		/* skip synchonizing IRQs */
+		return;
+	}
+
 	if (adapter->flags & IGB_FLAG_HAS_MSIX) {
 		int i;
 
@@ -1504,6 +1528,11 @@ static void igb_irq_disable(struct igb_adapter *adapter)
 static void igb_irq_enable(struct igb_adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
+
+	if (adapter->ecdev) {
+		/* skip enabling interrupts */
+		return;
+	}
 
 	if (adapter->flags & IGB_FLAG_HAS_MSIX) {
 		u32 ims = E1000_IMS_LSC | E1000_IMS_DOUTSYNC | E1000_IMS_DRSTA;
@@ -1728,8 +1757,10 @@ int igb_up(struct igb_adapter *adapter)
 
 	clear_bit(__IGB_DOWN, &adapter->state);
 
-	for (i = 0; i < adapter->num_q_vectors; i++)
-		napi_enable(&(adapter->q_vector[i]->napi));
+	if (!adapter->ecdev) {
+		for (i = 0; i < adapter->num_q_vectors; i++)
+			napi_enable(&(adapter->q_vector[i]->napi));
+	}
 
 	if (adapter->flags & IGB_FLAG_HAS_MSIX)
 		igb_configure_msix(adapter);
@@ -1748,11 +1779,13 @@ int igb_up(struct igb_adapter *adapter)
 		wr32(E1000_CTRL_EXT, reg_data);
 	}
 
-	netif_tx_start_all_queues(adapter->netdev);
+	if (!adapter->ecdev) {
+		netif_tx_start_all_queues(adapter->netdev);
 
-	/* start the watchdog. */
-	hw->mac.get_link_status = 1;
-	schedule_work(&adapter->watchdog_task);
+		/* start the watchdog. */
+		hw->mac.get_link_status = 1;
+		schedule_work(&adapter->watchdog_task);
+	}
 
 	if ((adapter->flags & IGB_FLAG_EEE) &&
 	    (!hw->dev_spec._82575.eee_disable))
@@ -1778,7 +1811,9 @@ void igb_down(struct igb_adapter *adapter)
 	wr32(E1000_RCTL, rctl & ~E1000_RCTL_EN);
 	/* flush and sleep below */
 
-	netif_tx_stop_all_queues(netdev);
+	if (!adapter->ecdev) {
+		netif_tx_stop_all_queues(netdev);
+	}
 
 	/* disable transmits in the hardware */
 	tctl = rd32(E1000_TCTL);
@@ -1793,7 +1828,7 @@ void igb_down(struct igb_adapter *adapter)
 	adapter->flags &= ~IGB_FLAG_NEED_LINK_UPDATE;
 
 	for (i = 0; i < adapter->num_q_vectors; i++) {
-		if (adapter->q_vector[i]) {
+		if (!adapter->ecdev && adapter->q_vector[i]) {
 			napi_synchronize(&adapter->q_vector[i]->napi);
 			napi_disable(&adapter->q_vector[i]->napi);
 		}
@@ -1803,7 +1838,9 @@ void igb_down(struct igb_adapter *adapter)
 	del_timer_sync(&adapter->watchdog_timer);
 	del_timer_sync(&adapter->phy_info_timer);
 
-	netif_carrier_off(netdev);
+	if (!adapter->ecdev) {
+		netif_carrier_off(netdev);
+	}
 
 	/* record the stats before reset*/
 	spin_lock(&adapter->stats64_lock);
@@ -2024,7 +2061,7 @@ void igb_reset(struct igb_adapter *adapter)
 			break;
 		}
 	}
-	if (!netif_running(adapter->netdev))
+	if (!adapter->ecdev && !netif_running(adapter->netdev))
 		igb_power_down_link(adapter);
 
 	igb_update_mng_vlan(adapter);
@@ -2098,6 +2135,40 @@ static const struct net_device_ops igb_netdev_ops = {
 	.ndo_fix_features	= igb_fix_features,
 	.ndo_set_features	= igb_set_features,
 };
+
+/**
+ * ec_poll - EtherCAT poll routine
+ * @netdev: net device structure
+ *
+ * This function can never fail.
+ *
+ **/
+void ec_poll(struct net_device *netdev)
+{
+	struct igb_adapter *adapter = netdev_priv(netdev);
+	int i;
+	int budget = 64;
+
+	if (jiffies - adapter->ec_watchdog_jiffies >= 2 * HZ) {
+		struct e1000_hw *hw = &adapter->hw;
+		bool link;
+		hw->mac.get_link_status = true;
+		link = igb_has_link(adapter);
+		ecdev_set_link(adapter->ecdev, link);
+		adapter->ec_watchdog_jiffies = jiffies;
+	}
+
+	for (i = 0; i < adapter->num_q_vectors; i++) {
+		struct igb_q_vector *q_vector = adapter->q_vector[i];
+		if (q_vector->tx.ring) {
+			igb_clean_tx_irq(q_vector);
+		}
+
+		if (q_vector->rx.ring) {
+			igb_clean_rx_irq(q_vector, budget);
+		}
+	}
+}
 
 /**
  * igb_set_fw_version - Configure version string for ethtool
@@ -2540,13 +2611,23 @@ static int igb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	 */
 	igb_get_hw_control(adapter);
 
-	strcpy(netdev->name, "eth%d");
-	err = register_netdev(netdev);
-	if (err)
-		goto err_register;
+	adapter->ecdev = ecdev_offer(netdev, ec_poll, THIS_MODULE);
+	if (adapter->ecdev) {
+		err = ecdev_open(adapter->ecdev);
+		if (err) {
+			ecdev_withdraw(adapter->ecdev);
+			goto err_register;
+		}
+		adapter->ec_watchdog_jiffies = jiffies;
+	} else {
+		strcpy(netdev->name, "eth%d");
+		err = register_netdev(netdev);
+		if (err)
+			goto err_register;
 
-	/* carrier off reporting is important to ethtool even BEFORE open */
-	netif_carrier_off(netdev);
+		/* carrier off reporting is important to ethtool even BEFORE open */
+		netif_carrier_off(netdev);
+	}
 
 #ifdef CONFIG_IGB_DCA
 	if (dca_add_requester(&pdev->dev) == 0) {
@@ -2789,6 +2870,11 @@ static void igb_remove(struct pci_dev *pdev)
 	struct igb_adapter *adapter = netdev_priv(netdev);
 	struct e1000_hw *hw = &adapter->hw;
 
+	if (adapter->ecdev) {
+		ecdev_close(adapter->ecdev);
+		ecdev_withdraw(adapter->ecdev);
+	}
+
 	pm_runtime_get_noresume(&pdev->dev);
 #ifdef CONFIG_IGB_HWMON
 	igb_sysfs_exit(adapter);
@@ -2819,7 +2905,9 @@ static void igb_remove(struct pci_dev *pdev)
 	 */
 	igb_release_hw_control(adapter);
 
-	unregister_netdev(netdev);
+	if (!adapter->ecdev) {
+		unregister_netdev(netdev);
+	}
 
 	igb_clear_interrupt_scheme(adapter);
 
@@ -3035,7 +3123,12 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 	if (!resuming)
 		pm_runtime_get_sync(&pdev->dev);
 
-	netif_carrier_off(netdev);
+	if (adapter->ecdev) {
+		ecdev_set_link(adapter->ecdev, 0);
+	}
+	else {
+		netif_carrier_off(netdev);
+	}
 
 	/* allocate transmit descriptors */
 	err = igb_setup_all_tx_resources(adapter);
@@ -3060,22 +3153,26 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 	if (err)
 		goto err_req_irq;
 
-	/* Notify the stack of the actual queue counts. */
-	err = netif_set_real_num_tx_queues(adapter->netdev,
-					   adapter->num_tx_queues);
-	if (err)
-		goto err_set_queues;
+	if (!adapter->ecdev) {
+		/* Notify the stack of the actual queue counts. */
+		err = netif_set_real_num_tx_queues(adapter->netdev,
+						   adapter->num_tx_queues);
+		if (err)
+			goto err_set_queues;
 
-	err = netif_set_real_num_rx_queues(adapter->netdev,
-					   adapter->num_rx_queues);
-	if (err)
-		goto err_set_queues;
+		err = netif_set_real_num_rx_queues(adapter->netdev,
+						   adapter->num_rx_queues);
+		if (err)
+			goto err_set_queues;
+	}
 
 	/* From here on the code is the same as igb_up() */
 	clear_bit(__IGB_DOWN, &adapter->state);
 
-	for (i = 0; i < adapter->num_q_vectors; i++)
-		napi_enable(&(adapter->q_vector[i]->napi));
+	if (!adapter->ecdev) {
+		for (i = 0; i < adapter->num_q_vectors; i++)
+			napi_enable(&(adapter->q_vector[i]->napi));
+	}
 
 	/* Clear any pending interrupts. */
 	rd32(E1000_ICR);
@@ -3090,14 +3187,18 @@ static int __igb_open(struct net_device *netdev, bool resuming)
 		wr32(E1000_CTRL_EXT, reg_data);
 	}
 
-	netif_tx_start_all_queues(netdev);
+	if (!adapter->ecdev) {
+		netif_tx_start_all_queues(netdev);
+	}
 
 	if (!resuming)
 		pm_runtime_put(&pdev->dev);
 
-	/* start the watchdog. */
-	hw->mac.get_link_status = 1;
-	schedule_work(&adapter->watchdog_task);
+	if (!adapter->ecdev) {
+		/* start the watchdog. */
+		hw->mac.get_link_status = 1;
+		schedule_work(&adapter->watchdog_task);
+	}
 
 	return 0;
 
@@ -3728,7 +3829,11 @@ void igb_unmap_and_free_tx_resource(struct igb_ring *ring,
 				    struct igb_tx_buffer *tx_buffer)
 {
 	if (tx_buffer->skb) {
-		dev_kfree_skb_any(tx_buffer->skb);
+		struct igb_adapter *adapter = netdev_priv(ring->netdev);
+		if (!adapter->ecdev) {
+			/* skb is reused in EtherCAT TX operation */
+			dev_kfree_skb_any(tx_buffer->skb);
+		}
 		if (dma_unmap_len(tx_buffer, len))
 			dma_unmap_single(ring->dev,
 					 dma_unmap_addr(tx_buffer, dma),
@@ -4823,8 +4928,11 @@ static void igb_tx_olinfo_status(struct igb_ring *tx_ring,
 static int __igb_maybe_stop_tx(struct igb_ring *tx_ring, const u16 size)
 {
 	struct net_device *netdev = tx_ring->netdev;
+	struct igb_adapter *adapter = netdev_priv(netdev);
 
-	netif_stop_subqueue(netdev, tx_ring->queue_index);
+	if (!adapter->ecdev) {
+		netif_stop_subqueue(netdev, tx_ring->queue_index);
+	}
 
 	/* Herbert's original patch had:
 	 *  smp_mb__after_netif_stop_queue();
@@ -4839,7 +4947,9 @@ static int __igb_maybe_stop_tx(struct igb_ring *tx_ring, const u16 size)
 		return -EBUSY;
 
 	/* A reprieve! */
-	netif_wake_subqueue(netdev, tx_ring->queue_index);
+	if (!adapter->ecdev) {
+		netif_wake_subqueue(netdev, tx_ring->queue_index);
+	}
 
 	u64_stats_update_begin(&tx_ring->tx_syncp2);
 	tx_ring->tx_stats.restart_queue2++;
@@ -4996,6 +5106,7 @@ netdev_tx_t igb_xmit_frame_ring(struct sk_buff *skb,
 	u16 count = TXD_USE_COUNT(skb_headlen(skb));
 	__be16 protocol = vlan_get_protocol(skb);
 	u8 hdr_len = 0;
+	struct igb_adapter *adapter = netdev_priv(tx_ring->netdev);
 
 	/* need: 1 descriptor per page * PAGE_SIZE/IGB_MAX_DATA_PER_TXD,
 	 *       + 1 desc for skb_headlen/IGB_MAX_DATA_PER_TXD,
@@ -5023,8 +5134,8 @@ netdev_tx_t igb_xmit_frame_ring(struct sk_buff *skb,
 	first->bytecount = skb->len;
 	first->gso_segs = 1;
 
-	if (unlikely(skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP)) {
-		struct igb_adapter *adapter = netdev_priv(tx_ring->netdev);
+	if (unlikely(!adapter->ecdev &&
+				(skb_shinfo(skb)->tx_flags & SKBTX_HW_TSTAMP))) {
 
 		if (!test_and_set_bit_lock(__IGB_PTP_TX_IN_PROGRESS,
 					   &adapter->state)) {
@@ -5082,12 +5193,16 @@ static netdev_tx_t igb_xmit_frame(struct sk_buff *skb,
 	struct igb_adapter *adapter = netdev_priv(netdev);
 
 	if (test_bit(__IGB_DOWN, &adapter->state)) {
-		dev_kfree_skb_any(skb);
+		if (!adapter->ecdev) {
+			dev_kfree_skb_any(skb);
+		}
 		return NETDEV_TX_OK;
 	}
 
 	if (skb->len <= 0) {
-		dev_kfree_skb_any(skb);
+		if (!adapter->ecdev) {
+			dev_kfree_skb_any(skb);
+		}
 		return NETDEV_TX_OK;
 	}
 
@@ -6380,8 +6495,10 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector)
 		total_bytes += tx_buffer->bytecount;
 		total_packets += tx_buffer->gso_segs;
 
-		/* free the skb */
-		dev_consume_skb_any(tx_buffer->skb);
+		if (!adapter->ecdev) {
+			/* free the skb */
+			dev_consume_skb_any(tx_buffer->skb);
+		}
 
 		/* unmap skb header data */
 		dma_unmap_single(tx_ring->dev,
@@ -6431,8 +6548,10 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector)
 		budget--;
 	} while (likely(budget));
 
-	netdev_tx_completed_queue(txring_txq(tx_ring),
-				  total_packets, total_bytes);
+	if (!adapter->ecdev) {
+		netdev_tx_completed_queue(txring_txq(tx_ring),
+					  total_packets, total_bytes);
+	}
 	i += tx_ring->count;
 	tx_ring->next_to_clean = i;
 	u64_stats_update_begin(&tx_ring->tx_syncp);
@@ -6442,7 +6561,8 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector)
 	q_vector->tx.total_bytes += total_bytes;
 	q_vector->tx.total_packets += total_packets;
 
-	if (test_bit(IGB_RING_FLAG_TX_DETECT_HANG, &tx_ring->flags)) {
+	if (!adapter->ecdev &&
+			test_bit(IGB_RING_FLAG_TX_DETECT_HANG, &tx_ring->flags)) {
 		struct e1000_hw *hw = &adapter->hw;
 
 		/* Detect a transmit hang in hardware, this serializes the
@@ -6485,7 +6605,7 @@ static bool igb_clean_tx_irq(struct igb_q_vector *q_vector)
 	}
 
 #define TX_WAKE_THRESHOLD (DESC_NEEDED * 2)
-	if (unlikely(total_packets &&
+	if (unlikely(!adapter->ecdev && total_packets &&
 	    netif_carrier_ok(tx_ring->netdev) &&
 	    igb_desc_unused(tx_ring) >= TX_WAKE_THRESHOLD)) {
 		/* Make sure that anybody stopping the queue after this
@@ -6634,13 +6754,14 @@ static struct sk_buff *igb_fetch_rx_buffer(struct igb_ring *rx_ring,
 {
 	struct igb_rx_buffer *rx_buffer;
 	struct page *page;
+	struct igb_adapter *adapter = netdev_priv(rx_ring->netdev);
 
 	rx_buffer = &rx_ring->rx_buffer_info[rx_ring->next_to_clean];
 
 	page = rx_buffer->page;
 	prefetchw(page);
 
-	if (likely(!skb)) {
+	if (!adapter->ecdev && likely(!skb)) {
 		void *page_addr = page_address(page) +
 				  rx_buffer->page_offset;
 
@@ -6672,18 +6793,27 @@ static struct sk_buff *igb_fetch_rx_buffer(struct igb_ring *rx_ring,
 				      IGB_RX_BUFSZ,
 				      DMA_FROM_DEVICE);
 
-	/* pull page into skb */
-	if (igb_add_rx_frag(rx_ring, rx_buffer, rx_desc, skb)) {
-		/* hand second half of page back to the ring */
+	if (adapter->ecdev) {
+		unsigned char *va =
+			page_address(rx_buffer->page) + rx_buffer->page_offset;
+		unsigned int size = le16_to_cpu(rx_desc->wb.upper.length);
+		ecdev_receive(adapter->ecdev, va, size);
 		igb_reuse_rx_page(rx_ring, rx_buffer);
-	} else {
-		/* we are not reusing the buffer so unmap it */
-		dma_unmap_page(rx_ring->dev, rx_buffer->dma,
-			       PAGE_SIZE, DMA_FROM_DEVICE);
 	}
+	else {
+		/* pull page into skb */
+		if (igb_add_rx_frag(rx_ring, rx_buffer, rx_desc, skb)) {
+			/* hand second half of page back to the ring */
+			igb_reuse_rx_page(rx_ring, rx_buffer);
+		} else {
+			/* we are not reusing the buffer so unmap it */
+			dma_unmap_page(rx_ring->dev, rx_buffer->dma,
+					   PAGE_SIZE, DMA_FROM_DEVICE);
+		}
 
-	/* clear contents of rx_buffer */
-	rx_buffer->page = NULL;
+		/* clear contents of rx_buffer */
+		rx_buffer->page = NULL;
+	}
 
 	return skb;
 }
@@ -6910,6 +7040,7 @@ static void igb_process_skb_fields(struct igb_ring *rx_ring,
 static bool igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
 {
 	struct igb_ring *rx_ring = q_vector->rx.ring;
+	struct igb_adapter *adapter = netdev_priv(rx_ring->netdev);
 	struct sk_buff *skb = rx_ring->skb;
 	unsigned int total_bytes = 0, total_packets = 0;
 	u16 cleaned_count = igb_desc_unused(rx_ring);
@@ -6938,14 +7069,20 @@ static bool igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
 		skb = igb_fetch_rx_buffer(rx_ring, rx_desc, skb);
 
 		/* exit if we failed to retrieve a buffer */
-		if (!skb)
+		if (!adapter->ecdev && !skb) {
 			break;
+		}
 
 		cleaned_count++;
 
 		/* fetch next buffer in frame if non-eop */
 		if (igb_is_non_eop(rx_ring, rx_desc))
 			continue;
+
+		if (adapter->ecdev) {
+			total_packets++;
+			continue;
+		}
 
 		/* verify the packet layout is correct */
 		if (igb_cleanup_headers(rx_ring, rx_desc, skb)) {
