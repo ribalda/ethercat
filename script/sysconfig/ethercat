@@ -39,18 +39,18 @@ MASTER0_DEVICE=""
 #
 # Ethernet driver modules to use for EtherCAT operation.
 #
-# Specify a non-empty list of Ethernet drivers, that shall be used for EtherCAT
-# operation.
+# Specify a non-empty list of Ethernet drivers, that shall be used for
+# EtherCAT operation.
 #
 # Except for the generic Ethernet driver module, the init script will try to
 # unload the usual Ethernet driver modules in the list and replace them with
 # the EtherCAT-capable ones. If a certain (EtherCAT-capable) driver is not
 # found, a warning will appear.
 #
-# Possible values: 8139too, e100, e1000, e1000e, r8169, generic, ccat.
+# Possible values: 8139too, e100, e1000, e1000e, r8169, generic, ccat, igb.
 # Separate multiple drivers with spaces.
 #
-# Note: The e100, e1000, e1000e, r8169 and ccat drivers are not built by
+# Note: The e100, e1000, e1000e, r8169, ccat and igb drivers are not built by
 # default. Enable them with the --enable-<driver> configure switches.
 #
 # Attention: When using the generic driver, the corresponding Ethernet device
