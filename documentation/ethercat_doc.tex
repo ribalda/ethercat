@@ -94,7 +94,7 @@
     \rule{\textwidth}{1.5mm}
 
     \vspace{\fill} {\Large Dipl.-Ing. (FH) Florian Pose,
-    \url{fp@igh-essen.com}\\[1ex] Ingenieurgemeinschaft \IgH}
+    \url{fp@igh.de}\\[1ex] Ingenieurgemeinschaft \IgH}
 
     \vspace{\fill}
     {\Large Essen, \rcsInfoLongDate\\[1ex]
@@ -758,7 +758,7 @@ position is now 1, so slave 3 is attached.
 
 \end{enumerate}
 
-If the master sources are configured with \lstinline+--enable-wildcards+, then
+f the master sources are configured with \lstinline+--enable-wildcards+, then
 \lstinline+0xffffffff+ matches every vendor ID and/or product code.
 
 %------------------------------------------------------------------------------
@@ -3211,7 +3211,16 @@ the EtherCAT kernel modules shall be installed. & \textit{ethercat}\\
 
 \lstinline+--with-r8169-kernel+ & r8169 kernel & $\dagger$\\
 
+\lstinline+--enable-ccat+ & Enable ccat driver (independent of kernel version)
+& no\\
+
+\lstinline+--enable-igb+ & Enable igb driver & no\\
+
+\lstinline+--with-igb-kernel+ & igb kernel & $\dagger$\\
+
 \hline
+
+\lstinline+--enable-kernel+ & Build the master kernel modules & yes\\
 
 \lstinline+--enable-rtdm+ & Create the RTDM interface (RTAI or Xenomai
 directory needed, see below) & no\\
@@ -3237,20 +3246,23 @@ architecture to get finer timing calculation. & no\\
 \lstinline+--enable-hrtimer+ & Use high-resolution timer to let the master
 state machine sleep between sending frames. & no\\
 
-\lstinline+--enable-regalias+ & Read alias address from register. & no\\
+\lstinline+--enable-regalias+ & Read alias address from register & no\\
 
 \lstinline+--enable-tool+ & Build the command-line tool ``ethercat'' (see
-\autoref{sec:tool}). & yes\\
+\autoref{sec:tool}) & yes\\
 
-\lstinline+--enable-userlib+ & Build the userspace library. & yes\\
+\lstinline+--enable-userlib+ & Build the userspace library & yes\\
 
-\lstinline+--enable-tty+ & Build the TTY driver. & no\\
+\lstinline+--enable-tty+ & Build the TTY driver & no\\
 
 \lstinline+--enable-wildcards+ & Enable \textit{0xffffffff} to be wildcards
-for vendor ID and product code. & no\\
+for vendor ID and product code & no\\
 
 \lstinline+--enable-sii-assign+ & Enable assigning SII access to the PDI layer
-during slave configuration. & no\\
+during slave configuration & no\\
+
+\lstinline+--enable-rt-syslog+ & Enable syslog statements in realtime context &
+yes\\
 
 \hline
 
