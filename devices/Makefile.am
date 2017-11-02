@@ -89,6 +89,8 @@ noinst_HEADERS = \
 	8139too-3.14-orig.c \
 	8139too-3.16-ethercat.c \
 	8139too-3.16-orig.c \
+	8139too-3.18-ethercat.c \
+	8139too-3.18-orig.c \
 	8139too-3.2-ethercat.c \
 	8139too-3.2-orig.c \
 	8139too-3.4-ethercat.c \
@@ -131,6 +133,8 @@ noinst_HEADERS = \
 	e100-3.14-orig.c \
 	e100-3.16-ethercat.c \
 	e100-3.16-orig.c \
+	e100-3.18-ethercat.c \
+	e100-3.18-orig.c \
 	e100-3.4-ethercat.c \
 	e100-3.4-orig.c \
 	e100-3.6-ethercat.c \
@@ -169,6 +173,8 @@ noinst_HEADERS = \
 	r8169-3.14-orig.c \
 	r8169-3.16-ethercat.c \
 	r8169-3.16-orig.c \
+	r8169-3.18-ethercat.c \
+	r8169-3.18-orig.c \
 	r8169-3.2-ethercat.c \
 	r8169-3.2-orig.c \
 	r8169-3.4-ethercat.c \
