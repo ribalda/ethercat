@@ -54,6 +54,10 @@ EXTRA_DIST = \
 	80003es2lan-3.6-orig.c \
 	80003es2lan-3.8-ethercat.c \
 	80003es2lan-3.8-orig.c \
+	80003es2lan-4.1-ethercat.c \
+	80003es2lan-4.1-ethercat.h \
+	80003es2lan-4.1-orig.c \
+	80003es2lan-4.1-orig.h \
 	80003es2lan-4.4-ethercat.c \
 	80003es2lan-4.4-ethercat.h \
 	80003es2lan-4.4-orig.c \
@@ -96,6 +100,10 @@ EXTRA_DIST = \
 	82571-3.6-orig.c \
 	82571-3.8-ethercat.c \
 	82571-3.8-orig.c \
+	82571-4.1-ethercat.c \
+	82571-4.1-ethercat.h \
+	82571-4.1-orig.c \
+	82571-4.1-orig.h \
 	82571-4.4-ethercat.c \
 	82571-4.4-ethercat.h \
 	82571-4.4-orig.c \
@@ -129,6 +137,8 @@ EXTRA_DIST = \
 	defines-3.6-orig.h \
 	defines-3.8-ethercat.h \
 	defines-3.8-orig.h \
+	defines-4.1-ethercat.h \
+	defines-4.1-orig.h \
 	defines-4.4-ethercat.h \
 	defines-4.4-orig.h \
 	e1000-2.6.32-ethercat.h \
@@ -159,6 +169,8 @@ EXTRA_DIST = \
 	e1000-3.6-orig.h \
 	e1000-3.8-ethercat.h \
 	e1000-3.8-orig.h \
+	e1000-4.1-ethercat.h \
+	e1000-4.1-orig.h \
 	e1000-4.4-ethercat.h \
 	e1000-4.4-orig.h \
 	es2lan-2.6.32-ethercat.c \
@@ -201,6 +213,8 @@ EXTRA_DIST = \
 	ethtool-3.6-orig.c \
 	ethtool-3.8-ethercat.c \
 	ethtool-3.8-orig.c \
+	ethtool-4.1-ethercat.c \
+	ethtool-4.1-orig.c \
 	ethtool-4.4-ethercat.c \
 	ethtool-4.4-orig.c \
 	hw-2.6.32-ethercat.h \
@@ -231,6 +245,8 @@ EXTRA_DIST = \
 	hw-3.6-orig.h \
 	hw-3.8-ethercat.h \
 	hw-3.8-orig.h \
+	hw-4.1-ethercat.h \
+	hw-4.1-orig.h \
 	hw-4.4-ethercat.h \
 	hw-4.4-orig.h \
 	ich8lan-2.6.32-ethercat.c \
@@ -271,6 +287,10 @@ EXTRA_DIST = \
 	ich8lan-3.6-orig.c \
 	ich8lan-3.8-ethercat.c \
 	ich8lan-3.8-orig.c \
+	ich8lan-4.1-ethercat.c \
+	ich8lan-4.1-ethercat.h \
+	ich8lan-4.1-orig.c \
+	ich8lan-4.1-orig.h \
 	ich8lan-4.4-ethercat.c \
 	ich8lan-4.4-ethercat.h \
 	ich8lan-4.4-orig.c \
@@ -313,6 +333,10 @@ EXTRA_DIST = \
 	mac-3.6-orig.c \
 	mac-3.8-ethercat.c \
 	mac-3.8-orig.c \
+	mac-4.1-ethercat.c \
+	mac-4.1-ethercat.h \
+	mac-4.1-orig.c \
+	mac-4.1-orig.h \
 	mac-4.4-ethercat.c \
 	mac-4.4-ethercat.h \
 	mac-4.4-orig.c \
@@ -343,6 +367,10 @@ EXTRA_DIST = \
 	manage-3.6-orig.c \
 	manage-3.8-ethercat.c \
 	manage-3.8-orig.c \
+	manage-4.1-ethercat.c \
+	manage-4.1-ethercat.h \
+	manage-4.1-orig.c \
+	manage-4.1-orig.h \
 	manage-4.4-ethercat.c \
 	manage-4.4-ethercat.h \
 	manage-4.4-orig.c \
@@ -375,6 +403,8 @@ EXTRA_DIST = \
 	netdev-3.6-orig.c \
 	netdev-3.8-ethercat.c \
 	netdev-3.8-orig.c \
+	netdev-4.1-ethercat.c \
+	netdev-4.1-orig.c \
 	netdev-4.4-ethercat.c \
 	netdev-4.4-orig.c \
 	nvm-3.10-ethercat.c \
@@ -403,6 +433,10 @@ EXTRA_DIST = \
 	nvm-3.6-orig.c \
 	nvm-3.8-ethercat.c \
 	nvm-3.8-orig.c \ \
+	nvm-4.1-ethercat.c \
+	nvm-4.1-ethercat.h \
+	nvm-4.1-orig.c \
+	nvm-4.1-orig.h \
 	nvm-4.4-ethercat.c \
 	nvm-4.4-ethercat.h \
 	nvm-4.4-orig.c \
@@ -435,6 +469,8 @@ EXTRA_DIST = \
 	param-3.6-orig.c \
 	param-3.8-ethercat.c \
 	param-3.8-orig.c \
+	param-4.1-ethercat.c \
+	param-4.1-orig.c \
 	param-4.4-ethercat.c \
 	param-4.4-orig.c \
 	phy-2.6.32-ethercat.c \
@@ -475,6 +511,10 @@ EXTRA_DIST = \
 	phy-3.6-orig.c \
 	phy-3.8-ethercat.c \
 	phy-3.8-orig.c \
+	phy-4.1-ethercat.c \
+	phy-4.1-ethercat.h \
+	phy-4.1-orig.c \
+	phy-4.1-orig.h \
 	phy-4.4-ethercat.c \
 	phy-4.4-ethercat.h \
 	phy-4.4-orig.c \
@@ -489,6 +529,8 @@ EXTRA_DIST = \
 	ptp-3.16-orig.c \
 	ptp-3.18-ethercat.c \
 	ptp-3.18-orig.c \
+	ptp-4.1-ethercat.c \
+	ptp-4.1-orig.c \
 	ptp-4.4-ethercat.c \
 	ptp-4.4-orig.c \
 	regs-3.10-ethercat.h \
@@ -501,6 +543,8 @@ EXTRA_DIST = \
 	regs-3.16-orig.h \
 	regs-3.18-ethercat.h \
 	regs-3.18-orig.h \
+	regs-4.1-ethercat.h \
+	regs-4.1-orig.h \
 	regs-4.4-ethercat.h \
 	regs-4.4-orig.h \
 	update.sh
