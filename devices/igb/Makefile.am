@@ -28,46 +28,86 @@
 #------------------------------------------------------------------------------
 
 EXTRA_DIST = \
-	e1000_82575-3.18-ethercat.c
-	e1000_82575-3.18-ethercat.h
-	e1000_82575-3.18-orig.c
-	e1000_82575-3.18-orig.h
-	e1000_defines-3.18-ethercat.h
-	e1000_defines-3.18-orig.h
-	e1000_hw-3.18-ethercat.h
-	e1000_hw-3.18-orig.h
-	e1000_i210-3.18-ethercat.c
-	e1000_i210-3.18-ethercat.h
-	e1000_i210-3.18-orig.c
-	e1000_i210-3.18-orig.h
-	e1000_mac-3.18-ethercat.c
-	e1000_mac-3.18-ethercat.h
-	e1000_mac-3.18-orig.c
-	e1000_mac-3.18-orig.h
-	e1000_mbx-3.18-ethercat.c
-	e1000_mbx-3.18-ethercat.h
-	e1000_mbx-3.18-orig.c
-	e1000_mbx-3.18-orig.h
-	e1000_nvm-3.18-ethercat.c
-	e1000_nvm-3.18-ethercat.h
-	e1000_nvm-3.18-orig.c
-	e1000_nvm-3.18-orig.h
-	e1000_phy-3.18-ethercat.c
-	e1000_phy-3.18-ethercat.h
-	e1000_phy-3.18-orig.c
-	e1000_phy-3.18-orig.h
-	e1000_regs-3.18-ethercat.h
-	e1000_regs-3.18-orig.h
-	igb-3.18-ethercat.h
-	igb-3.18-orig.h
-	igb_ethtool-3.18-ethercat.c
-	igb_ethtool-3.18-orig.c
-	igb_hwmon-3.18-ethercat.c
-	igb_hwmon-3.18-orig.c
-	igb_main-3.18-ethercat.c
-	igb_main-3.18-orig.c
-	igb_ptp-3.18-ethercat.c
-	igb_ptp-3.18-orig.c
+	e1000_82575-3.18-ethercat.c \
+	e1000_82575-3.18-ethercat.h \
+	e1000_82575-3.18-orig.c \
+	e1000_82575-3.18-orig.h \
+	e1000_82575-4.1-ethercat.c \
+	e1000_82575-4.1-ethercat.h \
+	e1000_82575-4.1-orig.c \
+	e1000_82575-4.1-orig.h \
+	e1000_defines-3.18-ethercat.h \
+	e1000_defines-3.18-orig.h \
+	e1000_defines-4.1-ethercat.h \
+	e1000_defines-4.1-orig.h \
+	e1000_hw-3.18-ethercat.h \
+	e1000_hw-3.18-orig.h \
+	e1000_hw-4.1-ethercat.h \
+	e1000_hw-4.1-orig.h \
+	e1000_i210-3.18-ethercat.c \
+	e1000_i210-3.18-ethercat.h \
+	e1000_i210-3.18-orig.c \
+	e1000_i210-3.18-orig.h \
+	e1000_i210-4.1-ethercat.c \
+	e1000_i210-4.1-ethercat.h \
+	e1000_i210-4.1-orig.c \
+	e1000_i210-4.1-orig.h \
+	e1000_mac-3.18-ethercat.c \
+	e1000_mac-3.18-ethercat.h \
+	e1000_mac-3.18-orig.c \
+	e1000_mac-3.18-orig.h \
+	e1000_mac-4.1-ethercat.c \
+	e1000_mac-4.1-ethercat.h \
+	e1000_mac-4.1-orig.c \
+	e1000_mac-4.1-orig.h \
+	e1000_mbx-3.18-ethercat.c \
+	e1000_mbx-3.18-ethercat.h \
+	e1000_mbx-3.18-orig.c \
+	e1000_mbx-3.18-orig.h \
+	e1000_mbx-4.1-ethercat.c \
+	e1000_mbx-4.1-ethercat.h \
+	e1000_mbx-4.1-orig.c \
+	e1000_mbx-4.1-orig.h \
+	e1000_nvm-3.18-ethercat.c \
+	e1000_nvm-3.18-ethercat.h \
+	e1000_nvm-3.18-orig.c \
+	e1000_nvm-3.18-orig.h \
+	e1000_nvm-4.1-ethercat.c \
+	e1000_nvm-4.1-ethercat.h \
+	e1000_nvm-4.1-orig.c \
+	e1000_nvm-4.1-orig.h \
+	e1000_phy-3.18-ethercat.c \
+	e1000_phy-3.18-ethercat.h \
+	e1000_phy-3.18-orig.c \
+	e1000_phy-3.18-orig.h \
+	e1000_phy-4.1-ethercat.c \
+	e1000_phy-4.1-ethercat.h \
+	e1000_phy-4.1-orig.c \
+	e1000_phy-4.1-orig.h \
+	e1000_regs-3.18-ethercat.h \
+	e1000_regs-3.18-orig.h \
+	e1000_regs-4.1-ethercat.h \
+	e1000_regs-4.1-orig.h \
+	igb-3.18-ethercat.h \
+	igb-3.18-orig.h \
+	igb-4.1-ethercat.h \
+	igb-4.1-orig.h \
+	igb_ethtool-3.18-ethercat.c \
+	igb_ethtool-3.18-orig.c \
+	igb_ethtool-4.1-ethercat.c \
+	igb_ethtool-4.1-orig.c \
+	igb_hwmon-3.18-ethercat.c \
+	igb_hwmon-3.18-orig.c \
+	igb_hwmon-4.1-ethercat.c \
+	igb_hwmon-4.1-orig.c \
+	igb_main-3.18-ethercat.c \
+	igb_main-3.18-orig.c \
+	igb_main-4.1-ethercat.c \
+	igb_main-4.1-orig.c \
+	igb_ptp-3.18-ethercat.c \
+	igb_ptp-3.18-orig.c \
+	igb_ptp-4.1-ethercat.c \
+	igb_ptp-4.1-orig.c
 
 BUILT_SOURCES = \
 	Kbuild
