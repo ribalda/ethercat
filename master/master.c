@@ -60,6 +60,10 @@
 #include "ethernet.h"
 #endif
 #include "master.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
+#include <linux/sched/signal.h>
+#include <uapi/linux/sched/types.h>
+#endif
 
 /*****************************************************************************/
 
