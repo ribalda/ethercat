@@ -1394,7 +1394,7 @@ void ec_fsm_slave_scan_enter_preop(
         }
 
         fsm->state = ec_fsm_slave_scan_state_preop;
-        ec_slave_request_state(slave, EC_SLAVE_STATE_PREOP);
+        ec_slave_request_state(slave, EC_SLAVE_STATE_BOOT);
         ec_fsm_slave_config_start(fsm->fsm_slave_config);
         ec_fsm_slave_config_exec(fsm->fsm_slave_config, datagram);
     } else {
