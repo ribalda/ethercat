@@ -47,6 +47,7 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/types.h> // struct sched_param
+#include <linux/sched/signal.h> // signal_pending
 #endif
 
 #include "globals.h"
