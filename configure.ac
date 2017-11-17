@@ -743,18 +743,37 @@ else
     fi
     AC_MSG_RESULT([$xenomaidir])
 
-    xeno_native_cflags=`$xenomaidir/bin/xeno-config --skin native --cflags`
-    xeno_native_ldflags=`$xenomaidir/bin/xeno-config --skin native --ldflags`
+    xenomai_ver=`grep -R "VERSION_STRING" ${xenomaidir}/include/xeno_config.h | awk '{print $3}'`
+    xenomai_ver=${xenomai_ver##\"}
+    xenomai_ver=${xenomai_ver%%\"}
+    echo "xenomai version: " $xenomai_ver
+
+    if test ${xenomai_ver%%.*} -gt 2; then
+        xeno_alchemy_cflags=`$xenomaidir/bin/xeno-config --skin alchemy --cflags`
+        xeno_alchemy_ldflags=`$xenomaidir/bin/xeno-config --skin alchemy --auto-init-solib --ldflags`
+        xeno_posix_ldflags=`$xenomaidir/bin/xeno-config --skin posix --auto-init-solib --ldflags`
+        xeno_rtdm_ldflags=`$xenomaidir/bin/xeno-config --skin rtdm --auto-init-solib --ldflags`
+        xeno_v3=1
+        xeno=0
+    else
+        xeno_native_cflags=`$xenomaidir/bin/xeno-config --skin native --cflags`
+        xeno_native_ldflags=`$xenomaidir/bin/xeno-config --skin native --ldflags`
+        xeno_posix_ldflags=`$xenomaidir/bin/xeno-config --skin posix --ldflags`
+        xeno_rtdm_ldflags=`$xenomaidir/bin/xeno-config --skin rtdm --ldflags`
+    fi
+
     xeno_posix_cflags=`$xenomaidir/bin/xeno-config --skin posix --cflags`
-    xeno_posix_ldflags=`$xenomaidir/bin/xeno-config --skin posix --ldflags`
     xeno_rtdm_cflags=`$xenomaidir/bin/xeno-config --skin rtdm --cflags`
-    xeno_rtdm_ldflags=`$xenomaidir/bin/xeno-config --skin rtdm --ldflags`
 fi
 
 AC_SUBST(XENOMAI_DIR,[$xenomaidir])
 AM_CONDITIONAL(ENABLE_XENOMAI, test "x$xeno" = "x1")
 AC_SUBST(ENABLE_XENOMAI,[$xeno])
+AM_CONDITIONAL(ENABLE_XENOMAI_V3, test "x$xeno_v3" = "x1")
+AC_SUBST(ENABLE_XENOMAI_V3,[$xeno_v3])
 
+AC_SUBST(XENOMAI_ALCHEMY_CFLAGS,[$xeno_alchemy_cflags])
+AC_SUBST(XENOMAI_ALCHEMY_LDFLAGS,[$xeno_alchemy_ldflags])
 AC_SUBST(XENOMAI_NATIVE_CFLAGS,[$xeno_native_cflags])
 AC_SUBST(XENOMAI_NATIVE_LDFLAGS,[$xeno_native_ldflags])
 AC_SUBST(XENOMAI_POSIX_CFLAGS,[$xeno_posix_cflags])

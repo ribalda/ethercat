@@ -87,8 +87,10 @@ ec_master_t *ecrt_open_master(unsigned int master_index)
     master->first_config = NULL;
 
     snprintf(path, MAX_PATH_LEN - 1,
-#ifdef USE_RTDM
+#if defined(USE_RTDM)
             "EtherCAT%u",
+#elif defined(USE_RTDM_XENOMAI_V3)
+            "/dev/rtdm/EtherCAT%u",
 #else
             "/dev/EtherCAT%u",
 #endif
