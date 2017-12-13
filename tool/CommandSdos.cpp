@@ -145,7 +145,12 @@ void CommandSdos::listSlaveSdos(
             continue;
 
         for (j = 0; j <= sdo.max_subindex; j++) {
-            m.getSdoEntry(&entry, slave.position, -i, j);
+            try {
+                m.getSdoEntry(&entry, slave.position, -i, j);
+            }
+            catch (MasterDeviceException &e) {
+                continue;
+            }
 
             cout << "  0x" << hex << setfill('0')
                 << setw(4) << sdo.sdo_index << ":"
