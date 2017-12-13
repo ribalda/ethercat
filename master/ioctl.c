@@ -4008,7 +4008,7 @@ static ATTRIBUTES int ec_ioctl_slave_foe_read(
         ret = -EIO;
     } else {
         if (request.data_size > io.buffer_size) {
-            EC_MASTER_ERR(master, "Buffer too small.\n");
+            EC_SLAVE_ERR(slave, "%s(): Buffer too small.\n", __func__);
             ec_foe_request_clear(&request);
             return -EOVERFLOW;
         }
