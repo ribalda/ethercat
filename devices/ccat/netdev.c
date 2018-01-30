@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/version.h>
 
 #ifdef CONFIG_PCI
 #include <asm/dma.h>
@@ -791,8 +792,12 @@ static enum hrtimer_restart poll_timer_callback(struct hrtimer *timer)
 	return HRTIMER_RESTART;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0))
 static struct rtnl_link_stats64 *ccat_eth_get_stats64(struct net_device *dev, struct rtnl_link_stats64
 						      *storage)
+#else
+static void ccat_eth_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *storage)
+#endif
 {
 	struct ccat_eth_priv *const priv = netdev_priv(dev);
 	struct ccat_mac_register mac;
@@ -827,7 +832,9 @@ static struct rtnl_link_stats64 *ccat_eth_get_stats64(struct net_device *dev, st
 	/* for cslip etc */
 	//TODO __u64    rx_compressed;
 	//TODO __u64    tx_compressed;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,11,0))
 	return storage;
+#endif
 }
 
 static int ccat_eth_open(struct net_device *dev)
