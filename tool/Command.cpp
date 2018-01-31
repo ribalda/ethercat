@@ -30,6 +30,7 @@
  ****************************************************************************/
 
 #include <map>
+#include <iostream>
 using namespace std;
 
 #include "Command.h"
@@ -239,6 +240,13 @@ void Command::setSkin(const string &s)
 {
     skin = s;
 };
+
+/****************************************************************************/
+
+bool Command::matches(const string &cmd) const
+{
+    return name == cmd;
+}
 
 /****************************************************************************/
 

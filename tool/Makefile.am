@@ -78,9 +78,13 @@ ethercat_SOURCES = \
 	sii_crc.cpp
 
 if ENABLE_EOE
-ethercat_SOURCES += CommandEoe.cpp
+ethercat_SOURCES += CommandEoe.cpp \
+	CommandEoeAddIf.cpp \
+	CommandEoeDelIf.cpp
 else
-EXTRA_DIST += CommandEoe.cpp
+EXTRA_DIST += CommandEoe.cpp \
+	CommandEoeAddIf.cpp \
+	CommandEoeDelIf.cpp
 endif
 
 noinst_HEADERS = \
@@ -124,9 +128,13 @@ noinst_HEADERS = \
 	sii_crc.h
 
 if ENABLE_EOE
-noinst_HEADERS += CommandEoe.h
+noinst_HEADERS += CommandEoe.h \
+	CommandEoeAddIf.h \
+	CommandEoeDelIf.h
 else
-EXTRA_DIST += CommandEoe.h
+EXTRA_DIST += CommandEoe.h \
+	CommandEoeAddIf.h \
+	CommandEoeDelIf.h
 endif
 
 REV = `if test -s $(top_srcdir)/revision; then \

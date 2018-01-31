@@ -87,7 +87,7 @@ class Command
         typedef list<unsigned int> MasterIndexList;
         void setMasters(const string &);
         MasterIndexList getMasterIndices() const;
-		unsigned int getSingleMasterIndex() const;
+        unsigned int getSingleMasterIndex() const;
 
         enum Verbosity {
             Quiet,
@@ -122,6 +122,7 @@ class Command
         void setSkin(const string &);
         const string &getSkin() const;
 
+        bool matches(const string &) const;
         bool matchesSubstr(const string &) const;
         bool matchesAbbrev(const string &) const;
 
@@ -150,13 +151,14 @@ class Command
 
         static string alStateString(uint8_t);
 
+        string aliases;
+        string positions;
+    
     private:
         string name;
         string briefDesc;
         string masters;
         Verbosity verbosity;
-        string aliases;
-        string positions;
         string domains;
         string dataType;
         bool emergency;

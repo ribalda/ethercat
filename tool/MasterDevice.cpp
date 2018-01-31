@@ -615,6 +615,42 @@ void MasterDevice::getEoeHandler(
     }
 }
 
+/****************************************************************************/
+
+void MasterDevice::addEoeIf(
+        uint16_t alias,
+        uint16_t posn
+        )
+{
+    ec_ioctl_eoe_if_t data;
+    data.alias = alias;
+    data.position = posn;
+
+    if (ioctl(fd, EC_IOCTL_EOE_ADDIF, &data)) {
+        stringstream err;
+        err << "Failed to add EoE interface: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
+/****************************************************************************/
+
+void MasterDevice::delEoeIf(
+        uint16_t alias,
+        uint16_t posn
+        )
+{
+    ec_ioctl_eoe_if_t data;
+    data.alias = alias;
+    data.position = posn;
+
+    if (ioctl(fd, EC_IOCTL_EOE_DELIF, &data)) {
+        stringstream err;
+        err << "Failed to delete EoE interface: " << strerror(errno);
+        throw MasterDeviceException(err);
+    }
+}
+
 #endif
 
 /****************************************************************************/

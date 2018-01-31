@@ -455,6 +455,21 @@ void ec_master_clear(
 /*****************************************************************************/
 
 #ifdef EC_EOE
+/** Clear all EoE handlers of their slaves.
+ */
+void ec_master_clear_eoe_handler_slaves(
+        ec_master_t *master /**< EtherCAT master */
+        )
+{
+    ec_eoe_t *eoe;
+
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        ec_eoe_clear_slave(eoe);
+    }
+}
+
+/*****************************************************************************/
+
 /** Clear and free all EoE handlers.
  */
 void ec_master_clear_eoe_handlers(
@@ -740,6 +755,11 @@ int ec_master_enter_idle_phase(
 {
     int ret;
     ec_device_index_t dev_idx;
+#ifdef EC_EOE
+    int i;
+    int master_index = 0;
+    uint16_t alias, ring_position = 0;
+#endif
 
     EC_MASTER_DBG(master, 1, "ORPHANED -> IDLE.\n");
 
@@ -754,6 +774,23 @@ int ec_master_enter_idle_phase(
             dev_idx++) {
         master->fsm.slaves_responding[dev_idx] = 0;
     }
+
+#ifdef EC_EOE
+    // create eoe interfaces for this master on startup
+    // Note: needs the masters main device to be configured to init the 
+    //   eoe's mac address
+    for (i = 0; i < eoe_count; i++) {
+        ret = ec_eoe_parse(eoe_interfaces[i], &master_index, &alias, 
+                &ring_position);
+        
+        if ((ret == 0) && (master_index == master->index)) {
+            EC_MASTER_INFO(master, "Adding EOE iface \"%s\" for master %d, "
+                    "alias %u, ring position %u.\n",
+                    eoe_interfaces[i], master_index, alias, ring_position);
+            ecrt_master_eoe_addif(master, alias, ring_position);
+        }
+    }
+#endif
 
     ret = ec_master_thread_start(master, ec_master_idle_thread,
             "EtherCAT-IDLE");
@@ -1964,12 +2001,15 @@ static int ec_master_eoe_thread(void *priv_data)
         none_open = 1;
         all_idle = 1;
 
+        ec_lock_down(&master->master_sem);
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
             if (ec_eoe_is_open(eoe)) {
                 none_open = 0;
                 break;
             }
         }
+        ec_lock_up(&master->master_sem);
+        
         if (none_open) {
             goto schedule;
         }
@@ -1978,11 +2018,13 @@ static int ec_master_eoe_thread(void *priv_data)
         master->receive_cb(master->cb_data);
 
         // actual EoE processing
+        ec_lock_down(&master->master_sem);
         sth_to_send = 0;
         list_for_each_entry(eoe, &master->eoe_handlers, list) {
-            if ((eoe->slave->current_state == EC_SLAVE_STATE_PREOP) ||
-                (eoe->slave->current_state == EC_SLAVE_STATE_SAFEOP) ||
-                (eoe->slave->current_state == EC_SLAVE_STATE_OP)) {
+            if ( eoe->slave && 
+                 ( (eoe->slave->current_state == EC_SLAVE_STATE_PREOP) ||
+                   (eoe->slave->current_state == EC_SLAVE_STATE_SAFEOP) ||
+                   (eoe->slave->current_state == EC_SLAVE_STATE_OP) ) ) {
                 ec_eoe_run(eoe);
                 if (eoe->queue_datagram) {
                     sth_to_send = 1;
@@ -1992,17 +2034,19 @@ static int ec_master_eoe_thread(void *priv_data)
                 }
             }
         }
+        ec_lock_up(&master->master_sem);
 
         if (sth_to_send) {
+            ec_lock_down(&master->master_sem);
             list_for_each_entry(eoe, &master->eoe_handlers, list) {
                 ec_eoe_queue(eoe);
             }
+            ec_lock_up(&master->master_sem);
+            
             // (try to) send datagrams
-            ec_lock_down(&master->ext_queue_sem);
             master->send_cb(master->cb_data);
-            ec_lock_up(&master->ext_queue_sem);
         }
-
+        
 schedule:
         if (all_idle) {
             set_current_state(TASK_INTERRUPTIBLE);
@@ -2664,7 +2708,7 @@ int ecrt_master_activate(ec_master_t *master)
 
     ec_master_thread_stop(master);
 #ifdef EC_EOE
-    eoe_was_running = master->eoe_thread != NULL;
+    eoe_was_running = (master->eoe_thread != NULL);
     ec_master_eoe_stop(master);
 #endif
 
@@ -2707,9 +2751,6 @@ void ecrt_master_deactivate_slaves(ec_master_t *master)
 {
     ec_slave_t *slave;
     ec_slave_config_t *sc, *next;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-#endif
 
     EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
 
@@ -2739,14 +2780,6 @@ void ecrt_master_deactivate_slaves(ec_master_t *master)
         // phases.
         slave->force_config = 1;
     }
-
-#ifdef EC_EOE
-    // ... but leave EoE slaves in OP
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_is_open(eoe))
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
-#endif
 }
 
 /*****************************************************************************/
@@ -2754,10 +2787,6 @@ void ecrt_master_deactivate_slaves(ec_master_t *master)
 void ecrt_master_deactivate(ec_master_t *master)
 {
     ec_slave_t *slave;
-#ifdef EC_EOE
-    ec_eoe_t *eoe;
-    int eoe_was_running;
-#endif
 
     EC_MASTER_DBG(master, 1, "%s(master = 0x%p)\n", __func__, master);
 
@@ -2769,7 +2798,6 @@ void ecrt_master_deactivate(ec_master_t *master)
 
     ec_master_thread_stop(master);
 #ifdef EC_EOE
-    eoe_was_running = master->eoe_thread != NULL;
     ec_master_eoe_stop(master);
 #endif
 
@@ -2795,14 +2823,6 @@ void ecrt_master_deactivate(ec_master_t *master)
         slave->force_config = 1;
     }
 
-#ifdef EC_EOE
-    // ... but leave EoE slaves in OP
-    list_for_each_entry(eoe, &master->eoe_handlers, list) {
-        if (ec_eoe_is_open(eoe))
-            ec_slave_request_state(eoe->slave, EC_SLAVE_STATE_OP);
-    }
-#endif
-
     master->app_time = 0ULL;
     master->app_start_time = 0ULL;
     master->has_app_time = 0;
@@ -2815,9 +2835,7 @@ void ecrt_master_deactivate(ec_master_t *master)
     master->active = 0;
 
 #ifdef EC_EOE
-    if (eoe_was_running) {
-        ec_master_eoe_start(master);
-    }
+    ec_master_eoe_start(master);
 #endif
     if (ec_master_thread_start(master, ec_master_idle_thread,
                 "EtherCAT-IDLE")) {
@@ -2928,17 +2946,20 @@ void ecrt_master_receive(ec_master_t *master)
 
 /*****************************************************************************/
 
-void ecrt_master_send_ext(ec_master_t *master)
+size_t ecrt_master_send_ext(ec_master_t *master)
 {
     ec_datagram_t *datagram, *next;
+
+    ec_lock_down(&master->ext_queue_sem);
 
     list_for_each_entry_safe(datagram, next, &master->ext_datagram_queue,
             queue) {
         list_del(&datagram->queue);
         ec_master_queue_datagram(master, datagram);
     }
+    ec_lock_up(&master->ext_queue_sem);
 
-    ecrt_master_send(master);
+    return ecrt_master_send(master);
 }
 
 /*****************************************************************************/
@@ -3820,6 +3841,84 @@ void ecrt_master_exec_slave_requests(ec_master_t *master)
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
+
+int ecrt_master_eoe_addif(ec_master_t *master,
+        uint16_t alias, uint16_t posn)
+{
+    ec_eoe_t *eoe;
+    char name[EC_DATAGRAM_NAME_SIZE];
+    int res;
+
+    // check if the name already exists
+    if (alias) {
+        snprintf(name, EC_DATAGRAM_NAME_SIZE, "eoe%ua%u", master->index, alias);
+    } else {
+        snprintf(name, EC_DATAGRAM_NAME_SIZE, "eoe%us%u", master->index, posn);
+    }
+
+    ec_lock_down(&master->master_sem);
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if ((eoe->slave == NULL) && 
+                (strncmp(name, ec_eoe_name(eoe), EC_DATAGRAM_NAME_SIZE) == 0)) {
+            ec_lock_up(&master->master_sem);
+            return -EADDRINUSE;
+        }
+    }
+    
+    // none found, create one
+    if (!(eoe = kmalloc(sizeof(ec_eoe_t), GFP_KERNEL))) {
+        EC_MASTER_ERR(master, "Failed to allocate EoE handler memory!\n");
+        ec_lock_up(&master->master_sem);
+        return -EFAULT;
+    }
+    
+    if ((res = ec_eoe_init(master, eoe, alias, posn))) {
+        EC_MASTER_ERR(master, "Failed to init EoE handler!\n");
+        kfree(eoe);
+        ec_lock_up(&master->master_sem);
+        return res;
+    }
+
+    list_add_tail(&eoe->list, &master->eoe_handlers);
+    ec_lock_up(&master->master_sem);
+    
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ecrt_master_eoe_delif(ec_master_t *master,
+        uint16_t alias, uint16_t posn)
+{
+    ec_eoe_t *eoe;
+    char name[EC_DATAGRAM_NAME_SIZE];
+
+    if (alias) {
+        snprintf(name, EC_DATAGRAM_NAME_SIZE, "eoe%ua%u", master->index, alias);
+    } else {
+        snprintf(name, EC_DATAGRAM_NAME_SIZE, "eoe%us%u", master->index, posn);
+    }
+
+    ec_lock_down(&master->master_sem);
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (strncmp(name, ec_eoe_name(eoe), EC_DATAGRAM_NAME_SIZE) == 0) {
+            list_del(&eoe->list);
+            ec_eoe_clear(eoe);
+            kfree(eoe);
+            ec_lock_up(&master->master_sem);
+            return 0;
+        }
+    }
+    ec_lock_up(&master->master_sem);
+    
+    return -EFAULT;
+}
+
+#endif
+
+/*****************************************************************************/
+
 void ecrt_master_reset(ec_master_t *master)
 {
     ec_slave_config_t *sc;
@@ -3866,6 +3965,10 @@ EXPORT_SYMBOL(ecrt_master_write_idn);
 EXPORT_SYMBOL(ecrt_master_read_idn);
 EXPORT_SYMBOL(ecrt_master_rt_slave_requests);
 EXPORT_SYMBOL(ecrt_master_exec_slave_requests);
+#ifdef EC_EOE
+EXPORT_SYMBOL(ecrt_master_eoe_addif);
+EXPORT_SYMBOL(ecrt_master_eoe_delif);
+#endif
 EXPORT_SYMBOL(ecrt_master_reset);
 
 /** \endcond */
