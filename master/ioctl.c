@@ -1903,6 +1903,50 @@ static ATTRIBUTES int ec_ioctl_request(
 
 /*****************************************************************************/
 
+#if defined(EC_RTDM) && defined(EC_EOE)
+
+/** Check if any EOE handlers are open.
+ *
+ * \return 1 if any eoe handlers are open, zero if not,
+ *   otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_eoe_is_open(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    return ec_master_eoe_is_open(master);
+}
+
+/*****************************************************************************/
+
+/** Check if any EOE handlers are open.
+ *
+ * \return 1 if something to send +
+ *   2 if an eoe handler has something still pending
+ */
+static ATTRIBUTES int ec_ioctl_eoe_process(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    return ec_master_eoe_process(master);
+}
+
+#endif
+
+/*****************************************************************************/
+
 /** Create a domain.
  *
  * \return Domain index on success, otherwise a negative error code.
@@ -2283,11 +2327,15 @@ static ATTRIBUTES int ec_ioctl_send(
     if (ec_ioctl_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
+#if defined(EC_RTDM) && defined(EC_EOE)
+    sent_bytes = ecrt_master_send(master);
+#else
     if (master->send_cb != NULL) {
         master->send_cb(master->cb_data);
         sent_bytes = 0;
     } else
         sent_bytes = ecrt_master_send(master);
+#endif
 
     ec_ioctl_lock_up(&master->master_sem);
 
@@ -2319,14 +2367,50 @@ static ATTRIBUTES int ec_ioctl_receive(
     if (ec_ioctl_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
+#if defined(EC_RTDM) && defined(EC_EOE)
+    ecrt_master_receive(master);
+#else
     if (master->receive_cb != NULL)
         master->receive_cb(master->cb_data);
     else
         ecrt_master_receive(master);
+#endif
 
     ec_ioctl_lock_up(&master->master_sem);
+
     return 0;
 }
+
+/*****************************************************************************/
+
+#if defined(EC_RTDM) && defined(EC_EOE)
+
+/** Send frames ext.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_send_ext(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    size_t sent_bytes;
+
+    if (unlikely(!ctx->requested)) {
+        return -EPERM;
+    }
+
+    sent_bytes = ecrt_master_send_ext(master);
+
+    if (copy_to_user((void __user *) arg, &sent_bytes, sizeof(sent_bytes))) {
+        return -EFAULT;
+    }
+
+    return 0;
+}
+
+#endif
 
 /*****************************************************************************/
 
@@ -5338,6 +5422,14 @@ long EC_IOCTL(
             }
             ret = ec_ioctl_request(master, arg, ctx);
             break;
+#if defined(EC_RTDM) && defined(EC_EOE)
+        case EC_IOCTL_EOE_IS_OPEN:
+            ret = ec_ioctl_eoe_is_open(master, arg, ctx);
+            break;
+        case EC_IOCTL_EOE_PROCESS:
+            ret = ec_ioctl_eoe_process(master, arg, ctx);
+            break;
+#endif
         case EC_IOCTL_CREATE_DOMAIN:
             if (!ctx->writable) {
                 ret = -EPERM;
@@ -5401,6 +5493,15 @@ long EC_IOCTL(
             }
             ret = ec_ioctl_receive(master, arg, ctx);
             break;
+#if defined(EC_RTDM) && defined(EC_EOE)
+        case  EC_IOCTL_SEND_EXT:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_send_ext(master, arg, ctx);
+            break;
+#endif
         case EC_IOCTL_MASTER_STATE:
             ret = ec_ioctl_master_state(master, arg, ctx);
             break;

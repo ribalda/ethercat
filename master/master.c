@@ -1972,12 +1972,13 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
     }
 
     if (!master->send_cb || !master->receive_cb) {
-        EC_MASTER_WARN(master, "No EoE processing"
-                " because of missing callbacks!\n");
+        EC_MASTER_WARN(master, "EoE External processing"
+                " required!\n");
         return;
     }
 
     EC_MASTER_INFO(master, "Starting EoE thread.\n");
+
     master->eoe_thread = kthread_run(ec_master_eoe_thread, master,
             "EtherCAT-EoE");
     if (IS_ERR(master->eoe_thread)) {
@@ -2006,6 +2007,86 @@ void ec_master_eoe_stop(ec_master_t *master /**< EtherCAT master */)
         EC_MASTER_INFO(master, "EoE thread exited.\n");
     }
 }
+
+/*****************************************************************************/
+
+#ifdef EC_RTDM
+
+/** Check if any EOE handlers are open.
+ *
+ * \return 1 if any eoe handlers are open, zero if not,
+ *   otherwise a negative error code.
+ */
+int ec_master_eoe_is_open(ec_master_t *master /**< EtherCAT master */)
+{
+    ec_eoe_t *eoe;
+    
+    // check that eoe is not already being processed by the master
+    // and that we can currently process EoE
+    if ( (master->phase != EC_OPERATION) || master->eoe_thread || 
+            !master->rt_slaves_available ) {
+        // protocol not available
+        return -ENOPROTOOPT;
+    }
+
+    ec_lock_down(&master->master_sem);
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if (ec_eoe_is_open(eoe)) {
+            ec_lock_up(&master->master_sem);
+            return 1;
+        }
+    }
+    ec_lock_up(&master->master_sem);
+
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Check if any EOE handlers are open.
+ *
+ * \return 1 if something to send +
+ *   2 if an eoe handler has something still pending
+ */
+int ec_master_eoe_process(ec_master_t *master /**< EtherCAT master */)
+{
+    ec_eoe_t *eoe;
+    int sth_to_send = 0;
+    int sth_pending = 0;
+
+    // check that eoe is not already being processed by the master
+    if (master->eoe_thread) {
+        return 0;
+    }
+
+     // actual EoE processing
+    ec_lock_down(&master->master_sem);
+    list_for_each_entry(eoe, &master->eoe_handlers, list) {
+        if ( eoe->slave && 
+             ( (eoe->slave->current_state == EC_SLAVE_STATE_PREOP) ||
+               (eoe->slave->current_state == EC_SLAVE_STATE_SAFEOP) ||
+               (eoe->slave->current_state == EC_SLAVE_STATE_OP) ) ) {
+            ec_eoe_run(eoe);
+            if (eoe->queue_datagram) {
+                sth_to_send = EOE_STH_TO_SEND;
+            }
+            if (!ec_eoe_is_idle(eoe)) {
+                sth_pending = EOE_STH_PENDING;
+            }
+        }
+    }
+
+    if (sth_to_send) {
+        list_for_each_entry(eoe, &master->eoe_handlers, list) {
+            ec_eoe_queue(eoe);
+        }
+    }
+    ec_lock_up(&master->master_sem);
+
+    return sth_to_send + sth_pending;
+}
+
+#endif
 
 /*****************************************************************************/
 

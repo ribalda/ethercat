@@ -1078,6 +1078,45 @@ size_t ecrt_master_send_ext(
         ec_master_t *master /**< EtherCAT master. */
         );
 
+#if !defined(__KERNEL__) && defined(EC_RTDM) && (EC_EOE)
+
+/** check if there are any open eoe handlers
+ *
+ * used by user space code to process EOE handlers
+ *
+ * \return 1 if any eoe handlers are open, zero if not,
+ *   otherwise a negative error code.
+ */
+int ecrt_master_eoe_is_open(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** return flag from ecrt_master_eoe_process() to indicate there is
+ * something to send.  if this flag is set call ecrt_master_send_ext()
+ */
+#define EOE_STH_TO_SEND 1
+
+/** return flag from ecrt_master_eoe_process() to indicate there is
+ * something still pending.  if this flag is set yield the process
+ * before starting the cycle again quickly, else sleep for a short time
+ * (e.g. 1ms)
+ */
+
+#define EOE_STH_PENDING 2
+
+/** Check if any EOE handlers are open.
+ *
+ * used by user space code to process EOE handlers
+ *
+ * \return 1 if something to send +
+ *   2 if an eoe handler has something still pending
+ */
+int ecrt_master_eoe_process(
+        ec_master_t *master /**< EtherCAT master. */
+        );
+        
+#endif /* !defined(__KERNEL__) && defined(EC_RTDM) && (EC_EOE) */
+
 #ifdef EC_EOE
 
 /** add an EOE network interface

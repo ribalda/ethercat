@@ -734,6 +734,56 @@ void ecrt_master_receive(ec_master_t *master)
 
 /****************************************************************************/
 
+#if defined(EC_RTDM) && (EC_EOE)
+
+size_t ecrt_master_send_ext(ec_master_t *master)
+{
+    int ret;
+    size_t sent_bytes = 0;
+
+    ret = ioctl(master->fd, EC_IOCTL_SEND_EXT, &sent_bytes);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to send ext: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+
+    return sent_bytes;
+}
+
+/****************************************************************************/
+
+int ecrt_master_eoe_is_open(ec_master_t *master)
+{
+    int ret;
+    
+    ret = ioctl(master->fd, EC_IOCTL_EOE_IS_OPEN, NULL);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to check if an eoe is open: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+
+    return ret;
+}
+        
+/****************************************************************************/
+
+int ecrt_master_eoe_process(ec_master_t *master)
+{
+    int ret;
+    
+    ret = ioctl(master->fd, EC_IOCTL_EOE_PROCESS, NULL);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to process eoe handlers: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+
+    return ret;
+}
+
+#endif
+        
+/****************************************************************************/
+
 #ifdef EC_EOE
 
 int ecrt_master_eoe_addif(ec_master_t *master, uint16_t alias, uint16_t posn)

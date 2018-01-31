@@ -118,6 +118,19 @@
  */
 #define EC_EXT_RING_SIZE 32
 
+/** return flag from ecrt_master_eoe_process() to indicate there is
+ * something to send.  if this flag is set call ecrt_master_send_ext()
+ */
+#define EOE_STH_TO_SEND 1
+
+/** return flag from ecrt_master_eoe_process() to indicate there is
+ * something still pending.  if this flag is set yield the process
+ * before starting the cycle again quickly, else sleep for a short time
+ * (e.g. 1ms)
+ */
+
+#define EOE_STH_PENDING 2
+
 /*****************************************************************************/
 
 /** EtherCAT master phase.
@@ -390,6 +403,10 @@ const ec_domain_t *ec_master_find_domain_const(const ec_master_t *,
 #ifdef EC_EOE
 uint16_t ec_master_eoe_handler_count(const ec_master_t *);
 const ec_eoe_t *ec_master_get_eoe_handler_const(const ec_master_t *, uint16_t);
+#ifdef EC_RTDM
+int ec_master_eoe_is_open(ec_master_t *);
+int ec_master_eoe_process(ec_master_t *);
+#endif
 #endif
 
 int ec_master_debug_level(ec_master_t *, unsigned int);
