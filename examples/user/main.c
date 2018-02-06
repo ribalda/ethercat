@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <time.h> /* clock_gettime() */
 #include <sys/mman.h> /* mlockall() */
+#include <sched.h> /* sched_setscheduler() */
 
 /****************************************************************************/
 
@@ -353,10 +354,12 @@ int main(int argc, char **argv)
 
     /* Set priority */
 
-    pid_t pid = getpid();
-    if (setpriority(PRIO_PROCESS, pid, -19)) {
-        fprintf(stderr, "Warning: Failed to set priority: %s\n",
-                strerror(errno));
+    struct sched_param param = {};
+    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+
+    printf("Using priority %i.", param.sched_priority);
+    if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+        perror("sched_setscheduler failed");
     }
 
     /* Lock memory */
