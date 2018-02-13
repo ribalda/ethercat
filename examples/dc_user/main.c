@@ -38,6 +38,7 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <malloc.h>
+#include <sched.h> /* sched_setscheduler() */
 
 /****************************************************************************/
 
@@ -47,7 +48,7 @@
 
 // Application parameters
 #define FREQUENCY 1000
-#define CLOCK_TO_USE CLOCK_REALTIME
+#define CLOCK_TO_USE CLOCK_MONOTONIC
 #define MEASURE_TIMING
 
 /****************************************************************************/
@@ -313,10 +314,15 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    pid_t pid = getpid();
-    if (setpriority(PRIO_PROCESS, pid, -19))
-        fprintf(stderr, "Warning: Failed to set priority: %s\n",
-                strerror(errno));
+    /* Set priority */
+
+    struct sched_param param = {};
+    param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+
+    printf("Using priority %i.", param.sched_priority);
+    if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+        perror("sched_setscheduler failed");
+    }
 
 	printf("Starting cyclic function.\n");
     cyclic_task();
