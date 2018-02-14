@@ -6798,6 +6798,7 @@ static struct sk_buff *igb_fetch_rx_buffer(struct igb_ring *rx_ring,
 			page_address(rx_buffer->page) + rx_buffer->page_offset;
 		unsigned int size = le16_to_cpu(rx_desc->wb.upper.length);
 		ecdev_receive(adapter->ecdev, va, size);
+		adapter->ec_watchdog_jiffies = jiffies;
 		igb_reuse_rx_page(rx_ring, rx_buffer);
 	}
 	else {
