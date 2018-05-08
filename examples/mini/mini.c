@@ -307,7 +307,7 @@ void read_voe(void)
 
 /*****************************************************************************/
 
-void cyclic_task(unsigned long data)
+static void cyclic_task(struct timer_list *t)
 {
     // receive process data
     down(&master_sem);
@@ -492,8 +492,7 @@ int __init init_mini_module(void)
 #endif
 
     printk(KERN_INFO PFX "Starting cyclic sample thread.\n");
-    init_timer(&timer);
-    timer.function = cyclic_task;
+    timer_setup(&timer, cyclic_task, 0);
     timer.expires = jiffies + 10;
     add_timer(&timer);
 
