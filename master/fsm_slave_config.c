@@ -1305,7 +1305,8 @@ void ec_fsm_slave_config_enter_dc_cycle(
         // set DC cycle times
         ec_datagram_fpwr(datagram, slave->station_address, 0x09A0, 8);
         EC_WRITE_U32(datagram->data, config->dc_sync[0].cycle_time);
-        EC_WRITE_U32(datagram->data + 4, config->dc_sync[1].cycle_time);
+        EC_WRITE_U32(datagram->data + 4, config->dc_sync[1].cycle_time + 
+                config->dc_sync[1].shift_time);
         fsm->retries = EC_FSM_RETRIES;
         fsm->state = ec_fsm_slave_config_state_dc_cycle;
     } else {

@@ -950,8 +950,25 @@ void ecrt_slave_config_dc(ec_slave_config_t *sc, uint16_t assign_activate,
     sc->dc_assign_activate = assign_activate;
     sc->dc_sync[0].cycle_time = sync0_cycle_time;
     sc->dc_sync[0].shift_time = sync0_shift_time;
-    sc->dc_sync[1].cycle_time = sync1_cycle_time;
-    sc->dc_sync[1].shift_time = sync1_shift_time;
+    if (sync0_cycle_time > 0)
+    {
+        sc->dc_sync[1].shift_time = (sync1_cycle_time + sync1_shift_time) %
+                sync0_cycle_time;
+              
+        if ((sync1_cycle_time + sync1_shift_time) < sc->dc_sync[1].shift_time) {
+            EC_CONFIG_ERR(sc, "Slave Config DC results in a negative "
+                    "sync1 cycle.  Resetting to zero cycle and shift time\n");
+
+            sc->dc_sync[1].cycle_time = 0;
+            sc->dc_sync[1].shift_time = 0;
+        } else {
+            sc->dc_sync[1].cycle_time = (sync1_cycle_time + sync1_shift_time) -
+                    sc->dc_sync[1].shift_time;
+        }
+    } else {
+        sc->dc_sync[1].cycle_time = 0;
+        sc->dc_sync[1].shift_time = 0;
+    }
 }
 
 /*****************************************************************************/
