@@ -165,6 +165,8 @@ noinst_HEADERS = \
 	generic.c \
 	r8152-3.18-ethercat.c \
 	r8152-3.18-orig.c \
+	r8152-4.4-ethercat.c \
+	r8152-4.4-orig.c \
 	r8152-4.9-ethercat.c \
 	r8152-4.9-orig.c \
 	r8169-2.6.24-ethercat.c \
