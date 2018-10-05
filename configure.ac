@@ -1057,7 +1057,7 @@ AC_MSG_CHECKING([whether to assign the SII to PDI])
 
 AC_ARG_ENABLE([sii-assign],
     AS_HELP_STRING([--enable-sii-assign],
-                   [Enable SII assignment to PDI (default: no)]),
+                   [Enable SII assignment to PDI (default: yes)]),
     [
         case "${enableval}" in
             yes) siiassign=1
@@ -1068,7 +1068,7 @@ AC_ARG_ENABLE([sii-assign],
                 ;;
         esac
     ],
-    [siiassign=0]
+    [siiassign=1]
 )
 
 if test "x${siiassign}" = "x1"; then
