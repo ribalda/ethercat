@@ -10,6 +10,7 @@ vim700: spelllang=en spell
 
 Future issues:
 
+* Improve redundancy_active doc in ecrt.h.
 • Remove fprintf() calls from user-space library (define return codes).
 • Move SII request to slave FSM.
 • Move SDO request to slave FSM.
