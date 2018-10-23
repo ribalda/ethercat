@@ -1,10 +1,15 @@
 #!/bin/bash
 
-set -x
+if [ $# -ne 3 ]; then
+    echo "Need 3 arguments: 1) kernel source dir, 2) previous version, 3) version to add"
+    exit 1
+fi
 
-KERNELDIR=/data/kernel/linux-3.16.6
-PREVER=3.14
-KERNELVER=3.16
+KERNELDIR=$1
+PREVER=$2
+KERNELVER=$3
+
+set -x
 
 for f in $KERNELDIR/drivers/net/ethernet/intel/e1000/*.[ch]; do
     echo $f
