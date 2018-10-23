@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: noexpandtab
+ *
  *****************************************************************************/
 
 /**
@@ -647,7 +649,7 @@ struct rtl8139_private {
 	struct mii_if_info	mii;
 	unsigned int		regs_len;
 	unsigned long		fifo_copy_timeout;
-    
+
 	ec_device_t *ecdev;
 };
 
@@ -2034,9 +2036,9 @@ static int rtl8139_rx(struct net_device *dev, struct rtl8139_private *tp,
 		 RTL_R16 (RxBufAddr),
 		 RTL_R16 (RxBufPtr), RTL_R8 (ChipCmd));
 
-	while ((tp->ecdev || netif_running(dev)) 
-           && received < budget 
-           && (RTL_R8 (ChipCmd) & RxBufEmpty) == 0) {
+	while ((tp->ecdev || netif_running(dev))
+			&& received < budget
+			&& (RTL_R8 (ChipCmd) & RxBufEmpty) == 0) {
 		u32 ring_offset = cur_rx % RX_BUF_LEN;
 		u32 rx_status;
 		unsigned int pkt_size;
@@ -2103,17 +2105,15 @@ no_early_rx:
 		}
 
 		if (tp->ecdev) {
-			ecdev_receive(tp->ecdev,
-					&rx_ring[ring_offset + 4], pkt_size);
-					dev->last_rx = jiffies;
-					dev->stats.rx_bytes += pkt_size;
-					dev->stats.rx_packets++;
+			ecdev_receive(tp->ecdev, &rx_ring[ring_offset + 4], pkt_size);
+			dev->stats.rx_bytes += pkt_size;
+			dev->stats.rx_packets++;
 		} else {
 			/* Malloc up new buffer, compatible with net-2e. */
 			/* Omit the four octet CRC from the length. */
-            
-            skb = netdev_alloc_skb_ip_align(dev, pkt_size);
-            if (likely(skb)) {
+
+			skb = netdev_alloc_skb_ip_align(dev, pkt_size);
+			if (likely(skb)) {
 
 #if RX_BUF_IDX == 3
 				wrap_copy(skb, rx_ring, ring_offset+4, pkt_size);
@@ -2121,17 +2121,17 @@ no_early_rx:
 				skb_copy_to_linear_data (skb, &rx_ring[ring_offset + 4], pkt_size);
 #endif
 				skb_put (skb, pkt_size);
-                
+
 				skb->protocol = eth_type_trans (skb, dev);
-                
+
 				dev->stats.rx_bytes += pkt_size;
 				dev->stats.rx_packets++;
-                
+
 				netif_receive_skb (skb);
 			} else {
 				if (net_ratelimit())
 					pr_warning("%s: Memory squeeze, dropping packet.\n",
-                               dev->name);
+							dev->name);
 				dev->stats.rx_dropped++;
 			}
 		}
@@ -2234,7 +2234,7 @@ static int rtl8139_poll(struct napi_struct *napi, int budget)
 
 void ec_poll(struct net_device *dev)
 {
-    rtl8139_interrupt(0, dev);
+	rtl8139_interrupt(0, dev);
 }
 
 /* The interrupt handler does all of the Rx thread work and cleans up

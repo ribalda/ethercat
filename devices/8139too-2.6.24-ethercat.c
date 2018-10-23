@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: noexpandtab
+ *
  *****************************************************************************/
 
 /**
@@ -2104,43 +2106,41 @@ no_early_rx:
 			goto out;
 		}
 
-       		if (tp->ecdev) {
-  			ecdev_receive(tp->ecdev,
-  					&rx_ring[ring_offset + 4], pkt_size);
-  			dev->last_rx = jiffies;
-  			tp->stats.rx_bytes += pkt_size;
-  			tp->stats.rx_packets++;
-  		}
-  		else {
+		if (tp->ecdev) {
+			ecdev_receive(tp->ecdev, &rx_ring[ring_offset + 4], pkt_size);
+			dev->last_rx = jiffies;
+			tp->stats.rx_bytes += pkt_size;
+			tp->stats.rx_packets++;
+		}
+		else {
+			/* Malloc up new buffer, compatible with net-2e. */
+			/* Omit the four octet CRC from the length. */
 
-                    /* Malloc up new buffer, compatible with net-2e. */
-                    /* Omit the four octet CRC from the length. */
-
-                    skb = dev_alloc_skb (pkt_size + 2);
-                    if (likely(skb)) {
-                        skb_reserve (skb, 2);	/* 16 byte align the IP fields. */
+			skb = dev_alloc_skb (pkt_size + 2);
+			if (likely(skb)) {
+				skb_reserve (skb, 2);	/* 16 byte align the IP fields. */
 #if RX_BUF_IDX == 3
-                        wrap_copy(skb, rx_ring, ring_offset+4, pkt_size);
+				wrap_copy(skb, rx_ring, ring_offset+4, pkt_size);
 #else
-                        skb_copy_to_linear_data (skb, &rx_ring[ring_offset + 4], pkt_size);
+				skb_copy_to_linear_data (skb, &rx_ring[ring_offset + 4], pkt_size);
 #endif
-                        skb_put (skb, pkt_size);
+				skb_put (skb, pkt_size);
 
-                        skb->protocol = eth_type_trans (skb, dev);
+				skb->protocol = eth_type_trans (skb, dev);
 
-                        dev->last_rx = jiffies;
-                        tp->stats.rx_bytes += pkt_size;
-                        tp->stats.rx_packets++;
+				dev->last_rx = jiffies;
+				tp->stats.rx_bytes += pkt_size;
+				tp->stats.rx_packets++;
 
-                        netif_receive_skb (skb);
-                    } else {
-                        if (net_ratelimit())
-                            printk (KERN_WARNING
-                                    "%s: Memory squeeze, dropping packet.\n",
-                                    dev->name);
-                        tp->stats.rx_dropped++;
-                    }
-                }
+				netif_receive_skb (skb);
+			} else {
+				if (net_ratelimit())
+					printk (KERN_WARNING
+							"%s: Memory squeeze, dropping packet.\n",
+							dev->name);
+				tp->stats.rx_dropped++;
+			}
+		}
 		received++;
 
 		cur_rx = (cur_rx + rx_size + 4 + 3) & ~3;
@@ -2242,7 +2242,7 @@ static int rtl8139_poll(struct napi_struct *napi, int budget)
 
 void ec_poll(struct net_device *dev)
 {
-    rtl8139_interrupt(0, dev);
+	rtl8139_interrupt(0, dev);
 }
 
 /* The interrupt handler does all of the Rx thread work and cleans up

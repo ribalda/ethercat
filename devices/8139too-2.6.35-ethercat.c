@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: noexpandtab
+ *
  *****************************************************************************/
 
 /**
@@ -2100,11 +2102,9 @@ no_early_rx:
 		}
 
 		if (tp->ecdev) {
-			ecdev_receive(tp->ecdev,
-					&rx_ring[ring_offset + 4], pkt_size);
-					dev->last_rx = jiffies;
-					dev->stats.rx_bytes += pkt_size;
-					dev->stats.rx_packets++;
+			ecdev_receive(tp->ecdev, &rx_ring[ring_offset + 4], pkt_size);
+			dev->stats.rx_bytes += pkt_size;
+			dev->stats.rx_packets++;
 		} else {
 			/* Malloc up new buffer, compatible with net-2e. */
 			/* Omit the four octet CRC from the length. */
@@ -2231,7 +2231,7 @@ static int rtl8139_poll(struct napi_struct *napi, int budget)
 
 void ec_poll(struct net_device *dev)
 {
-    rtl8139_interrupt(0, dev);
+	rtl8139_interrupt(0, dev);
 }
 
 /* The interrupt handler does all of the Rx thread work and cleans up

@@ -25,6 +25,8 @@
  *  EtherCAT technology and brand is only permitted in compliance with the
  *  industrial property and similar rights of Beckhoff Automation GmbH.
  *
+ *  vim: noexpandtab
+ *
  *****************************************************************************/
 
 /**
@@ -2172,11 +2174,7 @@ no_early_rx:
 
 keep_pkt:
 		if (tp->ecdev) {
-			ecdev_receive(tp->ecdev,
-					&rx_ring[ring_offset + 4], pkt_size);
-					dev->last_rx = jiffies;
-					dev->stats.rx_bytes += pkt_size;
-					dev->stats.rx_packets++;
+			ecdev_receive(tp->ecdev, &rx_ring[ring_offset + 4], pkt_size);
 		} else {
 			/* Malloc up new buffer, compatible with net-2e. */
 			/* Omit the four octet CRC from the length. */
