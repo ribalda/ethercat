@@ -2,9 +2,9 @@
 
 set -x
 
-KERNELDIR=/data/kernel/linux-3.16.6
-PREVER=3.14
-KERNELVER=3.16
+KERNELDIR=/data/kernel/linux-4.4.162
+PREVER=3.16
+KERNELVER=4.4
 
 for f in $KERNELDIR/drivers/net/ethernet/{realtek/8139too,realtek/r8169,intel/e100}.c; do
     echo $f

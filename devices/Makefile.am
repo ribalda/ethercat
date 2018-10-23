@@ -97,6 +97,8 @@ noinst_HEADERS = \
 	8139too-3.6-orig.c \
 	8139too-3.8-ethercat.c \
 	8139too-3.8-orig.c \
+	8139too-4.4-ethercat.c \
+	8139too-4.4-orig.c \
 	e100-2.6.20-ethercat.c \
 	e100-2.6.20-orig.c \
 	e100-2.6.24-ethercat.c \
