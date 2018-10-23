@@ -176,7 +176,9 @@ noinst_HEADERS = \
 	r8169-3.6-ethercat.c \
 	r8169-3.6-orig.c \
 	r8169-3.8-ethercat.c \
-	r8169-3.8-orig.c
+	r8169-3.8-orig.c \
+	r8169-4.4-ethercat.c \
+	r8169-4.4-orig.c
 
 EXTRA_DIST = \
 	Kbuild.in
