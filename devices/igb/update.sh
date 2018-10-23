@@ -1,14 +1,13 @@
 #!/bin/bash
 
-
-KERNELDIR=$1
-PREVER=$2
-KERNELVER=$3
-
 if [ $# -ne 3 ]; then
     echo "Need 3 arguments: 1) kernel source dir, 2) previous version, 3) version to add"
     exit 1
 fi
+
+KERNELDIR=$1
+PREVER=$2
+KERNELVER=$3
 
 IGBDIR=drivers/net/ethernet/intel/igb
 
