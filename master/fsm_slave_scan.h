@@ -60,6 +60,8 @@ struct ec_fsm_slave_scan
                                                machine to use. */
     ec_fsm_pdo_t *fsm_pdo; /**< PDO configuration state machine to use. */
     unsigned int retries; /**< Retries on datagram timeout. */
+    unsigned int scan_retries; /**< Retries on scan read error. */
+    unsigned long scan_jiffies_start; /**< scan retry start timestamp. */
 
     void (*state)(ec_fsm_slave_scan_t *, ec_datagram_t *); /**< State function. */
     uint16_t sii_offset; /**< SII offset in words. */
