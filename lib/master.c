@@ -672,12 +672,12 @@ int ecrt_master_link_state(const ec_master_t *master, unsigned int dev_idx,
 
 void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
-    ec_ioctl_app_time_t data;
+    uint64_t time;
     int ret;
 
-    data.app_time = app_time;
+    time = app_time;
 
-    ret = ioctl(master->fd, EC_IOCTL_APP_TIME, &data);
+    ret = ioctl(master->fd, EC_IOCTL_APP_TIME, &time);
     if (EC_IOCTL_IS_ERROR(ret)) {
         fprintf(stderr, "Failed to set application time: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));
@@ -691,6 +691,23 @@ void ecrt_master_sync_reference_clock(ec_master_t *master)
     int ret;
 
     ret = ioctl(master->fd, EC_IOCTL_SYNC_REF, NULL);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        fprintf(stderr, "Failed to sync reference clock: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+}
+
+/****************************************************************************/
+
+void ecrt_master_sync_reference_clock_to(ec_master_t *master,
+        uint64_t sync_time)
+{
+    uint64_t time;
+    int ret;
+
+    time = sync_time;
+
+    ret = ioctl(master->fd, EC_IOCTL_SYNC_REF_TO, &time);
     if (EC_IOCTL_IS_ERROR(ret)) {
         fprintf(stderr, "Failed to sync reference clock: %s\n",
                 strerror(EC_IOCTL_ERRNO(ret)));

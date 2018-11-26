@@ -2820,6 +2820,19 @@ void ecrt_master_sync_reference_clock(ec_master_t *master)
 
 /*****************************************************************************/
 
+void ecrt_master_sync_reference_clock_to(
+        ec_master_t *master,
+        uint64_t sync_time
+        )
+{
+    if (master->dc_ref_clock) {
+        EC_WRITE_U32(master->ref_sync_datagram.data, sync_time);
+        ec_master_queue_datagram(master, &master->ref_sync_datagram);
+    }
+}
+
+/*****************************************************************************/
+
 void ecrt_master_sync_slave_clocks(ec_master_t *master)
 {
     if (master->dc_ref_clock) {
@@ -3292,6 +3305,7 @@ EXPORT_SYMBOL(ecrt_master_state);
 EXPORT_SYMBOL(ecrt_master_link_state);
 EXPORT_SYMBOL(ecrt_master_application_time);
 EXPORT_SYMBOL(ecrt_master_sync_reference_clock);
+EXPORT_SYMBOL(ecrt_master_sync_reference_clock_to);
 EXPORT_SYMBOL(ecrt_master_sync_slave_clocks);
 EXPORT_SYMBOL(ecrt_master_reference_clock_time);
 EXPORT_SYMBOL(ecrt_master_sync_monitor_queue);

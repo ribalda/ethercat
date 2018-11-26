@@ -2015,16 +2015,16 @@ static ATTRIBUTES int ec_ioctl_app_time(
         ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
         )
 {
-    ec_ioctl_app_time_t data;
+    uint64_t time;
 
     if (unlikely(!ctx->requested))
         return -EPERM;
 
-    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+    if (copy_from_user(&time, (void __user *) arg, sizeof(time))) {
         return -EFAULT;
     }
 
-    ecrt_master_application_time(master, data.app_time);
+    ecrt_master_application_time(master, time);
     return 0;
 }
 
@@ -2045,6 +2045,31 @@ static ATTRIBUTES int ec_ioctl_sync_ref(
     }
 
     ecrt_master_sync_reference_clock(master);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Sync the reference clock.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_sync_ref_to(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    uint64_t time;
+
+    if (unlikely(!ctx->requested))
+        return -EPERM;
+
+    if (copy_from_user(&time, (void __user *) arg, sizeof(time))) {
+        return -EFAULT;
+    }
+
+    ecrt_master_sync_reference_clock_to(master, time);
     return 0;
 }
 
@@ -4447,6 +4472,13 @@ long EC_IOCTL(
                 break;
             }
             ret = ec_ioctl_sync_ref(master, arg, ctx);
+            break;
+        case EC_IOCTL_SYNC_REF_TO:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_sync_ref_to(master, arg, ctx);
             break;
         case EC_IOCTL_SYNC_SLAVES:
             if (!ctx->writable) {

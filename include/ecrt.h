@@ -187,6 +187,10 @@
  */
 #define EC_HAVE_REG_BY_POS
 
+/** Defined if the method ecrt_master_sync_reference_clock_to() is available.
+ */
+#define EC_HAVE_SYNC_TO
+
 /*****************************************************************************/
 
 /** End of list marker.
@@ -1018,11 +1022,10 @@ int ecrt_master_link_state(
  * distributed clocks. The time is not incremented by the master itself, so
  * this method has to be called cyclically.
  *
- * \attention The first call of this method is used to calculate the phase
- * delay for the slaves' SYNC0/1 interrupts. Either the method has to be
- * called during the realtime cycle *only*, or the first time submitted must
- * be in-phase with the realtime cycle. Otherwise synchronisation problems can
- * occur.
+ * \attention The time passed to this method is used to calculate the phase of
+ * the slaves' SYNC0/1 interrupts. It should be called constantly at the same
+ * point of the realtime cycle. So it is recommended to call it at the start
+ * of the calculations to avoid deviancies due to changing execution times.
  *
  * The time is used when setting the slaves' <tt>System Time Offset</tt> and
  * <tt>Cyclic Operation Start Time</tt> registers and when synchronizing the
@@ -1030,7 +1033,8 @@ int ecrt_master_link_state(
  * ecrt_master_sync_reference_clock().
  *
  * The time is defined as nanoseconds from 2000-01-01 00:00. Converting an
- * epoch time can be done with the EC_TIMEVAL2NANO() macro.
+ * epoch time can be done with the EC_TIMEVAL2NANO() macro, but is not
+ * necessary, since the absolute value is not of any interest.
  */
 void ecrt_master_application_time(
         ec_master_t *master, /**< EtherCAT master. */
@@ -1044,6 +1048,16 @@ void ecrt_master_application_time(
  */
 void ecrt_master_sync_reference_clock(
         ec_master_t *master /**< EtherCAT master. */
+        );
+
+/** Queues the DC reference clock drift compensation datagram for sending.
+ *
+ * The reference clock will by synchronized to the time passed in the
+ * sync_time parameter.
+ */
+void ecrt_master_sync_reference_clock_to(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint64_t sync_time /**< Sync reference clock to this time. */
         );
 
 /** Queues the DC clock drift compensation datagram for sending.
