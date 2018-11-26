@@ -203,6 +203,7 @@ typedef struct {
     int32_t rx_byte_rates[EC_RATE_COUNT];
     int32_t loss_rates[EC_RATE_COUNT];
     uint64_t app_time;
+    uint64_t dc_ref_time;
     uint16_t ref_clock;
 } ec_ioctl_master_t;
 

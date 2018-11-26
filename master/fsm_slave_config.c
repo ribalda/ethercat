@@ -1417,30 +1417,28 @@ void ec_fsm_slave_config_state_dc_sync_check(
                 abs_sync_diff, diff_ms);
     }
 
-    // set DC start time
+    // set DC start time (roughly in the future, not in-phase)
     start_time = master->app_time + EC_DC_START_OFFSET; // now + X ns
-    // FIXME use slave's local system time here?
 
     if (sync0->cycle_time) {
         // find correct phase
-        if (master->has_app_time) {
+        if (master->dc_ref_time) {
             u64 diff, start;
             u32 remainder, cycle;
 
-            diff = start_time - master->app_start_time;
+            diff = start_time - master->dc_ref_time;
             cycle = sync0->cycle_time + sync1->cycle_time;
             remainder = do_div(diff, cycle);
 
             start = start_time + cycle - remainder + sync0->shift_time;
 
-            EC_SLAVE_DBG(slave, 1, "app_start_time=%llu\n",
-                    master->app_start_time);
-            EC_SLAVE_DBG(slave, 1, "      app_time=%llu\n", master->app_time);
-            EC_SLAVE_DBG(slave, 1, "    start_time=%llu\n", start_time);
-            EC_SLAVE_DBG(slave, 1, "         cycle=%u\n", cycle);
-            EC_SLAVE_DBG(slave, 1, "    shift_time=%i\n", sync0->shift_time);
-            EC_SLAVE_DBG(slave, 1, "     remainder=%u\n", remainder);
-            EC_SLAVE_DBG(slave, 1, "         start=%llu\n", start);
+            EC_SLAVE_DBG(slave, 1, "   ref_time=%llu\n", master->dc_ref_time);
+            EC_SLAVE_DBG(slave, 1, "   app_time=%llu\n", master->app_time);
+            EC_SLAVE_DBG(slave, 1, " start_time=%llu\n", start_time);
+            EC_SLAVE_DBG(slave, 1, "      cycle=%u\n", cycle);
+            EC_SLAVE_DBG(slave, 1, " shift_time=%i\n", sync0->shift_time);
+            EC_SLAVE_DBG(slave, 1, "  remainder=%u\n", remainder);
+            EC_SLAVE_DBG(slave, 1, "       start=%llu\n", start);
             start_time = start;
         } else {
             EC_SLAVE_WARN(slave, "No application time supplied."

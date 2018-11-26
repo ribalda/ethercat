@@ -264,6 +264,7 @@ void CommandMaster::execute(const StringVector &args)
             cout << "None";
         }
         cout << endl
+            << "    DC reference time: " << data.dc_ref_time << endl
             << "    Application time: " << data.app_time << endl
             << "                      ";
 

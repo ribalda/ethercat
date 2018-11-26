@@ -184,8 +184,7 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     INIT_LIST_HEAD(&master->domains);
 
     master->app_time = 0ULL;
-    master->app_start_time = 0ULL;
-    master->has_app_time = 0;
+    master->dc_ref_time = 0ULL;
 
     master->scan_busy = 0;
     master->allow_scan = 1;
@@ -2424,8 +2423,7 @@ void ecrt_master_deactivate(ec_master_t *master)
 #endif
 
     master->app_time = 0ULL;
-    master->app_start_time = 0ULL;
-    master->has_app_time = 0;
+    master->dc_ref_time = 0ULL;
 
 #ifdef EC_EOE
     if (eoe_was_running) {
@@ -2786,9 +2784,8 @@ void ecrt_master_application_time(ec_master_t *master, uint64_t app_time)
 {
     master->app_time = app_time;
 
-    if (unlikely(!master->has_app_time)) {
-        master->app_start_time = app_time;
-        master->has_app_time = 1;
+    if (unlikely(!master->dc_ref_time)) {
+        master->dc_ref_time = app_time;
     }
 }
 

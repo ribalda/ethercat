@@ -180,6 +180,7 @@ static ATTRIBUTES int ec_ioctl_master(
     up(&master->device_sem);
 
     io.app_time = master->app_time;
+    io.dc_ref_time = master->dc_ref_time;
     io.ref_clock =
         master->dc_ref_clock ? master->dc_ref_clock->ring_position : 0xffff;
 

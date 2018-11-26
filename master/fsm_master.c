@@ -1200,7 +1200,7 @@ void ec_fsm_master_enter_write_system_times(
 {
     ec_master_t *master = fsm->master;
 
-    if (master->has_app_time) {
+    if (master->dc_ref_time) {
 
         while (fsm->slave < master->slaves + master->slave_count) {
             if (!fsm->slave->base_dc_supported
@@ -1224,7 +1224,7 @@ void ec_fsm_master_enter_write_system_times(
 
     } else {
         if (master->active) {
-            EC_MASTER_WARN(master, "No app_time received up to now,"
+            EC_MASTER_WARN(master, "No application time received up to now,"
                     " but master already active.\n");
         } else {
             EC_MASTER_DBG(master, 1, "No app_time received up to now.\n");

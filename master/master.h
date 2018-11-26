@@ -236,8 +236,7 @@ struct ec_master {
     struct list_head domains; /**< List of domains. */
 
     u64 app_time; /**< Time of the last ecrt_master_sync() call. */
-    u64 app_start_time; /**< Application start time. */
-    u8 has_app_time; /**< Application time is valid. */
+    u64 dc_ref_time; /**< Common reference timestamp for DC start times. */
     ec_datagram_t ref_sync_datagram; /**< Datagram used for synchronizing the
                                        reference clock to the master clock. */
     ec_datagram_t sync_datagram; /**< Datagram used for DC drift
