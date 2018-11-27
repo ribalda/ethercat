@@ -257,7 +257,7 @@ void CommandMaster::execute(const StringVector &args)
         cout << setprecision(0) << endl;
 
         cout << "  Distributed clocks:" << endl
-            << "    Reference clock: ";
+            << "    Reference clock:   ";
         if (data.ref_clock != 0xffff) {
             cout << "Slave " << dec << data.ref_clock;
         } else {
@@ -265,8 +265,8 @@ void CommandMaster::execute(const StringVector &args)
         }
         cout << endl
             << "    DC reference time: " << data.dc_ref_time << endl
-            << "    Application time: " << data.app_time << endl
-            << "                      ";
+            << "    Application time:  " << data.app_time << endl
+            << "                       ";
 
         epoch = data.app_time / 1000000000 + 946684800ULL;
         time_str_size = strftime(time_str, MAX_TIME_STR_SIZE,
