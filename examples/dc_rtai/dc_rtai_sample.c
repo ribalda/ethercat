@@ -164,10 +164,11 @@ void run(long data)
     struct timeval tv;
     unsigned int sync_ref_counter = 0;
 
-    count2timeval(nano2count(rt_get_real_time_ns()), &tv);
-
     while (1) {
         t_last_cycle = get_cycles();
+
+        count2timeval(nano2count(rt_get_real_time_ns()), &tv);
+        ecrt_master_application_time(master, EC_TIMEVAL2NANO(tv));
 
         // receive process data
         rt_sem_wait(&master_sem);
@@ -214,18 +215,12 @@ void run(long data)
 
         rt_sem_wait(&master_sem);
 
-        tv.tv_usec += 1000;
-        if (tv.tv_usec >= 1000000)  {
-            tv.tv_usec -= 1000000;
-            tv.tv_sec++;
-        }
-        ecrt_master_application_time(master, EC_TIMEVAL2NANO(tv));
-
         if (sync_ref_counter) {
             sync_ref_counter--;
         } else {
             sync_ref_counter = 9;
-            ecrt_master_sync_reference_clock(master);
+            count2timeval(nano2count(rt_get_real_time_ns()), &tv);
+            ecrt_master_sync_reference_clock_to(master, EC_TIMEVAL2NANO(tv));
         }
         ecrt_master_sync_slave_clocks(master);
         ecrt_domain_queue(domain1);

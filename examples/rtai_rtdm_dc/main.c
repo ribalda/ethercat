@@ -193,16 +193,13 @@ void sync_distributed_clocks(void)
 
     dc_time_ns = system_time_ns();
 
-    // set master time in nano-seconds
-    ecrt_master_application_time(master, dc_time_ns);
-
 #if SYNC_MASTER_TO_REF
     // get reference clock time to synchronize master cycle
     ecrt_master_reference_clock_time(master, &ref_time);
     dc_diff_ns = (uint32_t) prev_app_time - ref_time;
 #else
     // sync reference clock to master
-    ecrt_master_sync_reference_clock(master);
+    ecrt_master_sync_reference_clock_to(master, dc_time_ns);
 #endif
 
     // call to sync slaves to ref slave
@@ -368,6 +365,9 @@ void wait_period(void)
         break;
     }
 
+    // set master time in nano-seconds
+    ecrt_master_application_time(master, wakeup_time);
+
     // calc next wake time (in sys time)
     wakeup_time += cycle_ns;
 }
@@ -503,12 +503,6 @@ int main(int argc, char *argv[])
      */
     dc_start_time_ns = system_time_ns();
     dc_time_ns = dc_start_time_ns;
-
-    /* Attention: The initial application time is also used for phase
-     * calculation for the SYNC0/1 interrupts. Please be sure to call it at
-     * the correct phase to the realtime cycle.
-     */
-    ecrt_master_application_time(master, dc_start_time_ns);
 
     ret = ecrt_master_select_reference_clock(master, sc_ek1100);
     if (ret < 0) {

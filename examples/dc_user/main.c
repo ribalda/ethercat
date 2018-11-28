@@ -57,7 +57,7 @@
 #define PERIOD_NS (NSEC_PER_SEC / FREQUENCY)
 
 #define DIFF_NS(A, B) (((B).tv_sec - (A).tv_sec) * NSEC_PER_SEC + \
-	(B).tv_nsec - (A).tv_nsec)
+        (B).tv_nsec - (A).tv_nsec)
 
 #define TIMESPEC2NS(T) ((uint64_t) (T).tv_sec * NSEC_PER_SEC + (T).tv_nsec)
 
@@ -97,17 +97,17 @@ const struct timespec cycletime = {0, PERIOD_NS};
 
 struct timespec timespec_add(struct timespec time1, struct timespec time2)
 {
-	struct timespec result;
+    struct timespec result;
 
-	if ((time1.tv_nsec + time2.tv_nsec) >= NSEC_PER_SEC) {
-		result.tv_sec = time1.tv_sec + time2.tv_sec + 1;
-		result.tv_nsec = time1.tv_nsec + time2.tv_nsec - NSEC_PER_SEC;
-	} else {
-		result.tv_sec = time1.tv_sec + time2.tv_sec;
-		result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
-	}
+    if ((time1.tv_nsec + time2.tv_nsec) >= NSEC_PER_SEC) {
+        result.tv_sec = time1.tv_sec + time2.tv_sec + 1;
+        result.tv_nsec = time1.tv_nsec + time2.tv_nsec - NSEC_PER_SEC;
+    } else {
+        result.tv_sec = time1.tv_sec + time2.tv_sec;
+        result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
+    }
 
-	return result;
+    return result;
 }
 
 /*****************************************************************************/
@@ -134,7 +134,7 @@ void check_master_state(void)
 
     ecrt_master_state(master, &ms);
 
-	if (ms.slaves_responding != master_state.slaves_responding)
+    if (ms.slaves_responding != master_state.slaves_responding)
         printf("%u slave(s).\n", ms.slaves_responding);
     if (ms.al_states != master_state.al_states)
         printf("AL states: 0x%02X.\n", ms.al_states);
@@ -160,9 +160,16 @@ void cyclic_task()
     // get current time
     clock_gettime(CLOCK_TO_USE, &wakeupTime);
 
-	while(1) {
-		wakeupTime = timespec_add(wakeupTime, cycletime);
+    while(1) {
+        wakeupTime = timespec_add(wakeupTime, cycletime);
         clock_nanosleep(CLOCK_TO_USE, TIMER_ABSTIME, &wakeupTime, NULL);
+
+        // Write application time to master
+        //
+        // It is a good idea to use the target time (not the measured time) as
+        // application time, because it is more stable.
+        //
+        ecrt_master_application_time(master, TIMESPEC2NS(wakeupTime));
 
 #ifdef MEASURE_TIMING
         clock_gettime(CLOCK_TO_USE, &startTime);
@@ -191,20 +198,20 @@ void cyclic_task()
         }
 #endif
 
-		// receive process data
-		ecrt_master_receive(master);
-		ecrt_domain_process(domain1);
+        // receive process data
+        ecrt_master_receive(master);
+        ecrt_domain_process(domain1);
 
-		// check process data state (optional)
-		check_domain1_state();
+        // check process data state (optional)
+        check_domain1_state();
 
-		if (counter) {
-			counter--;
-		} else { // do this at 1 Hz
-			counter = FREQUENCY;
+        if (counter) {
+            counter--;
+        } else { // do this at 1 Hz
+            counter = FREQUENCY;
 
-			// check for master state (optional)
-			check_master_state();
+            // check for master state (optional)
+            check_master_state();
 
 #ifdef MEASURE_TIMING
             // output timing stats
@@ -222,34 +229,32 @@ void cyclic_task()
             latency_min_ns = 0xffffffff;
 #endif
 
-			// calculate new process data
-			blink = !blink;
-		}
+            // calculate new process data
+            blink = !blink;
+        }
 
-		// write process data
-		EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x66 : 0x99);
-		EC_WRITE_U8(domain1_pd + off_counter_out, blink ? 0x00 : 0x02);
+        // write process data
+        EC_WRITE_U8(domain1_pd + off_dig_out, blink ? 0x66 : 0x99);
+        EC_WRITE_U8(domain1_pd + off_counter_out, blink ? 0x00 : 0x02);
 
-		// write application time to master
-		clock_gettime(CLOCK_TO_USE, &time);
-		ecrt_master_application_time(master, TIMESPEC2NS(time));
+        if (sync_ref_counter) {
+            sync_ref_counter--;
+        } else {
+            sync_ref_counter = 1; // sync every cycle
 
-		if (sync_ref_counter) {
-			sync_ref_counter--;
-		} else {
-			sync_ref_counter = 1; // sync every cycle
-			ecrt_master_sync_reference_clock(master);
-		}
-		ecrt_master_sync_slave_clocks(master);
+            clock_gettime(CLOCK_TO_USE, &time);
+            ecrt_master_sync_reference_clock_to(master, TIMESPEC2NS(time));
+        }
+        ecrt_master_sync_slave_clocks(master);
 
-		// send process data
-		ecrt_domain_queue(domain1);
-		ecrt_master_send(master);
+        // send process data
+        ecrt_domain_queue(domain1);
+        ecrt_master_send(master);
 
 #ifdef MEASURE_TIMING
         clock_gettime(CLOCK_TO_USE, &endTime);
 #endif
-	}
+    }
 }
 
 /****************************************************************************/
@@ -258,10 +263,10 @@ int main(int argc, char **argv)
 {
     ec_slave_config_t *sc;
 
-	if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
-		perror("mlockall failed");
-		return -1;
-	}
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
+        perror("mlockall failed");
+        return -1;
+    }
 
     master = ecrt_request_master(0);
     if (!master)
@@ -287,24 +292,24 @@ int main(int argc, char **argv)
     if (off_dig_out < 0)
         return -1;
 
-	if (!(sc = ecrt_master_slave_config(master,
-					CounterSlavePos, IDS_Counter))) {
+    if (!(sc = ecrt_master_slave_config(master,
+                    CounterSlavePos, IDS_Counter))) {
         fprintf(stderr, "Failed to get slave configuration.\n");
         return -1;
-	}
+    }
 
-	off_counter_in = ecrt_slave_config_reg_pdo_entry(sc,
-			0x6020, 0x11, domain1, NULL);
-	if (off_counter_in < 0)
+    off_counter_in = ecrt_slave_config_reg_pdo_entry(sc,
+            0x6020, 0x11, domain1, NULL);
+    if (off_counter_in < 0)
         return -1;
 
-	off_counter_out = ecrt_slave_config_reg_pdo_entry(sc,
-			0x7020, 1, domain1, NULL);
-	if (off_counter_out < 0)
+    off_counter_out = ecrt_slave_config_reg_pdo_entry(sc,
+            0x7020, 1, domain1, NULL);
+    if (off_counter_out < 0)
         return -1;
 
     // configure SYNC signals for this slave
-	ecrt_slave_config_dc(sc, 0x0700, PERIOD_NS, 4400000, 0, 0);
+    ecrt_slave_config_dc(sc, 0x0700, PERIOD_NS, 4400000, 0, 0);
 
     printf("Activating master...\n");
     if (ecrt_master_activate(master))
@@ -324,7 +329,7 @@ int main(int argc, char **argv)
         perror("sched_setscheduler failed");
     }
 
-	printf("Starting cyclic function.\n");
+    printf("Starting cyclic function.\n");
     cyclic_task();
 
     return 0;
