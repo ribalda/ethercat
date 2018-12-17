@@ -116,8 +116,13 @@ void check_master_state(void)
 
 /*****************************************************************************/
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+static void cyclic_task(struct timer_list *data)
+#else
 void cyclic_task(unsigned long data)
+#endif
 {
+
     // receive process data
     down(&master_sem);
     ecrt_master_receive(master);
@@ -214,8 +219,12 @@ int __init init_mini_module(void)
     domain1_pd = ecrt_domain_data(domain1);
 
     printk(KERN_INFO PFX "Starting cyclic sample thread.\n");
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0))
+     timer_setup(&timer, cyclic_task, 0);
+#else
     init_timer(&timer);
     timer.function = cyclic_task;
+#endif
     timer.expires = jiffies + 10;
     add_timer(&timer);
 
