@@ -93,6 +93,22 @@ start)
         MASTER_INDEX=$(expr ${MASTER_INDEX} + 1)
     done
 
+    # build EOE interfaces command
+    EOE_INTERFACES_CMD=""
+    for IFACE in ${EOE_INTERFACES}; do
+        if [ -z "${EOE_INTERFACES_CMD}" ]; then
+            EOE_INTERFACES_CMD="eoe_interfaces=${IFACE}"
+        else
+            EOE_INTERFACES_CMD="${EOE_INTERFACES_CMD},${IFACE}"
+        fi
+    done
+    
+    # build EOE auto create command
+    EOE_AUTOCREATE_CMD=""
+    if [ -n "${EOE_AUTOCREATE}" ]; then
+        EOE_AUTOCREATE_CMD="eoe_autocreate=${EOE_AUTOCREATE}"
+    fi
+
     # Set link state UP on selected devices
     if [ -n "${LINK_DEVICES}" ]; then
         for LINK_DEVICE in ${LINK_DEVICES}; do
@@ -102,7 +118,8 @@ start)
 
     # load master module
     if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master \
-            main_devices=${DEVICES} backup_devices=${BACKUPS}; then
+            main_devices=${DEVICES} backup_devices=${BACKUPS} \
+            ${EOE_INTERFACES_CMD} ${EOE_AUTOCREATE_CMD}; then
         exit 1
     fi
 

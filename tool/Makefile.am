@@ -118,15 +118,23 @@ noinst_HEADERS = \
 if ENABLE_EOE
 ethercat_SOURCES += \
 	CommandEoe.cpp \
+	CommandEoeAddIf.cpp \
+	CommandEoeDelIf.cpp \
 	CommandIp.cpp
 noinst_HEADERS += \
 	CommandEoe.h \
+	CommandEoeAddIf.h \
+	CommandEoeDelIf.h \
 	CommandIp.h
 else
 EXTRA_DIST += \
 	CommandEoe.cpp \
+	CommandEoeAddIf.cpp \
+	CommandEoeDelIf.cpp \
 	CommandIp.cpp \
 	CommandEoe.h \
+	CommandEoeAddIf.h \
+	CommandEoeDelIf.h \
 	CommandIp.h
 endif
 

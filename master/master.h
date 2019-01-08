@@ -370,7 +370,7 @@ const ec_slave_t *ec_master_find_slave_const(const ec_master_t *, uint16_t,
         uint16_t);
 void ec_master_output_stats(ec_master_t *);
 #ifdef EC_EOE
-void ec_master_clear_eoe_handlers(ec_master_t *);
+void ec_master_clear_eoe_handlers(ec_master_t *, unsigned int);
 #endif
 void ec_master_slaves_not_available(ec_master_t *);
 void ec_master_slaves_available(ec_master_t *);
@@ -407,6 +407,14 @@ void ec_master_internal_receive_cb(void *);
 int ec_master_dict_upload(ec_master_t *, uint16_t);
 
 extern const unsigned int rate_intervals[EC_RATE_COUNT]; // see master.c
+
+#ifdef EC_EOE
+#define MAX_EOE 32 /**< Maximum number of EOE interfaces that can be
+                     *  defined at startup. */
+extern char *eoe_interfaces[MAX_EOE]; // see module.c
+extern unsigned int eoe_count; // see module.c
+extern bool eoe_autocreate; // see module.c
+#endif
 
 /*****************************************************************************/
 

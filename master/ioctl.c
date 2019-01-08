@@ -1748,12 +1748,38 @@ static ATTRIBUTES int ec_ioctl_eoe_handler(
     }
     snprintf(data.name, EC_DATAGRAM_NAME_SIZE, eoe->dev->name);
     data.open = eoe->opened;
-    data.rx_bytes = eoe->stats.tx_bytes;
-    data.rx_rate = eoe->tx_rate;
-    data.tx_bytes = eoe->stats.rx_bytes;
+    data.rx_bytes = eoe->stats.rx_bytes;
+    data.rx_rate = eoe->rx_rate;
+    data.tx_bytes = eoe->stats.tx_bytes;
     data.tx_rate = eoe->tx_rate;
-    data.tx_queued_frames = eoe->tx_queued_frames;
-    data.tx_queue_size = eoe->tx_queue_size;
+    data.tx_queued_frames = ec_eoe_tx_queued_frames(eoe);
+    data.tx_queue_size = eoe->tx_ring_count;
+    
+    EC_MASTER_DBG(master, 1, "EOE %s Info:\n", eoe->dev->name);
+    EC_MASTER_DBG(master, 1, "  opened:               %u\n", eoe->opened);
+    EC_MASTER_DBG(master, 1, "  rate_jiffies:         %lu\n", eoe->rate_jiffies);
+    EC_MASTER_DBG(master, 1, "  queue_datagram:       %u\n", eoe->queue_datagram);
+    EC_MASTER_DBG(master, 1, "  have_mbox_lock:       %u\n", eoe->have_mbox_lock);
+    EC_MASTER_DBG(master, 1, "  rx_skb:               %p\n", eoe->rx_skb);
+    EC_MASTER_DBG(master, 1, "  rx_skb_offset:        %d\n", (int)eoe->rx_skb_offset);
+    EC_MASTER_DBG(master, 1, "  rx_skb_size:          %zu\n", eoe->rx_skb_size);
+    EC_MASTER_DBG(master, 1, "  rx_expected_fragment: %hhu\n", eoe->rx_expected_fragment);
+    EC_MASTER_DBG(master, 1, "  rx_counter:           %u\n", eoe->rx_counter);
+    EC_MASTER_DBG(master, 1, "  rx_rate:              %u\n", eoe->rx_rate);
+    EC_MASTER_DBG(master, 1, "  rx_idle:              %u\n", eoe->rx_idle);
+    EC_MASTER_DBG(master, 1, "  tx_ring_count:        %u\n", eoe->tx_ring_count);
+    EC_MASTER_DBG(master, 1, "  tx_ring_size:         %u\n", eoe->tx_ring_size);
+    EC_MASTER_DBG(master, 1, "  tx_next_to_use:       %u\n", eoe->tx_next_to_use);
+    EC_MASTER_DBG(master, 1, "  tx_next_to_clean:     %u\n", eoe->tx_next_to_clean);
+    EC_MASTER_DBG(master, 1, "  tx_queue_active:      %u\n", eoe->tx_queue_active);
+    EC_MASTER_DBG(master, 1, "  tx_queued_frames:     %u\n", data.tx_queued_frames);
+    EC_MASTER_DBG(master, 1, "  tx_frame_number:      %hhu\n", eoe->tx_frame_number);
+    EC_MASTER_DBG(master, 1, "  tx_fragment_number:   %hhu\n", eoe->tx_fragment_number);
+    EC_MASTER_DBG(master, 1, "  tx_offset:            %zu\n", eoe->tx_offset);
+    EC_MASTER_DBG(master, 1, "  tx_counter:           %u\n", eoe->tx_counter);
+    EC_MASTER_DBG(master, 1, "  tx_rate:              %u\n", eoe->tx_rate);
+    EC_MASTER_DBG(master, 1, "  tx_idle:              %u\n", eoe->tx_idle);
+    EC_MASTER_DBG(master, 1, "  tries:                %u\n", eoe->tries);
 
     ec_lock_up(&master->master_sem);
 
@@ -5080,6 +5106,58 @@ static ATTRIBUTES int ec_ioctl_slave_dict_upload(
 
 /*****************************************************************************/
 
+#ifdef EC_EOE
+
+/** add an EOE interface
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_eoe_addif(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    int ret;
+    ec_ioctl_eoe_if_t data;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    ret = ecrt_master_eoe_addif(master, data.alias, data.position);
+
+    return ret;
+}
+
+/*****************************************************************************/
+
+/** delete an EOE interface
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_eoe_delif(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    int ret;
+    ec_ioctl_eoe_if_t data;
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    ret = ecrt_master_eoe_delif(master, data.alias, data.position);
+
+    return ret;
+}
+
+#endif
+
+/*****************************************************************************/
+
 /** ioctl() function to use.
  */
 #ifdef EC_IOCTL_RTDM
@@ -5721,6 +5799,22 @@ long EC_IOCTL(
         case EC_IOCTL_SLAVE_DICT_UPLOAD:
             ret = ec_ioctl_slave_dict_upload(master, arg);
             break;
+#ifdef EC_EOE
+        case EC_IOCTL_EOE_ADDIF:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_eoe_addif(master, arg, ctx);
+            break;
+        case EC_IOCTL_EOE_DELIF:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_eoe_delif(master, arg, ctx);
+            break;
+#endif
         default:
             ret = -ENOTTY;
             break;

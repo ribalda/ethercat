@@ -95,11 +95,11 @@ ec_master-objs += rtdm.o
 endif
 
 ifeq (@ENABLE_XENOMAI@, 1)
-CFLAGS_rtdm.o := -I@XENOMAI_DIR@/include
+EXTRA_CFLAGS := -I@XENOMAI_DIR@/include
 endif
 
 ifeq (@ENABLE_RTAI@, 1)
-CFLAGS_rtdm.o := -I@RTAI_DIR@/include
+EXTRA_CFLAGS := -I@RTAI_DIR@/include
 endif
 
 ec_master-objs += rtdm-ioctl.o

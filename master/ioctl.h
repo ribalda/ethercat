@@ -175,6 +175,11 @@
 #define EC_IOCTL_RT_SLAVE_REQUESTS     EC_IOW(0x6b, uint32_t)
 #define EC_IOCTL_EXEC_SLAVE_REQUESTS    EC_IO(0x6c)
 
+#ifdef EC_EOE
+#define EC_IOCTL_EOE_ADDIF            EC_IOWR(0x70, ec_ioctl_eoe_if_t)
+#define EC_IOCTL_EOE_DELIF            EC_IOWR(0x71, ec_ioctl_eoe_if_t)
+#endif
+
 /*****************************************************************************/
 
 #define EC_IOCTL_STRING_SIZE 64
@@ -623,6 +628,14 @@ typedef struct {
     uint32_t tx_queued_frames;
     uint32_t tx_queue_size;
 } ec_ioctl_eoe_handler_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // input
+    uint16_t alias;
+    uint16_t position;
+} ec_ioctl_eoe_if_t;
 
 #endif
 

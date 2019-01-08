@@ -37,6 +37,35 @@ MASTER0_DEVICE=""
 #MASTER0_BACKUP=""
 
 #
+# Initial EOE interfaces
+#
+# Specify EOE interface names that need to be configured on initialization and
+# be available regardless of whether the related module is installed.
+#
+# EOE interface names can be specified with either of the following formats:
+#   eoe<MASTER>a<SLAVE_ALIAS>
+#   eoe<MASTER>s<SLAVE_RING_POSITION>
+#
+# Note: it is preferable to use the alias version to ensure the slave is matched
+#   regarless of its ring position.  If multiple slaves share the same alias
+#   the first matching EOE slave will claim it.
+#
+# Separate multiple interfaces with commas
+# e.g.: eoe0s20,eoe0a100
+#
+#EOE_INTERFACES=""
+
+#
+# EOE auto create mode
+#
+# If EOE auto create is true (default) then EOE interfaces will be automatically
+# created as required if a new EOE module is connected.  If it is false
+# then you will need to create EOE interfaces by specifying them under the
+# EOE_INTERFACES key above, or by using the "ethercat eoe_addif" tool.
+#
+#EOE_AUTOCREATE="1"
+
+#
 # Ethernet driver modules to use for EtherCAT operation.
 #
 # Specify a non-empty list of Ethernet drivers, that shall be used for

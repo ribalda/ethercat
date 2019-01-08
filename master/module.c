@@ -58,6 +58,11 @@ static char *main_devices[MAX_MASTERS]; /**< Main devices parameter. */
 static unsigned int master_count; /**< Number of masters. */
 static char *backup_devices[MAX_MASTERS]; /**< Backup devices parameter. */
 static unsigned int backup_count; /**< Number of backup devices. */
+#ifdef EC_EOE
+char *eoe_interfaces[MAX_EOE]; /**< EOE interfaces parameter. */
+unsigned int eoe_count; /**< Number of EOE interfaces. */
+bool eoe_autocreate = 1;  /**< Auto-create EOE interfaces. */
+#endif
 static unsigned int debug_level;  /**< Debug level parameter. */
 
 static ec_master_t *masters; /**< Array of masters. */
@@ -83,6 +88,12 @@ module_param_array(main_devices, charp, &master_count, S_IRUGO);
 MODULE_PARM_DESC(main_devices, "MAC addresses of main devices");
 module_param_array(backup_devices, charp, &backup_count, S_IRUGO);
 MODULE_PARM_DESC(backup_devices, "MAC addresses of backup devices");
+#ifdef EC_EOE
+module_param_array(eoe_interfaces, charp, &eoe_count, S_IRUGO);
+MODULE_PARM_DESC(eoe_interfaces, "EOE interfaces");
+module_param_named(eoe_autocreate, eoe_autocreate, bool, S_IRUGO);
+MODULE_PARM_DESC(eoe_autocreate, "EOE atuo create mode");
+#endif
 module_param_named(debug_level, debug_level, uint, S_IRUGO);
 MODULE_PARM_DESC(debug_level, "Debug level");
 
@@ -154,7 +165,7 @@ int __init ec_init_module(void)
         if (ret)
             goto out_free_masters;
     }
-
+    
     EC_INFO("%u master%s waiting for devices.\n",
             master_count, (master_count == 1 ? "" : "s"));
     return ret;

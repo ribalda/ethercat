@@ -45,7 +45,9 @@ using namespace std;
 #include "CommandDomains.h"
 #include "CommandDownload.h"
 #ifdef EC_EOE
-# include "CommandEoe.h"
+#include "CommandEoe.h"
+#include "CommandEoeAddIf.h"
+#include "CommandEoeDelIf.h"
 #endif
 #include "CommandFoeRead.h"
 #include "CommandFoeWrite.h"
@@ -258,18 +260,28 @@ list<Command *> getMatchingCommands(const string &cmdStr)
     CommandList::iterator ci;
     list<Command *> res;
 
-    // find matching commands from beginning of the string
+    // see if there's an exact match
     for (ci = commandList.begin(); ci != commandList.end(); ci++) {
-        if ((*ci)->matchesSubstr(cmdStr)) {
+        if ((*ci)->matches(cmdStr)) {
             res.push_back(*ci);
+            break;
         }
     }
-
+    
     if (!res.size()) { // nothing found
-        // find /any/ matching commands
+        // find matching commands from beginning of the string
         for (ci = commandList.begin(); ci != commandList.end(); ci++) {
-            if ((*ci)->matchesAbbrev(cmdStr)) {
+            if ((*ci)->matchesSubstr(cmdStr)) {
                 res.push_back(*ci);
+            }
+        }
+        
+        if (!res.size()) { // nothing found
+            // find /any/ matching commands
+            for (ci = commandList.begin(); ci != commandList.end(); ci++) {
+                if ((*ci)->matchesAbbrev(cmdStr)) {
+                    res.push_back(*ci);
+                }
             }
         }
     }
@@ -299,6 +311,8 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandDownload());
 #ifdef EC_EOE
     commandList.push_back(new CommandEoe());
+    commandList.push_back(new CommandEoeAddIf());
+    commandList.push_back(new CommandEoeDelIf());
 #endif
     commandList.push_back(new CommandFoeRead());
     commandList.push_back(new CommandFoeWrite());

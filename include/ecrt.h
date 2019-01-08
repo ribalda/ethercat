@@ -1071,10 +1071,36 @@ void ecrt_master_receive(
  *
  * This method has to be called in the send callback function passed via
  * ecrt_master_callbacks() to allow the sending of non-application datagrams.
+ *
+ * Returns the number of bytes sent.
  */
-void ecrt_master_send_ext(
+size_t ecrt_master_send_ext(
         ec_master_t *master /**< EtherCAT master. */
         );
+
+#ifdef EC_EOE
+
+/** add an EOE network interface
+ *
+ * \return 0 on success else negative error code
+ */
+int ecrt_master_eoe_addif(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t alias, /**< slave alias. */
+        uint16_t posn /**< slave position. */
+        );
+        
+/** delete an EOE network interface
+ *
+ * \return 0 on success else negative error code
+ */
+int ecrt_master_eoe_delif(
+        ec_master_t *master, /**< EtherCAT master. */
+        uint16_t alias, /**< slave alias. */
+        uint16_t posn /**< slave position. */
+        );
+
+#endif /* EC_EOE */
 
 /** Reads the current master state.
  *

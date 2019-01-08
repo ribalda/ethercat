@@ -289,7 +289,7 @@ void ec_fsm_master_state_broadcast(
         ec_master_slaves_not_available(master);
 #ifdef EC_EOE
         ec_master_eoe_stop(master);
-        ec_master_clear_eoe_handlers(master);
+        ec_master_clear_eoe_handlers(master, 0);
 #endif
         ec_master_clear_slaves(master);
         ec_master_clear_sii_images(master);
@@ -349,7 +349,7 @@ void ec_fsm_master_state_broadcast(
             ec_master_slaves_not_available(master);
 #ifdef EC_EOE
             ec_master_eoe_stop(master);
-            ec_master_clear_eoe_handlers(master);
+            ec_master_clear_eoe_handlers(master, 0);
 #endif
             ec_master_clear_slaves(master);
             ec_master_clear_sii_images(master);

@@ -734,6 +734,46 @@ void ecrt_master_receive(ec_master_t *master)
 
 /****************************************************************************/
 
+#ifdef EC_EOE
+
+int ecrt_master_eoe_addif(ec_master_t *master, uint16_t alias, uint16_t posn)
+{
+    int ret;
+    ec_ioctl_eoe_if_t data;
+    data.alias = alias;
+    data.position = posn;
+    
+    ret = ioctl(master->fd, EC_IOCTL_EOE_ADDIF, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to add EoE interface: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+
+    return ret;
+}
+
+/****************************************************************************/
+
+int ecrt_master_eoe_delif(ec_master_t *master, uint16_t alias, uint16_t posn)
+{
+    int ret;
+    ec_ioctl_eoe_if_t data;
+    data.alias = alias;
+    data.position = posn;
+    
+    ret = ioctl(master->fd, EC_IOCTL_EOE_DELIF, &data);
+    if (EC_IOCTL_IS_ERROR(ret)) {
+        EC_PRINT_ERR("Failed to add EoE interface: %s\n",
+                strerror(EC_IOCTL_ERRNO(ret)));
+    }
+
+    return ret;
+}
+
+#endif
+
+/****************************************************************************/
+
 void ecrt_master_state(const ec_master_t *master, ec_master_state_t *state)
 {
     int ret;

@@ -161,6 +161,8 @@ class MasterDevice
         void writeFoe(ec_ioctl_slave_foe_t *);
 #ifdef EC_EOE
         void getEoeHandler(ec_ioctl_eoe_handler_t *, uint16_t);
+        void addEoeIf(uint16_t, uint16_t);
+        void delEoeIf(uint16_t, uint16_t);
         void setIpParam(ec_ioctl_slave_eoe_ip_t *);
 #endif
         void readSoe(ec_ioctl_slave_soe_read_t *);

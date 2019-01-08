@@ -60,19 +60,6 @@ enum {
 
 /*****************************************************************************/
 
-/**
-   Queued frame structure.
-*/
-
-typedef struct
-{
-    struct list_head queue; /**< list item */
-    struct sk_buff *skb; /**< socket buffer */
-}
-ec_eoe_frame_t;
-
-/*****************************************************************************/
-
 typedef struct ec_eoe ec_eoe_t; /**< \see ec_eoe */
 
 /**
@@ -84,6 +71,7 @@ typedef struct ec_eoe ec_eoe_t; /**< \see ec_eoe */
 struct ec_eoe
 {
     struct list_head list; /**< list item */
+    ec_master_t *master; /**< pointer to the corresponding master */
     ec_slave_t *slave; /**< pointer to the corresponding slave */
     ec_datagram_t datagram; /**< datagram */
     unsigned int queue_datagram; /**< the datagram is ready for queuing */
@@ -92,6 +80,8 @@ struct ec_eoe
     struct net_device_stats stats; /**< device statistics */
     unsigned int opened; /**< net_device is opened */
     unsigned long rate_jiffies; /**< time of last rate output */
+    unsigned int have_mbox_lock; /**< flag to track if we have the mbox lock */
+    unsigned int auto_created; /**< auto created flag. */
 
     struct sk_buff *rx_skb; /**< current rx socket buffer */
     off_t rx_skb_offset; /**< current write pointer in the socket buffer */
@@ -101,12 +91,13 @@ struct ec_eoe
     uint32_t rx_rate; /**< receive rate (bps) */
     unsigned int rx_idle; /**< Idle flag. */
 
-    struct list_head tx_queue; /**< queue for frames to send */
-    unsigned int tx_queue_size; /**< Transmit queue size. */
+    struct sk_buff **tx_ring; /**< ring for frames to send */
+    unsigned int tx_ring_count; /**< Transmit ring count. */
+    unsigned int tx_ring_size; /**< Transmit ring size. */
+    unsigned int tx_next_to_use; /**< index of frames added to the ring */
+    unsigned int tx_next_to_clean; /**< index of frames being used from the ring */
     unsigned int tx_queue_active; /**< kernel netif queue started */
-    unsigned int tx_queued_frames; /**< number of frames in the queue */
-    ec_lock_t tx_queue_sem; /**< Semaphore for the send queue. */
-    ec_eoe_frame_t *tx_frame; /**< current TX frame */
+    struct sk_buff *tx_skb; /**< current TX frame */
     uint8_t tx_frame_number; /**< number of the transmitted frame */
     uint8_t tx_fragment_number; /**< number of the fragment */
     size_t tx_offset; /**< number of octets sent */
@@ -119,12 +110,19 @@ struct ec_eoe
 
 /*****************************************************************************/
 
-int ec_eoe_init(ec_eoe_t *, ec_slave_t *);
+int ec_eoe_parse(const char *, int *, uint16_t *, uint16_t *);
+
+int ec_eoe_init(ec_master_t *, ec_eoe_t *, uint16_t/*alias*/, uint16_t/*posn*/);
+int ec_eoe_auto_init(ec_eoe_t *, ec_slave_t *);
+void ec_eoe_link_slave(ec_eoe_t *, ec_slave_t *);
+void ec_eoe_clear_slave(ec_eoe_t *);
 void ec_eoe_clear(ec_eoe_t *);
 void ec_eoe_run(ec_eoe_t *);
 void ec_eoe_queue(ec_eoe_t *);
 int ec_eoe_is_open(const ec_eoe_t *);
 int ec_eoe_is_idle(const ec_eoe_t *);
+char *ec_eoe_name(const ec_eoe_t *);
+unsigned int ec_eoe_tx_queued_frames(const ec_eoe_t *);
 
 /*****************************************************************************/
 
