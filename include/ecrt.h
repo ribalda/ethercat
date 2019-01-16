@@ -2203,6 +2203,42 @@ void ecrt_reg_request_read(
      ((int64_t) le64_to_cpup((void *) (DATA)))
 
 /******************************************************************************
+ * Floating-point read functions and macros (userspace only)
+ *****************************************************************************/
+
+#ifndef __KERNEL__
+
+/** Read a 32-bit floating-point value from EtherCAT data.
+ *
+ * \param data EtherCAT data pointer
+ * \return EtherCAT data value
+ */
+float ecrt_read_real(void *data);
+
+/** Read a 32-bit floating-point value from EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \return EtherCAT data value
+ */
+#define EC_READ_REAL(DATA) ecrt_read_real(DATA)
+
+/** Read a 64-bit floating-point value from EtherCAT data.
+ *
+ * \param data EtherCAT data pointer
+ * \return EtherCAT data value
+ */
+double ecrt_read_lreal(void *data);
+
+/** Read a 64-bit floating-point value from EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \return EtherCAT data value
+ */
+#define EC_READ_LREAL(DATA) ecrt_read_lreal(DATA)
+
+#endif // ifndef __KERNEL__
+
+/******************************************************************************
  * Write macros
  *****************************************************************************/
 
@@ -2273,6 +2309,42 @@ void ecrt_reg_request_read(
  * \param VAL new value
  */
 #define EC_WRITE_S64(DATA, VAL) EC_WRITE_U64(DATA, VAL)
+
+/******************************************************************************
+ * Floating-point write functions and macros (userspace only)
+ *****************************************************************************/
+
+#ifndef __KERNEL__
+
+/** Write a 32-bit floating-point value to EtherCAT data.
+ *
+ * \param data EtherCAT data pointer
+ * \param value new value
+ */
+void ecrt_write_real(void *data, float value);
+
+/** Write a 32-bit floating-point value to EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \param VAL new value
+ */
+#define EC_WRITE_REAL(DATA, VAL) ecrt_write_real(DATA, VAL)
+
+/** Write a 64-bit floating-point value to EtherCAT data.
+ *
+ * \param data EtherCAT data pointer
+ * \param value new value
+ */
+void ecrt_write_lreal(void *data, double value);
+
+/** Write a 64-bit floating-point value to EtherCAT data.
+ *
+ * \param DATA EtherCAT data pointer
+ * \param VAL new value
+ */
+#define EC_WRITE_LREAL(DATA, VAL) ecrt_write_lreal(DATA, VAL)
+
+#endif // ifndef __KERNEL__
 
 /*****************************************************************************/
 
