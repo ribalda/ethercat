@@ -2213,7 +2213,7 @@ void ecrt_reg_request_read(
  * \param data EtherCAT data pointer
  * \return EtherCAT data value
  */
-float ecrt_read_real(void *data);
+float ecrt_read_real(const void *data);
 
 /** Read a 32-bit floating-point value from EtherCAT data.
  *
@@ -2227,7 +2227,7 @@ float ecrt_read_real(void *data);
  * \param data EtherCAT data pointer
  * \return EtherCAT data value
  */
-double ecrt_read_lreal(void *data);
+double ecrt_read_lreal(const void *data);
 
 /** Read a 64-bit floating-point value from EtherCAT data.
  *

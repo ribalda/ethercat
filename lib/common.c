@@ -138,7 +138,7 @@ void ecrt_release_master(ec_master_t *master)
 
 /*****************************************************************************/
 
-float ecrt_read_real(void *data)
+float ecrt_read_real(const void *data)
 {
     uint32_t raw = EC_READ_U32(data);
     return *(float *) (const void *) &raw;
@@ -146,7 +146,7 @@ float ecrt_read_real(void *data)
 
 /*****************************************************************************/
 
-double ecrt_read_lreal(void *data)
+double ecrt_read_lreal(const void *data)
 {
     uint64_t raw = EC_READ_U64(data);
     return *(double *) (const void *) &raw;
