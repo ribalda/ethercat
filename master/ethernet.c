@@ -396,7 +396,7 @@ int ec_eoe_send(ec_eoe_t *eoe /**< EoE handler */)
         return PTR_ERR(data);
     }
 
-    EC_WRITE_U8 (data, EC_EOE_FRAMETYPE_INIT_REQ); // Initiate EoE Request
+    EC_WRITE_U8 (data, EC_EOE_TYPE_FRAME_FRAG); // Initiate EoE Tx Request
     EC_WRITE_U8 (data + 1, last_fragment);
     EC_WRITE_U16(data + 2, ((eoe->tx_fragment_number & 0x3F) |
                             (complete_offset & 0x3F) << 6 |
@@ -529,7 +529,7 @@ void ec_eoe_state_rx_check(ec_eoe_t *eoe /**< EoE handler */)
         eoe->rx_idle = 1;
         ec_read_mbox_lock_clear(eoe->slave);
         // check that data is not already received by another read request
-        if (eoe->slave->mbox_eoe_data.payload_size > 0) {
+        if (eoe->slave->mbox_eoe_frag_data.payload_size > 0) {
             eoe->state = ec_eoe_state_rx_fetch_data;
             eoe->state(eoe);
         } else {
@@ -580,7 +580,7 @@ void ec_eoe_state_rx_fetch(ec_eoe_t *eoe /**< EoE handler */)
 void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
 {
     size_t rec_size, data_size;
-    uint8_t *data, frame_type, last_fragment, time_appended, mbox_prot;
+    uint8_t *data, eoe_type, last_fragment, time_appended, mbox_prot;
     uint8_t fragment_offset, fragment_number;
 #if EOE_DEBUG_LEVEL >= 2
     uint8_t frame_number;
@@ -590,8 +590,8 @@ void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
     unsigned int i;
 #endif
 
-    if (eoe->slave->mbox_eoe_data.payload_size > 0) {
-        eoe->slave->mbox_eoe_data.payload_size = 0;
+    if (eoe->slave->mbox_eoe_frag_data.payload_size > 0) {
+        eoe->slave->mbox_eoe_frag_data.payload_size = 0;
     } else {
         // initiate a new mailbox read check if required data is not available
         if (!ec_read_mbox_locked(eoe->slave)) {
@@ -602,7 +602,7 @@ void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    data = ec_slave_mbox_fetch(eoe->slave, &eoe->slave->mbox_eoe_data,
+    data = ec_slave_mbox_fetch(eoe->slave, &eoe->slave->mbox_eoe_frag_data,
             &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         eoe->stats.rx_errors++;
@@ -624,13 +624,11 @@ void ec_eoe_state_rx_fetch_data(ec_eoe_t *eoe /**< EoE handler */)
         return;
     }
 
-    frame_type = EC_READ_U16(data) & 0x000F;
+    eoe_type = EC_READ_U8(data) & 0x0F;
 
-    if (frame_type != EC_EOE_FRAMETYPE_INIT_REQ) { // EoE Fragment Data
-#if EOE_DEBUG_LEVEL >= 1
-        EC_SLAVE_WARN(eoe->slave, "%s: Other frame received."
-                " Dropping.\n", eoe->dev->name);
-#endif
+    if (eoe_type != EC_EOE_TYPE_FRAME_FRAG) {
+        EC_SLAVE_ERR(eoe->slave, "%s: EoE iface handler received other EoE type"
+                " response (type %x). Dropping.\n", eoe->dev->name, eoe_type);
         eoe->stats.rx_dropped++;
         eoe->state = ec_eoe_state_tx_start;
         return;

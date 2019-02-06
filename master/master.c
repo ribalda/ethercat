@@ -1165,6 +1165,9 @@ void ec_master_receive_datagrams(
 {
     size_t frame_size, data_size;
     uint8_t datagram_type, datagram_index, datagram_mbox_prot;
+#ifdef EC_EOE
+    uint8_t eoe_type;
+#endif
     unsigned int cmd_follows, datagram_slave_addr, datagram_offset_addr, datagram_wc, matched;
     const uint8_t *cur_data;
     ec_datagram_t *datagram;
@@ -1286,9 +1289,31 @@ void ec_master_receive_datagrams(
                                     switch (datagram_mbox_prot) {
 #ifdef EC_EOE
                                     case EC_MBOX_TYPE_EOE:
-                                        if ((slave->mbox_eoe_data.data) && (data_size <= slave->mbox_eoe_data.data_size)) {
-                                            memcpy(slave->mbox_eoe_data.data, cur_data, data_size);
-                                            slave->mbox_eoe_data.payload_size = data_size;
+                                            // check EOE type and store in correct handlers mbox data cache
+                                            eoe_type = EC_READ_U8(cur_data + 6) & 0x0F;
+
+                                            switch (eoe_type) {
+                                              
+                                            case EC_EOE_TYPE_FRAME_FRAG:
+                                                // EoE Frame Fragment handler
+                                                if ((slave->mbox_eoe_frag_data.data) && (data_size <= slave->mbox_eoe_frag_data.data_size)) {
+                                                    memcpy(slave->mbox_eoe_frag_data.data, cur_data, data_size);
+                                                    slave->mbox_eoe_frag_data.payload_size = data_size;
+                                                }
+                                                break;
+                                            case EC_EOE_TYPE_INIT_RES:
+                                                // EoE Init / Set IP response handler
+                                                if ((slave->mbox_eoe_init_data.data) && (data_size <= slave->mbox_eoe_init_data.data_size)) {
+                                                    memcpy(slave->mbox_eoe_init_data.data, cur_data, data_size);
+                                                    slave->mbox_eoe_init_data.payload_size = data_size;
+                                                }
+                                                break;
+                                            default:
+                                                EC_MASTER_DBG(master, 1, "Unhandled EoE protocol type from slave: %u Protocol: %u, Type: %x\n",
+                                                        datagram_slave_addr, datagram_mbox_prot, eoe_type);
+                                                // copy instead received data into the datagram memory.
+                                                memcpy(datagram->data, cur_data, data_size);
+                                                break;
                                         }
                                         break;
 #endif

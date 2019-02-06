@@ -687,13 +687,13 @@ void ec_fsm_slave_state_eoe_request(
     }
 
     if (ec_fsm_eoe_success(&fsm->fsm_eoe)) {
-		req->state = EC_INT_REQUEST_SUCCESS;
-		EC_SLAVE_DBG(slave, 1, "Finished EoE request.\n");
+        req->state = EC_INT_REQUEST_SUCCESS;
+        EC_SLAVE_DBG(slave, 1, "Finished EoE request.\n");
     }
-	else {
+    else {
         req->state = EC_INT_REQUEST_FAILURE;
         EC_SLAVE_ERR(slave, "Failed to process EoE request.\n");
-	}
+    }
 
     wake_up_all(&slave->master->request_queue);
     fsm->eoe_request = NULL;

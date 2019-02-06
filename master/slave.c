@@ -169,7 +169,8 @@ void ec_slave_init(
     rt_mutex_init(&slave->mbox_sem);
 
 #ifdef EC_EOE
-    ec_mbox_data_init(&slave->mbox_eoe_data);
+    ec_mbox_data_init(&slave->mbox_eoe_frag_data);
+    ec_mbox_data_init(&slave->mbox_eoe_init_data);
 #endif
     ec_mbox_data_init(&slave->mbox_coe_data);
     ec_mbox_data_init(&slave->mbox_foe_data);
@@ -306,7 +307,8 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
 
     // free mailbox response data
 #ifdef EC_EOE
-    ec_mbox_data_clear(&slave->mbox_eoe_data);
+    ec_mbox_data_clear(&slave->mbox_eoe_frag_data);
+    ec_mbox_data_clear(&slave->mbox_eoe_init_data);
 #endif
     ec_mbox_data_clear(&slave->mbox_coe_data);
     ec_mbox_data_clear(&slave->mbox_foe_data);

@@ -261,7 +261,8 @@ struct ec_slave
     struct rt_mutex mbox_sem; /**< Semaphore protecting the check_mbox variable. */
 
 #ifdef EC_EOE
-    ec_mbox_data_t mbox_eoe_data; /**< Received mailbox data for EoE. */
+    ec_mbox_data_t mbox_eoe_frag_data; /**< Received mailbox data for EoE, type frame fragment. */
+    ec_mbox_data_t mbox_eoe_init_data; /**< Received mailbox data for EoE, type eoe init reponse. */
 #endif
     ec_mbox_data_t mbox_coe_data; /**< Received mailbox data for CoE. */
     ec_mbox_data_t mbox_foe_data; /**< Received mailbox data for FoE. */

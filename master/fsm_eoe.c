@@ -160,41 +160,34 @@ int ec_fsm_eoe_prepare_set(
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
     ec_eoe_request_t *req = fsm->request;
-    size_t size = 8;
-
-    if (req->mac_address_included) {
-        size += ETH_ALEN;
-    }
-
-    if (req->ip_address_included) {
-        size += 4;
-    }
-
-    if (req->subnet_mask_included) {
-        size += 4;
-    }
-
-    if (req->gateway_included) {
-        size += 4;
-    }
-
-    if (req->dns_included) {
-        size += 4;
-    }
-
-    if (req->name_included) {
-        size += EC_MAX_HOSTNAME_SIZE;
-    }
+    
+    // Note: based on wireshark packet filter it suggests that the EOE_INIT
+    //   information is a fixed size with fixed information positions.
+    //   see: packet-ecatmb.h and packet-ecatmb.c
+    //   However, TwinCAT 2.1 testing also indicates that if a piece of
+    //   information is missing then all subsequent items are ignored
+    //   Also, if you want DHCP, then only set the mac address.
+    size_t size = 8 +                       // header + flags
+                  ETH_ALEN +                // mac address
+                  4 +                       // ip address
+                  4 +                       // subnet mask
+                  4 +                       // gateway
+                  4 +                       // dns server
+                  EC_MAX_HOSTNAME_SIZE;     // dns name
 
     data = ec_slave_mbox_prepare_send(slave, datagram, EC_MBOX_TYPE_EOE,
             size);
     if (IS_ERR(data)) {
         return PTR_ERR(data);
     }
+    
+    // zero data
+    memset(data, 0, size);
 
-    EC_WRITE_U8(data, EC_EOE_FRAMETYPE_SET_IP_REQ); // Set IP parameter req.
-    EC_WRITE_U8(data + 1, 0x01); // last fragment, no timestamps
-    EC_WRITE_U16(data + 2, 0x0000); // fragment no., offset, frame no.
+    // header
+    EC_WRITE_U8(data, EC_EOE_TYPE_INIT_REQ); // Set IP parameter req.
+    EC_WRITE_U8(data + 1, 0x00);             // not used
+    EC_WRITE_U16(data + 2, 0x0000);          // not used
 
     EC_WRITE_U32(data + 4,
             ((req->mac_address_included != 0) << 0) |
@@ -209,38 +202,38 @@ int ec_fsm_eoe_prepare_set(
 
     if (req->mac_address_included) {
         memcpy(cur, req->mac_address, ETH_ALEN);
-        cur += ETH_ALEN;
     }
+    cur += ETH_ALEN;
 
     if (req->ip_address_included) {
         uint32_t swapped = htonl(req->ip_address);
         memcpy(cur, &swapped, 4);
-        cur += 4;
     }
+    cur += 4;
 
     if (req->subnet_mask_included) {
         uint32_t swapped = htonl(req->subnet_mask);
         memcpy(cur, &swapped, 4);
-        cur += 4;
     }
+    cur += 4;
 
     if (req->gateway_included) {
         uint32_t swapped = htonl(req->gateway);
         memcpy(cur, &swapped, 4);
-        cur += 4;
     }
+    cur += 4;
 
     if (req->dns_included) {
         uint32_t swapped = htonl(req->dns);
         memcpy(cur, &swapped, 4);
-        cur += 4;
     }
+    cur += 4;
 
     if (req->name_included) {
         memcpy(cur, req->name, EC_MAX_HOSTNAME_SIZE);
-        cur += EC_MAX_HOSTNAME_SIZE;
     }
-
+    cur += EC_MAX_HOSTNAME_SIZE;
+    
     if (master->debug_level) {
         EC_SLAVE_DBG(slave, 0, "Set IP parameter request:\n");
         ec_print_data(data, cur - data);
@@ -376,7 +369,7 @@ void ec_fsm_eoe_set_ip_check(
         unsigned long diff_ms;
 
         // check that data is not already received by another read request
-        if (slave->mbox_eoe_data.payload_size > 0) {
+        if (slave->mbox_eoe_init_data.payload_size > 0) {
             ec_read_mbox_lock_clear(slave);
             fsm->state = ec_fsm_eoe_set_ip_response_data;
             fsm->state(fsm, datagram);
@@ -430,7 +423,7 @@ void ec_fsm_eoe_set_ip_response(
 
     if (fsm->datagram->working_counter != 1) {
         // only an error if data has not already been read by another read request
-        if (slave->mbox_eoe_data.payload_size == 0) {
+        if (slave->mbox_eoe_init_data.payload_size == 0) {
             fsm->state = ec_fsm_eoe_error;
             ec_read_mbox_lock_clear(slave);
             EC_SLAVE_ERR(slave, "Reception of EoE read response failed: ");
@@ -454,13 +447,13 @@ void ec_fsm_eoe_set_ip_response_data(
 {
     ec_slave_t *slave = fsm->slave;
     ec_master_t *master = slave->master;
-    uint8_t *data, mbox_prot, frame_type;
+    uint8_t *data, mbox_prot, eoe_type;
     size_t rec_size;
     ec_eoe_request_t *req = fsm->request;
 
     // process the data available or initiate a new mailbox read check
-    if (slave->mbox_eoe_data.payload_size > 0) {
-        slave->mbox_eoe_data.payload_size = 0;
+    if (slave->mbox_eoe_init_data.payload_size > 0) {
+        slave->mbox_eoe_init_data.payload_size = 0;
     } else {
         // initiate a new mailbox read check if required data is not available
         if (ec_read_mbox_locked(slave)) {
@@ -473,7 +466,7 @@ void ec_fsm_eoe_set_ip_response_data(
         return;
     }
 
-    data = ec_slave_mbox_fetch(slave, &slave->mbox_eoe_data, &mbox_prot, &rec_size);
+    data = ec_slave_mbox_fetch(slave, &slave->mbox_eoe_init_data, &mbox_prot, &rec_size);
     if (IS_ERR(data)) {
         fsm->state = ec_fsm_eoe_error;
         return;
@@ -499,11 +492,11 @@ void ec_fsm_eoe_set_ip_response_data(
         return;
     }
 
-    frame_type = EC_READ_U8(data) & 0x0f;
+    eoe_type = EC_READ_U8(data) & 0x0F;
 
-    if (frame_type != EC_EOE_FRAMETYPE_SET_IP_RES) {
-        EC_SLAVE_ERR(slave, "Received no set IP parameter response"
-                " (frame type %x).\n", frame_type);
+    if (eoe_type != EC_EOE_TYPE_INIT_RES) {
+        EC_SLAVE_ERR(slave, "EoE Init handler received other EoE type response"
+                " (type %x). Dropping.\n", eoe_type);
         ec_print_data(data, rec_size);
         fsm->state = ec_fsm_eoe_error;
         return;
