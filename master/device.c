@@ -441,6 +441,19 @@ void ec_device_clear_stats(
     }
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+
+static void do_gettimeofday(struct timeval *tv)
+{
+	struct timespec ts;
+
+	ktime_get_ts(&ts);
+	tv->tv_sec = ts.tv_sec;
+	tv->tv_usec = ts.tv_nsec / NSEC_PER_USEC;
+}
+
+#endif
+
 /*****************************************************************************/
 
 #ifdef EC_DEBUG_RING
