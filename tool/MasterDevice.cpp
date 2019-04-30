@@ -587,6 +587,7 @@ void MasterDevice::writeSoe(ec_ioctl_slave_soe_write_t *data)
 
 /****************************************************************************/
 
+#ifdef EC_EOE
 void MasterDevice::setIpParam(ec_ioctl_slave_eoe_ip_t *data)
 {
     if (ioctl(fd, EC_IOCTL_SLAVE_EOE_IP_PARAM, data) < 0) {
@@ -599,5 +600,6 @@ void MasterDevice::setIpParam(ec_ioctl_slave_eoe_ip_t *data)
         }
     }
 }
+#endif
 
 /*****************************************************************************/

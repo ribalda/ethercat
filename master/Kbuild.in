@@ -40,12 +40,10 @@ ec_master-objs := \
 	datagram_pair.o \
 	device.o \
 	domain.o \
-	eoe_request.o \
 	fmmu_config.o \
 	foe_request.o \
 	fsm_change.o \
 	fsm_coe.o \
-	fsm_eoe.o \
 	fsm_foe.o \
 	fsm_master.o \
 	fsm_pdo.o \
@@ -75,6 +73,8 @@ ec_master-objs := \
 	voe_handler.o
 
 ifeq (@ENABLE_EOE@,1)
+ec_master-objs += eoe_request.o
+ec_master-objs += fsm_eoe.o
 ec_master-objs += ethernet.o
 endif
 

@@ -52,8 +52,10 @@ int ec_fsm_slave_action_process_foe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_foe_request(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_soe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_soe_request(ec_fsm_slave_t *, ec_datagram_t *);
+#ifdef EC_EOE
 int ec_fsm_slave_action_process_eoe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_eoe_request(ec_fsm_slave_t *, ec_datagram_t *);
+#endif
 
 /*****************************************************************************/
 
@@ -73,13 +75,17 @@ void ec_fsm_slave_init(
     fsm->reg_request = NULL;
     fsm->foe_request = NULL;
     fsm->soe_request = NULL;
+#ifdef EC_EOE
     fsm->eoe_request = NULL;
+#endif
 
     // Init sub-state-machines
     ec_fsm_coe_init(&fsm->fsm_coe);
     ec_fsm_foe_init(&fsm->fsm_foe);
     ec_fsm_soe_init(&fsm->fsm_soe);
+#ifdef EC_EOE
     ec_fsm_eoe_init(&fsm->fsm_eoe);
+#endif
 }
 
 /*****************************************************************************/
@@ -112,16 +118,20 @@ void ec_fsm_slave_clear(
         wake_up_all(&fsm->slave->master->request_queue);
     }
 
+#ifdef EC_EOE
     if (fsm->eoe_request) {
         fsm->eoe_request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&fsm->slave->master->request_queue);
     }
+#endif
 
     // clear sub-state machines
     ec_fsm_coe_clear(&fsm->fsm_coe);
     ec_fsm_foe_clear(&fsm->fsm_foe);
     ec_fsm_soe_clear(&fsm->fsm_soe);
+#ifdef EC_EOE
     ec_fsm_eoe_clear(&fsm->fsm_eoe);
+#endif
 }
 
 /*****************************************************************************/
@@ -233,10 +243,12 @@ void ec_fsm_slave_state_ready(
         return;
     }
 
+#ifdef EC_EOE
     // Check for pending EoE IP parameter requests
     if (ec_fsm_slave_action_process_eoe(fsm, datagram)) {
         return;
     }
+#endif
 }
 
 /*****************************************************************************/
@@ -607,7 +619,7 @@ void ec_fsm_slave_state_soe_request(
 }
 
 /*****************************************************************************/
-
+#ifdef EC_EOE
 /** Check for pending EoE IP parameter requests and process one.
  *
  * \return non-zero, if a request is processed.
@@ -687,5 +699,6 @@ void ec_fsm_slave_state_eoe_request(
     fsm->eoe_request = NULL;
     fsm->state = ec_fsm_slave_state_ready;
 }
+#endif
 
 /*****************************************************************************/

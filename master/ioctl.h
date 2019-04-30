@@ -83,7 +83,9 @@
 #define EC_IOCTL_SLAVE_FOE_WRITE       EC_IOW(0x15, ec_ioctl_slave_foe_t)
 #define EC_IOCTL_SLAVE_SOE_READ       EC_IOWR(0x16, ec_ioctl_slave_soe_read_t)
 #define EC_IOCTL_SLAVE_SOE_WRITE      EC_IOWR(0x17, ec_ioctl_slave_soe_write_t)
+#ifdef EC_EOE
 #define EC_IOCTL_SLAVE_EOE_IP_PARAM    EC_IOW(0x18, ec_ioctl_slave_eoe_ip_t)
+#endif
 #define EC_IOCTL_CONFIG               EC_IOWR(0x19, ec_ioctl_config_t)
 #define EC_IOCTL_CONFIG_PDO           EC_IOWR(0x1a, ec_ioctl_config_pdo_t)
 #define EC_IOCTL_CONFIG_PDO_ENTRY     EC_IOWR(0x1b, ec_ioctl_config_pdo_entry_t)
@@ -604,6 +606,7 @@ typedef struct {
 #endif
 #endif
 
+#ifdef EC_EOE
 typedef struct {
     // input
     uint16_t slave_position;
@@ -626,6 +629,7 @@ typedef struct {
 	uint16_t result;
 } ec_ioctl_slave_eoe_ip_t;
 
+#endif
 /*****************************************************************************/
 
 typedef struct {
