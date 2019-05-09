@@ -44,6 +44,7 @@
 #include <linux/device.h>
 #include <linux/version.h>
 #include <linux/hrtimer.h>
+#include <linux/vmalloc.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/types.h> // struct sched_param
@@ -231,6 +232,14 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.unmatched = 0;
     master->stats.output_jiffies = 0;
 
+    // set up pcap debugging
+    if (PCAP_SIZE > 0) {
+        master->pcap_data = vmalloc(PCAP_SIZE);
+    } else {
+        master->pcap_data = NULL;
+    }
+    master->pcap_curr_data = master->pcap_data;
+    
     master->thread = NULL;
 
 #ifdef EC_EOE
@@ -449,6 +458,12 @@ void ec_master_clear(
     for (dev_idx = EC_DEVICE_MAIN; dev_idx < ec_master_num_devices(master);
             dev_idx++) {
         ec_device_clear(&master->devices[dev_idx]);
+    }
+    
+    if (master->pcap_data) {
+        vfree(master->pcap_data);
+        master->pcap_data = NULL;
+        master->pcap_curr_data = NULL;
     }
 }
 

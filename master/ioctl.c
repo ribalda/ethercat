@@ -194,6 +194,13 @@ static ATTRIBUTES int ec_ioctl_master(
     io.ref_clock =
         master->dc_ref_clock ? master->dc_ref_clock->ring_position : 0xffff;
 
+    if (master->pcap_data) {
+        io.pcap_size = sizeof(pcap_hdr_t) +
+                (master->pcap_curr_data - master->pcap_data);
+    } else {
+        io.pcap_size = 0;
+    }
+
     if (copy_to_user((void __user *) arg, &io, sizeof(io))) {
         return -EFAULT;
     }
@@ -671,6 +678,81 @@ static ATTRIBUTES int ec_ioctl_domain_data(
                 domain->data_size)) {
         ec_lock_up(&master->master_sem);
         return -EFAULT;
+    }
+
+    ec_lock_up(&master->master_sem);
+    return 0;
+}
+
+/*****************************************************************************/
+
+/** Get pcap data.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_pcap_data(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg /**< Userspace address to store the results. */
+        )
+{
+    ec_ioctl_pcap_data_t data;
+    pcap_hdr_t pcaphdr;
+    size_t data_size;
+    size_t total_size;
+    void *curr_data = master->pcap_curr_data;
+
+    if (!master->pcap_data) {
+        return -EFAULT;
+    }
+
+    if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
+        return -EFAULT;
+    }
+
+    if (ec_lock_down_interruptible(&master->master_sem))
+        return -EINTR;
+
+    data_size = curr_data - master->pcap_data;
+    total_size = sizeof(pcap_hdr_t) + data_size;
+    if (data.data_size < sizeof(pcap_hdr_t)) {
+        ec_lock_up(&master->master_sem);
+        EC_MASTER_ERR(master, "Pcap data size too small %u/%zu!\n",
+                data.data_size, sizeof(pcap_hdr_t));
+        return -EFAULT;
+    }
+    if (data.data_size > total_size) {
+        ec_lock_up(&master->master_sem);
+        EC_MASTER_ERR(master, "Pcap data size too large %u/%zu!\n",
+                data.data_size, total_size);
+        return -EFAULT;
+    }
+    
+    // fill in pcap header and copy to user mem
+    pcaphdr.magic_number = 0xa1b2c3d4;
+    pcaphdr.version_major = 2;
+    pcaphdr.version_minor = 4;
+    pcaphdr.thiszone = 0;
+    pcaphdr.sigfigs = 0;
+    pcaphdr.snaplen = 65535;
+    pcaphdr.network = 1;
+    if (copy_to_user((void __user *) data.target, &pcaphdr,
+                sizeof(pcap_hdr_t))) {
+        ec_lock_up(&master->master_sem);
+        return -EFAULT;
+    }
+    
+    // copy pcap data, up to requested size
+    if ( (data_size > 0) &&
+         copy_to_user((void __user *) (data.target + sizeof(pcap_hdr_t)),
+                master->pcap_data, data.data_size - sizeof(pcap_hdr_t))) {
+        ec_lock_up(&master->master_sem);
+        return -EFAULT;
+    }
+    
+    // remove copied data?
+    // Note: will remove any data that has not been copied
+    if (data.reset_data) {
+        master->pcap_curr_data = master->pcap_data;
     }
 
     ec_lock_up(&master->master_sem);
@@ -5294,6 +5376,9 @@ long EC_IOCTL(
             break;
         case EC_IOCTL_DOMAIN_DATA:
             ret = ec_ioctl_domain_data(master, arg);
+            break;
+        case EC_IOCTL_PCAP_DATA:
+            ret = ec_ioctl_pcap_data(master, arg);
             break;
         case EC_IOCTL_MASTER_DEBUG:
             if (!ctx->writable) {

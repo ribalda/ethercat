@@ -131,6 +131,35 @@ struct ec_device
 
 /*****************************************************************************/
 
+/**
+   pcap global header
+*/
+
+typedef struct {
+    u32 magic_number;   /* magic number */
+    u16 version_major;  /* major version number */
+    u16 version_minor;  /* minor version number */
+    s32 thiszone;       /* GMT to local correction */
+    u32 sigfigs;        /* accuracy of timestamps */
+    u32 snaplen;        /* max length of captured packets, in octets */
+    u32 network;        /* data link type */
+} pcap_hdr_t;
+
+/*****************************************************************************/
+
+/**
+   pcap packet header
+*/
+
+typedef struct {
+    u32 ts_sec;         /* timestamp seconds */
+    u32 ts_usec;        /* timestamp microseconds */
+    u32 incl_len;       /* number of octets of packet saved in file */
+    u32 orig_len;       /* actual length of packet */
+} pcaprec_hdr_t;
+
+/*****************************************************************************/
+
 int ec_device_init(ec_device_t *, ec_master_t *);
 void ec_device_clear(ec_device_t *);
 

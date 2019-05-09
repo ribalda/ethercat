@@ -138,6 +138,8 @@ class MasterDevice
         void getFmmu(ec_ioctl_domain_fmmu_t *, unsigned int, unsigned int);
         void getData(ec_ioctl_domain_data_t *, unsigned int, unsigned int,
                 unsigned char *);
+        void getPcap(ec_ioctl_pcap_data_t *, unsigned char, unsigned int,
+                unsigned char *);
         void getSlave(ec_ioctl_slave_t *, uint16_t);
         void getSync(ec_ioctl_slave_sync_t *, uint16_t, uint8_t);
         void getPdo(ec_ioctl_slave_sync_pdo_t *, uint16_t, uint8_t, uint8_t);

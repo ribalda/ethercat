@@ -56,6 +56,7 @@ using namespace std;
 # include "CommandIp.h"
 #endif
 #include "CommandMaster.h"
+#include "CommandPcap.h"
 #include "CommandPdos.h"
 #include "CommandRegRead.h"
 #include "CommandRegWrite.h"
@@ -321,6 +322,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandIp());
 #endif
     commandList.push_back(new CommandMaster());
+    commandList.push_back(new CommandPcap());
     commandList.push_back(new CommandPdos());
     commandList.push_back(new CommandRegRead());
     commandList.push_back(new CommandRegWrite());
