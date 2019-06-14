@@ -1,8 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
- *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2019  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -48,6 +46,7 @@ void ec_sdo_request_clear(ec_sdo_request_t *req)
 {
     if (req->data) {
         free(req->data);
+        req->data = NULL;
     }
 }
 

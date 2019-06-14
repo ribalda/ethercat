@@ -1,8 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
- *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2019  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -49,6 +47,7 @@ void ec_voe_handler_clear(ec_voe_handler_t *voe)
 {
     if (voe->data) {
         free(voe->data);
+        voe->data = NULL;
     }
 }
 

@@ -1,8 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
- *
- *  Copyright (C) 2006-2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2006-2019  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -53,22 +51,28 @@ void ec_slave_config_clear(ec_slave_config_t *sc)
     while (r) {
         next_r = r->next;
         ec_sdo_request_clear(r);
+        free(r);
         r = next_r;
     }
+    sc->first_sdo_request = NULL;
 
     e = sc->first_reg_request;
     while (e) {
         next_e = e->next;
         ec_reg_request_clear(e);
+        free(e);
         e = next_e;
     }
+    sc->first_reg_request = NULL;
 
     v = sc->first_voe_handler;
     while (v) {
         next_v = v->next;
         ec_voe_handler_clear(v);
+        free(v);
         v = next_v;
     }
+    sc->first_voe_handler = NULL;
 }
 
 /*****************************************************************************/

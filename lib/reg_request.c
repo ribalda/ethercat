@@ -1,8 +1,6 @@
 /******************************************************************************
  *
- *  $Id$
- *
- *  Copyright (C) 2012  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2012-2019  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT master userspace library.
  *
@@ -48,6 +46,7 @@ void ec_reg_request_clear(ec_reg_request_t *reg)
 {
     if (reg->data) {
         free(reg->data);
+        reg->data = NULL;
     }
 }
 
