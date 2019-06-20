@@ -496,10 +496,11 @@ int __init init_mini_module(void)
 #endif
 
     printk(KERN_INFO PFX "Starting cyclic sample thread.\n");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
-    timer_setup(&timer, cyclic_task, 0);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 69)
+    setup_timer(&timer, cyclic_task, 0);
 #else
-    init_timer(&timer);
+     timer_setup(&timer, cyclic_task, 0);
+#endif
     timer.function = cyclic_task;
 #endif
     timer.expires = jiffies + 10;
