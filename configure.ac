@@ -1084,6 +1084,36 @@ fi
 AM_CONDITIONAL(BUILD_TOOL, test "x$tool" = "x1")
 
 #------------------------------------------------------------------------------
+# mailbox gateway server
+#-----------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether to build the mailbox gateway server])
+
+AC_ARG_ENABLE([mbg],
+    AS_HELP_STRING([--enable-mbg],
+                   [Build mailbox gateway server (default: yes)]),
+    [
+        case "${enableval}" in
+            yes) mbg=1
+                ;;
+            no) mbg=0
+                ;;
+            *) AC_MSG_ERROR([Invalid value for --enable-mbg])
+                ;;
+        esac
+    ],
+    [mbg=1]
+)
+
+if test "x${mbg}" = "x1"; then
+    AC_MSG_RESULT([yes])
+else
+    AC_MSG_RESULT([no])
+fi
+
+AM_CONDITIONAL(BUILD_MBG, test "x$mbg" = "x1")
+
+#------------------------------------------------------------------------------
 # Userspace library generation
 #------------------------------------------------------------------------------
 
@@ -1441,6 +1471,7 @@ AC_CONFIG_FILES([
         script/init.d/ethercat
         script/sysconfig/Makefile
         tool/Makefile
+        mailbox_gateway/Makefile
         tty/Kbuild
         tty/Makefile
 ])

@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2019  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -29,52 +29,46 @@
 
 /**
    \file
-   Mailbox functionality.
+   EtherCAT Mailbox Gateway state machine.
+   Note: message fragmentation (segmentation) not supported
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_MAILBOX_H__
-#define __EC_MAILBOX_H__
+#ifndef __EC_FSM_MBG_H__
+#define __EC_FSM_MBG_H__
 
+#include "globals.h"
+#include "datagram.h"
 #include "slave.h"
+#include "mbox_gateway_request.h"
 
 /*****************************************************************************/
 
-/** Size of the mailbox header.
- */
-#define EC_MBOX_HEADER_SIZE 6
+typedef struct ec_fsm_mbg ec_fsm_mbg_t; /**< \see ec_fsm_mbg */
 
-/** Mailbox types.
- *
- * These are used in the 'Type' field of the mailbox header.
+/** Finite state machines for the CANopen over EtherCAT protocol.
  */
-enum {
-    EC_MBOX_TYPE_AOE = 0x01,
-    EC_MBOX_TYPE_EOE = 0x02,
-    EC_MBOX_TYPE_COE = 0x03,
-    EC_MBOX_TYPE_FOE = 0x04,
-    EC_MBOX_TYPE_SOE = 0x05,
-    EC_MBOX_TYPE_VOE = 0x0f,
+struct ec_fsm_mbg {
+    ec_slave_t *slave; /**< slave the FSM runs on */
+    unsigned int retries; /**< retries upon datagram timeout */
+
+    void (*state)(ec_fsm_mbg_t *, ec_datagram_t *); /**< mbox state function */
+    ec_datagram_t *datagram; /**< Datagram used in last step. */
+    unsigned long jiffies_start; /**< MBox Gateway timestamp. */
+    ec_mbg_request_t *request; /**< MBox Gateway request */
+    uint8_t mbox_type; /**< MBox Gateway header type */
 };
 
 /*****************************************************************************/
 
-/**
-   Mailbox error codes.
-*/
+void ec_fsm_mbg_init(ec_fsm_mbg_t *);
+void ec_fsm_mbg_clear(ec_fsm_mbg_t *);
 
-extern const ec_code_msg_t mbox_error_messages[];
-  
-/*****************************************************************************/
+void ec_fsm_mbg_transfer(ec_fsm_mbg_t *, ec_slave_t *, ec_mbg_request_t *);
 
-uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *, ec_datagram_t *,
-                                    uint8_t, size_t);
-int      ec_slave_mbox_prepare_check(const ec_slave_t *, ec_datagram_t *);
-int      ec_slave_mbox_check(const ec_datagram_t *);
-int      ec_slave_mbox_prepare_fetch(const ec_slave_t *, ec_datagram_t *);
-uint8_t *ec_slave_mbox_fetch(const ec_slave_t *, ec_mbox_data_t *,
-                             uint8_t *, size_t *);
+int ec_fsm_mbg_exec(ec_fsm_mbg_t *, ec_datagram_t *);
+int ec_fsm_mbg_success(const ec_fsm_mbg_t *);
 
 /*****************************************************************************/
 

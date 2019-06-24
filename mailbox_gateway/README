@@ -1,0 +1,141 @@
+------------------------------------------------------------------------------
+
+This is the README file of the IgH EtherCAT Mailbox Gateway server.
+
+$Id$
+
+vim: spelllang=en spell tw=78
+
+------------------------------------------------------------------------------
+
+Contents:
+1) General Information
+2) Building
+3) Running
+4) Testing
+
+------------------------------------------------------------------------------
+
+1) General Information
+======================
+
+Provides an EtherCAT Mailbox Gateway (MBG) server for the IgH EtherCAT Master.
+
+The Mailbox Gateway server provides access for external or remote applications
+to communicate with EtherCAT slave mailboxes.  Based on the specification at:
+https://www.ethercat.org/memberarea/download/ETG8200_V1i0i0_G_R_MailboxGateway.pdf
+
+The server provides for UDP and up to 16 TCP connections.  The connections
+are not multi-threaded.
+
+The server can be used with tools such as:
+https://download.beckhoff.com/download/document/automation/twinsafe/twinsafe_loader_en.pdf
+
+------------------------------------------------------------------------------
+
+2) Building
+===========
+
+Building of the MBG server is controlled by the --enable-mbg configuration
+flag.  Building the MBG server is enabled by default, but can be disabled by
+setting the flag to false.  e.g.:
+
+  --enable-mbg=no
+
+The application is named ethercat_mbg and is installed into /usr/bin/
+
+------------------------------------------------------------------------------
+
+3) Running
+==========
+
+ethercat_mbg can be run directly from the command line as either a foreground
+or background process.  If you have more than one master running you will
+need to select which master the server is providing a gateway for.
+
+As the EtherCAT Mailbox Gateway server port is defined as 34980 (0x88A4) only
+one instance of the server may be running at a time.
+
+The server will pass on any EtherCAT mailbox communication request regardless
+of protocol type.  However if an invalid request is made or any errors occur
+there will be no response from the server.  If no response occurs check the
+ethercat_mbg output logs and the ethercat master logs.
+
+ethercat_mbg outputs log information to stdout.  This can be redirected to a
+log file.  If an internal application error occurs and the application is
+halted the log entry will be output to stderr.
+
+WARNING: The EtherCAT Mailbox Gateway does not provide any security.  It will
+provide direct mailbox access to any slave on the master.
+
+------------------------------------------------------------------------------
+
+4) Testing
+==========
+
+Testing of the gateway can be performed using the netcat utility.  netcat can
+connect to the MBG by either UDP or TCP.  As such you only need to provide
+the mailbox header and data.
+
+e.g.:
+
+  echo '10500A000400000300204018100100000000' | xxd -r -p | netcat -w 1 -u 192.168.0.1 34980 | xxd -p
+
+Where:
+
+        +---------------------- EtherCAT Header
+        |                         length: 16
+        |                         data type: 0x05 (mailbox)
+        |   +------------------ Mailbox Header
+        |   |                     length: 10
+        |   |                     slave address: 4
+        |   |                     type: 0x03 (CoE)
+        |   |           +------ CoE Header
+        |   |           |         service: 2 (SDO request)
+        |   |           |   +-- SDO:
+        |   |           |   |     command specifier: 0x02 (upload request)
+        |   |           |   |     index: 0x1018
+        |   |           |   |     subindex: 0x01
+        |   |           |   |
+  echo '10500A000400000300204018100100000000'
+  
+      echo provides the raw packet information in hexidecimal
+  
+  xxd -r -p
+  
+      xxd, convert hex to binary
+          -r  (reverse) converts hex to binary
+          -p  reads plain (continuous) hex
+
+  netcat -w 1 -u 192.168.0.1 34980
+  
+      netcat, arbitrary TCP and UDP connections and listens
+          -w 1         wait 1 second for replies before exiting
+          -u           UDP connection
+          192.168.0.1  IP address of ethercat_mbg server
+          34980        MBG server port number
+          
+      netcat sends the binary information to the MBG server and listens
+      for a reply.
+      Note: remove the -u parameter to make a TCP connection
+
+  xxd -p
+  
+      xxd, convert the response binary to hex
+          -p  outputs plain (continuous) hex
+
+The above packet is a request for a slaves Vendor ID (CoE item 0x1018:01).
+For a beckhoff module this responds with the following information:
+
+  10500a000400002300304318100102000000
+  
+The last 4 bytes is the response payload in little endian.  So the slave
+has responded with a VendorID of 0x00000002.
+
+Note:
+  The Mailbox Header has a Cnt parameter (bits 5-7 of the last byte 
+  of the header).  If this value is zero the slave should always
+  accept the incoming mailbox request.  If the value is non-zero (1-7)
+  then the slave will only accept the request if the value is different
+  to the previous mailbox request Cnt value.
+

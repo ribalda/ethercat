@@ -54,6 +54,7 @@ noinst_HEADERS = \
 	fsm_slave_config.c fsm_slave_config.h \
 	fsm_slave_scan.c fsm_slave_scan.h \
 	fsm_soe.c fsm_soe.h \
+	fsm_mbox_gateway.c fsm_mbox_gateway.h \
 	globals.h \
 	ioctl.c ioctl.h \
 	mailbox.c mailbox.h \
@@ -74,6 +75,7 @@ noinst_HEADERS = \
 	slave_config.c slave_config.h \
 	soe_errors.c \
 	soe_request.c soe_request.h \
+	mbox_gateway_request.c mbox_gateway_request.h \
 	sync.c sync.h \
 	sync_config.c sync_config.h \
 	voe_handler.c voe_handler.h \

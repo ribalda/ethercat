@@ -771,6 +771,13 @@ void ec_mbox_prot_data_prealloc(
         } else {
             ec_mbox_data_clear(&slave->mbox_voe_data);
         }
+        
+        // alloc mailbox gateway if slave supports any protocol
+        if (protocols) {
+            ec_mbox_data_prealloc(&slave->mbox_mbg_data, size);
+        } else {
+            ec_mbox_data_clear(&slave->mbox_mbg_data);
+        }
     }
 }
 

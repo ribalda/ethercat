@@ -42,6 +42,10 @@ if BUILD_TOOL
 SUBDIRS += tool
 endif
 
+if BUILD_MBG
+SUBDIRS += mailbox_gateway
+endif
+
 if ENABLE_USERLIB
 SUBDIRS += lib
 endif
@@ -59,6 +63,7 @@ DIST_SUBDIRS = \
 	include \
 	lib \
 	m4 \
+	mailbox_gateway \
 	master \
 	script \
 	tool \

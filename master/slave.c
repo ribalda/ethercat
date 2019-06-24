@@ -140,6 +140,7 @@ void ec_slave_init(
     INIT_LIST_HEAD(&slave->foe_requests);
     INIT_LIST_HEAD(&slave->soe_requests);
     INIT_LIST_HEAD(&slave->eoe_requests);
+    INIT_LIST_HEAD(&slave->mbg_requests);
     INIT_LIST_HEAD(&slave->dict_requests);
 
     // create state machine object
@@ -156,6 +157,7 @@ void ec_slave_init(
     ec_mbox_data_init(&slave->mbox_foe_data);
     ec_mbox_data_init(&slave->mbox_soe_data);
     ec_mbox_data_init(&slave->mbox_voe_data);
+    ec_mbox_data_init(&slave->mbox_mbg_data);
 
     slave->valid_mbox_data = 0;
 }
@@ -296,6 +298,15 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
         request->state = EC_INT_REQUEST_FAILURE;
     }
 
+    while (!list_empty(&slave->mbg_requests)) {
+        ec_mbg_request_t *request =
+            list_entry(slave->mbg_requests.next, ec_mbg_request_t, list);
+        list_del_init(&request->list); // dequeue
+        EC_SLAVE_WARN(slave, "Discarding MBox Gateway request,"
+                " slave about to be deleted.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+    }
+
     while (!list_empty(&slave->dict_requests)) {
         ec_dict_request_t *request =
             list_entry(slave->dict_requests.next, ec_dict_request_t, list);
@@ -332,6 +343,7 @@ void ec_slave_clear(ec_slave_t *slave /**< EtherCAT slave */)
     ec_mbox_data_clear(&slave->mbox_foe_data);
     ec_mbox_data_clear(&slave->mbox_soe_data);
     ec_mbox_data_clear(&slave->mbox_voe_data);
+    ec_mbox_data_clear(&slave->mbox_mbg_data);
 
     ec_fsm_slave_clear(&slave->fsm);
 }

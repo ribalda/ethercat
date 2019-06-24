@@ -1441,67 +1441,84 @@ void ec_master_receive_datagrams(
                             if (slave->configured_tx_mailbox_offset != 0) {
                                 if (datagram_offset_addr == slave->configured_tx_mailbox_offset) {
                                     if (slave->valid_mbox_data) {
-                                        datagram_mbox_prot = EC_READ_U8(cur_data + 5) & 0x0F;
-                                        switch (datagram_mbox_prot) {
+                                        // check if the mailbox header slave address is the
+                                        // MBox Gateway addr offset above the slave position, and
+                                        // a valid MBox Gateway address
+                                        // Note: the datagram station address is the slave position + 1
+                                        // Note: the EL6614 EoE module does not fill in the MailBox Header
+                                        //   Address value in the EoE response.  Other modules / protocols
+                                        //   may do the same.
+                                        if (unlikely( 
+                                                (EC_READ_U16(cur_data + 2) == datagram_slave_addr + EC_MBG_SLAVE_ADDR_OFFSET - 1) &&
+                                                (EC_READ_U16(cur_data + 2) >= EC_MBG_SLAVE_ADDR_OFFSET) )) {
+                                            // EtherCAT Mailbox Gateway response
+                                            if ((slave->mbox_mbg_data.data) && (data_size <= slave->mbox_mbg_data.data_size)) {
+                                                memcpy(slave->mbox_mbg_data.data, cur_data, data_size);
+                                                slave->mbox_mbg_data.payload_size = data_size;
+                                            }
+                                        } else {
+                                            datagram_mbox_prot = EC_READ_U8(cur_data + 5) & 0x0F;
+                                            switch (datagram_mbox_prot) {
 #ifdef EC_EOE
-                                        case EC_MBOX_TYPE_EOE:
-                                                // check EOE type and store in correct handlers mbox data cache
-                                                eoe_type = EC_READ_U8(cur_data + 6) & 0x0F;
+                                            case EC_MBOX_TYPE_EOE:
+                                                    // check EOE type and store in correct handlers mbox data cache
+                                                    eoe_type = EC_READ_U8(cur_data + 6) & 0x0F;
 
-                                                switch (eoe_type) {
+                                                    switch (eoe_type) {
                                               
-                                                case EC_EOE_TYPE_FRAME_FRAG:
-                                                    // EoE Frame Fragment handler
-                                                    if ((slave->mbox_eoe_frag_data.data) && (data_size <= slave->mbox_eoe_frag_data.data_size)) {
-                                                        memcpy(slave->mbox_eoe_frag_data.data, cur_data, data_size);
-                                                        slave->mbox_eoe_frag_data.payload_size = data_size;
-                                                    }
-                                                    break;
-                                                case EC_EOE_TYPE_INIT_RES:
-                                                    // EoE Init / Set IP response handler
-                                                    if ((slave->mbox_eoe_init_data.data) && (data_size <= slave->mbox_eoe_init_data.data_size)) {
-                                                        memcpy(slave->mbox_eoe_init_data.data, cur_data, data_size);
-                                                        slave->mbox_eoe_init_data.payload_size = data_size;
-                                                    }
-                                                    break;
-                                                default:
-                                                    EC_MASTER_DBG(master, 1, "Unhandled EoE protocol type from slave: %u Protocol: %u, Type: %x\n",
-                                                            datagram_slave_addr, datagram_mbox_prot, eoe_type);
-                                                    // copy instead received data into the datagram memory.
-                                                    memcpy(datagram->data, cur_data, data_size);
-                                                    break;
-                                            }
-                                            break;
+                                                    case EC_EOE_TYPE_FRAME_FRAG:
+                                                        // EoE Frame Fragment handler
+                                                        if ((slave->mbox_eoe_frag_data.data) && (data_size <= slave->mbox_eoe_frag_data.data_size)) {
+                                                            memcpy(slave->mbox_eoe_frag_data.data, cur_data, data_size);
+                                                            slave->mbox_eoe_frag_data.payload_size = data_size;
+                                                        }
+                                                        break;
+                                                    case EC_EOE_TYPE_INIT_RES:
+                                                        // EoE Init / Set IP response handler
+                                                        if ((slave->mbox_eoe_init_data.data) && (data_size <= slave->mbox_eoe_init_data.data_size)) {
+                                                            memcpy(slave->mbox_eoe_init_data.data, cur_data, data_size);
+                                                            slave->mbox_eoe_init_data.payload_size = data_size;
+                                                        }
+                                                        break;
+                                                    default:
+                                                        EC_MASTER_DBG(master, 1, "Unhandled EoE protocol type from slave: %u Protocol: %u, Type: %x\n",
+                                                                datagram_slave_addr, datagram_mbox_prot, eoe_type);
+                                                        // copy instead received data into the datagram memory.
+                                                        memcpy(datagram->data, cur_data, data_size);
+                                                        break;
+                                                }
+                                                break;
 #endif
-                                        case EC_MBOX_TYPE_COE:
-                                            if ((slave->mbox_coe_data.data) && (data_size <= slave->mbox_coe_data.data_size)) {
-                                                memcpy(slave->mbox_coe_data.data, cur_data, data_size);
-                                                slave->mbox_coe_data.payload_size = data_size;
+                                            case EC_MBOX_TYPE_COE:
+                                                if ((slave->mbox_coe_data.data) && (data_size <= slave->mbox_coe_data.data_size)) {
+                                                    memcpy(slave->mbox_coe_data.data, cur_data, data_size);
+                                                    slave->mbox_coe_data.payload_size = data_size;
+                                                }
+                                                break;
+                                            case EC_MBOX_TYPE_FOE:
+                                                if ((slave->mbox_foe_data.data) && (data_size <= slave->mbox_foe_data.data_size)) {
+                                                    memcpy(slave->mbox_foe_data.data, cur_data, data_size);
+                                                    slave->mbox_foe_data.payload_size = data_size;
+                                                }
+                                                break;
+                                            case EC_MBOX_TYPE_SOE:
+                                                if ((slave->mbox_soe_data.data) && (data_size <= slave->mbox_soe_data.data_size)) {
+                                                    memcpy(slave->mbox_soe_data.data, cur_data, data_size);
+                                                    slave->mbox_soe_data.payload_size = data_size;
+                                                }
+                                                break;
+                                            case EC_MBOX_TYPE_VOE:
+                                                if ((slave->mbox_voe_data.data) && (data_size <= slave->mbox_voe_data.data_size)) {
+                                                    memcpy(slave->mbox_voe_data.data, cur_data, data_size);
+                                                    slave->mbox_voe_data.payload_size = data_size;
+                                                }
+                                                break;
+                                            default:
+                                                EC_MASTER_DBG(master, 1, "Unknown mailbox protocol from slave: %u Protocol: %u\n", datagram_slave_addr, datagram_mbox_prot);
+                                                // copy instead received data into the datagram memory.
+                                                memcpy(datagram->data, cur_data, data_size);
+                                                break;
                                             }
-                                            break;
-                                        case EC_MBOX_TYPE_FOE:
-                                            if ((slave->mbox_foe_data.data) && (data_size <= slave->mbox_foe_data.data_size)) {
-                                                memcpy(slave->mbox_foe_data.data, cur_data, data_size);
-                                                slave->mbox_foe_data.payload_size = data_size;
-                                            }
-                                            break;
-                                        case EC_MBOX_TYPE_SOE:
-                                            if ((slave->mbox_soe_data.data) && (data_size <= slave->mbox_soe_data.data_size)) {
-                                                memcpy(slave->mbox_soe_data.data, cur_data, data_size);
-                                                slave->mbox_soe_data.payload_size = data_size;
-                                            }
-                                            break;
-                                        case EC_MBOX_TYPE_VOE:
-                                            if ((slave->mbox_voe_data.data) && (data_size <= slave->mbox_voe_data.data_size)) {
-                                                memcpy(slave->mbox_voe_data.data, cur_data, data_size);
-                                                slave->mbox_voe_data.payload_size = data_size;
-                                            }
-                                            break;
-                                        default:
-                                            EC_MASTER_DBG(master, 1, "Unknown mailbox protocol from slave: %u Protocol: %u\n", datagram_slave_addr, datagram_mbox_prot);
-                                            // copy instead received data into the datagram memory.
-                                            memcpy(datagram->data, cur_data, data_size);
-                                            break;
                                         }
                                     } else {
                                         // copy instead received data into the datagram memory.
@@ -4045,6 +4062,575 @@ int ecrt_master_eoe_delif(ec_master_t *master,
 }
 
 #endif
+
+/*****************************************************************************/
+
+int ec_master_obj_dict(ec_master_t *master, uint8_t *data, 
+        size_t *data_size, size_t buff_size)
+{
+    uint8_t     sdo_req_cmd;
+    uint8_t     sdo_resp_cmd;
+    uint16_t    sdo_index;
+    uint8_t     sdo_sub_index;
+    uint16_t    slave_posn;
+    ec_slave_t *slave;
+    char        value[32];
+    size_t      value_size;
+    size_t      total_value_size;
+    int         i;
+    uint8_t     link_status;
+    uint32_t    offset;
+    uint32_t    abort_code;
+    uint8_t     resp_error = 0;
+    
+  
+    EC_MASTER_DBG(master, 1, "MBox Gateway request for Master Information.\n");
+
+    // check the mailbox header type is CoE
+    if ( (*data_size < EC_MBOX_HEADER_SIZE) ||
+            ((EC_READ_U16(data + 5) & 0x0F) != EC_MBOX_TYPE_COE) ) {
+        EC_MASTER_ERR(master, "Master does not support requested mailbox type!\n");
+        return -EPROTONOSUPPORT;
+    }
+    
+    // ensure the CoE Header service is an SDO request
+    offset = EC_MBOX_HEADER_SIZE;
+    if ( (*data_size < EC_MBOX_HEADER_SIZE + EC_COE_HEADER_SIZE + 4) ||
+            (EC_READ_U16(data + offset) >> 12 != 0x2) ) {
+        EC_MASTER_ERR(master, "Master only supports SDO requests!\n");
+        return -EINVAL;
+    }
+  
+    // get the SDO cmd, index, subindex
+    offset = EC_MBOX_HEADER_SIZE + EC_COE_HEADER_SIZE;
+    sdo_req_cmd   = EC_READ_U8(data + offset) >> 5;
+    sdo_index     = EC_READ_U16(data + offset + 1);
+    sdo_sub_index = EC_READ_U8(data + offset + 3);
+    
+    // get the master lock
+    if (ec_lock_down_interruptible(&master->master_sem)) {
+        return -EINTR;
+    }
+    
+    // handle SDO request
+    // See ETG.5001.3 for required object dictionary entries to support
+    if ( (sdo_index >= 0x8000) && (sdo_index < 0x8000 + master->slave_count) ) {
+        // readonly commands
+        if (sdo_req_cmd != 0x02) {
+            ec_lock_up(&master->master_sem);
+            EC_MASTER_ERR(master, "Master, unsupported SDO Command %hhu on"
+                    " 0x%04X:%02X!\n", sdo_req_cmd, sdo_index, sdo_sub_index);
+            return -EPROTONOSUPPORT;
+        }
+        
+        // calc slave position (slaves start at position 0)
+        slave_posn = sdo_index - 0x8000;
+        
+        // get the slave information
+        if (!(slave = ec_master_find_slave(master, 0, slave_posn))) {
+            ec_lock_up(&master->master_sem);
+            EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_posn);
+            return -EINVAL;
+        }
+
+        switch (sdo_sub_index) {
+            case 0 : {
+                // length of this object (uint8)
+                // Note: this may need to be 35 (there is a gap between 8 and 33)
+                value_size = sizeof(uint8_t);
+                EC_WRITE_U8(value, 35);
+            } break;
+            case 1 : {
+                // slave index (uint16)
+                // slave posn + MBG slave address offset
+                value_size = sizeof(uint16_t);
+                EC_WRITE_U16(value, slave_posn + EC_MBG_SLAVE_ADDR_OFFSET);
+            } break;
+            case 2 : {
+                // slave type (visiblestring[16])
+                value_size = 16;
+                memset(value, 0x00, value_size);
+                if (slave->sii_image) {
+                    snprintf(value, value_size, "%s", slave->sii_image->sii.order);
+                }
+            } break;
+            case 3 : {
+                // slave name (visiblestring[32])
+                value_size = 32;
+                memset(value, 0x00, value_size);
+                if (slave->sii_image) {
+                    snprintf(value, value_size, "%s", slave->sii_image->sii.name);
+                }
+            } break;
+            case 4 : {
+                // device type (uint32) (Modular Device Profile)
+                // need ESI's for this information or a slave that can
+                // supports mailbox with SDO's (read 0x1000:00)
+                if (!(slave->sii_image) ||
+                    !(slave->sii_image->sii.mailbox_protocols & EC_MBOX_COE) ||
+                    (ecrt_master_sdo_upload(master, slave_posn, 0x1000, 0x00, 
+                        value, sizeof(uint32_t), &value_size, &abort_code) != 0)) {
+                    // return 0 by default
+                    value_size = sizeof(uint32_t);
+                    EC_WRITE_U32(value, 0x00000000);
+                }
+            } break;
+            case 5 : {
+                // vendor id (uint32)
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, slave->config->vendor_id);
+            } break;
+            case 6 : {
+                // product code (uint32)
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, slave->config->product_code);
+            } break;
+            case 7 : {
+                // revision number (uint32)
+                value_size = sizeof(uint32_t);
+                if (slave->sii_image) {
+                    EC_WRITE_U32(value, slave->sii_image->sii.revision_number);
+                } else {
+                    EC_WRITE_U32(value, 0x00000000);
+                }
+            } break;
+            case 8 : {
+                // serial number (uint32)
+                value_size = sizeof(uint32_t);
+                if (slave->sii_image) {
+                    EC_WRITE_U32(value, slave->sii_image->sii.serial_number);
+                } else {
+                    EC_WRITE_U32(value, 0x00000000);
+                }
+            } break;
+            case 9 ... 32 : {
+                // Data can not be read or stored
+                resp_error = 1;
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x08000020);
+            } break;
+            case 33 : {
+                // mailbox out size (uint16)
+                value_size = sizeof(uint16_t);
+                if (slave->sii_image) {
+                    EC_WRITE_U16(value, slave->sii_image->sii.std_rx_mailbox_size);
+                } else {
+                    EC_WRITE_U16(value, 0x0000);
+                }
+            } break;
+            case 34 : {
+                // mailbox in size (uint16)
+                value_size = sizeof(uint16_t);
+                if (slave->sii_image) {
+                    EC_WRITE_U16(value, slave->sii_image->sii.std_tx_mailbox_size);
+                } else {
+                    EC_WRITE_U16(value, 0x0000);
+                }
+            } break;
+            case 35 : {
+                // link status (uint8), bits 4..7 of register 0x0110:0x0111
+                link_status = 0;
+                for (i = 0; i < EC_MAX_PORTS; i++) {
+                    if (slave->ports[i].link.link_up) {
+                        link_status += 1 << (4 + i);
+                    }
+                }
+                value_size = sizeof(uint8_t);
+                EC_WRITE_U8(value, link_status);
+            } break;
+            default :
+            {
+                // Subindex does not exist error
+                resp_error = 1;
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x06090011);
+            } break;
+        }
+        
+    } else if ( (sdo_index >= 0xA000) && (sdo_index < 0xA000 + master->slave_count) ) {
+        // Note: this is meant to be optional, but the TwinSAFE_Loader.exe seems to 
+        //   want to have it
+        
+        // calc slave position (slaves start at position 0)
+        slave_posn = sdo_index - 0xA000;
+        
+        switch (sdo_sub_index) {
+            case 0 : {
+                // readonly command
+                if (sdo_req_cmd != 0x02) {
+                    ec_lock_up(&master->master_sem);
+                    EC_MASTER_ERR(master, "Master, unsupported SDO Command %hhu on"
+                            " 0x%04X:%02X!\n", sdo_req_cmd, sdo_index, sdo_sub_index);
+                    return -EPROTONOSUPPORT;
+                }
+                
+                // length of this object (uint8)
+                value_size = sizeof(uint8_t);
+                EC_WRITE_U8(value, 2);
+            } break;
+            case 1 : {
+                // AL Status, register 0x130-0x131 (uint16)
+                // current state
+                
+                // readonly command
+                if (sdo_req_cmd != 0x02) {
+                    ec_lock_up(&master->master_sem);
+                    EC_MASTER_ERR(master, "Master, unsupported SDO Command %hhu on"
+                            " 0x%04X:%02X!\n", sdo_req_cmd, sdo_index, sdo_sub_index);
+                    return -EPROTONOSUPPORT;
+                }
+                
+                // get the slave information
+                if (!(slave = ec_master_find_slave(master, 0, slave_posn))) {
+                    ec_lock_up(&master->master_sem);
+                    EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_posn);
+                    return -EINVAL;
+                }
+
+                // return the cached slaves current state
+                // Note: the master only stores the first state byte
+                //   whereas the AL Status register is two bytes
+                //   (second byte reserved)
+                value_size = sizeof(uint16_t);
+                EC_WRITE_U16(value, slave->current_state);
+            } break;
+            case 2 : {
+                // AL Control, register 0x120-0x121 (uint16)
+                // requested state
+
+                // readwrite command
+                if ( (sdo_req_cmd != 0x02) && (sdo_req_cmd != 0x00) ) {
+                    ec_lock_up(&master->master_sem);
+                    EC_MASTER_ERR(master, "Master, unsupported SDO Command %hhu on"
+                            " 0x%04X:%02X!\n", sdo_req_cmd, sdo_index, sdo_sub_index);
+                    return -EPROTONOSUPPORT;
+                }
+                
+                // get the slave information
+                if (!(slave = ec_master_find_slave(master, 0, slave_posn))) {
+                    ec_lock_up(&master->master_sem);
+                    EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_posn);
+                    return -EINVAL;
+                }
+                
+                if (sdo_req_cmd == 0x02) {
+                    // read
+                    // return the cached slaves requested state
+                    // Note: the master only stores the first state byte
+                    //   whereas the AL Control register is two bytes
+                    //   (second byte reserved)
+                    value_size = sizeof(uint16_t);
+                    EC_WRITE_U16(value, slave->requested_state);
+                    
+                } else {
+                    // write (sdo_req_cmd == 0x00)
+                    uint8_t *write_data = data + offset + 4;
+                    size_t   write_size;
+                    uint8_t  size_specified = EC_READ_U8(data + offset) & 0x01;
+                    if (size_specified) {
+                        write_size = 4 - ((EC_READ_U8(data + offset) & 0x0C) >> 2);
+                    } else {
+                        write_size = 4;
+                    }
+                    
+                    // check write size
+                    if (write_size != 2) {
+                        ec_lock_up(&master->master_sem);
+                        EC_MASTER_ERR(master, "Master, unexpected SDO write data size"
+                                " %zu (expected %u) on 0x%04X:%02X!\n", 
+                                write_size, 2, sdo_index, sdo_sub_index);
+                        return -EPROTONOSUPPORT;
+                    }
+
+                    // request the slave AL state
+                    ec_slave_request_state(slave, EC_READ_U16(write_data));
+                    
+                    // set blank download response
+                    value_size = sizeof(uint32_t);
+                    memset(value, 0x00, 4);
+                }
+            } break;
+            default : { 
+                // Subindex does not exist error
+                resp_error = 1;
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x06090011);
+            } break;
+        }
+
+    } else if ( (sdo_index >= 0xF020) && (sdo_index < 0xF030) ) {
+        // readonly commands
+        if (sdo_req_cmd != 0x02) {
+            ec_lock_up(&master->master_sem);
+            EC_MASTER_ERR(master, "Master, unsupported SDO Command %hhu on"
+                    " 0x%04X:%02X!\n", sdo_req_cmd, sdo_index, sdo_sub_index);
+            return -EPROTONOSUPPORT;
+        }
+        
+        if (sdo_sub_index == 0) {
+            uint64_t index = master->slave_count;
+            uint32_t remainder;
+          
+            // length of this object (uint8)
+            value_size = sizeof(uint8_t);
+            
+            // calc index and remainder from slave count
+            remainder = do_div(index, 255);
+            
+            if (sdo_index - 0xF020 < index) {
+                EC_WRITE_U8(value, 255);
+            } else if ( (sdo_index - 0xF020 == index) && (remainder > 0) ) {
+                EC_WRITE_U8(value, remainder);
+            } else {
+                EC_WRITE_U8(value, 0);
+            }
+        } else {
+            // calc slave position
+            slave_posn = ((sdo_index - 0xF020) << 8) + sdo_sub_index - (sdo_index - 0xF020 + 1);
+            
+            if (slave_posn < master->slave_count) {
+                // slave index (uint16)
+                // slave posn + MBG slave address offset
+                value_size = sizeof(uint16_t);
+                EC_WRITE_U16(value, slave_posn + EC_MBG_SLAVE_ADDR_OFFSET);
+            } else {
+                // Object Not Found error
+                resp_error = 1;
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x06020000);
+            }
+        }
+                
+    } else if (sdo_index == 0xF000) {
+        // readonly commands
+        if (sdo_req_cmd != 0x02) {
+            ec_lock_up(&master->master_sem);
+            EC_MASTER_ERR(master, "Master, unsupported SDO Command %hhu on"
+                    " 0x%04X:%02X!\n", sdo_req_cmd, sdo_index, sdo_sub_index);
+            return -EPROTONOSUPPORT;
+        }
+        
+        // Modular Device Profile
+        switch (sdo_sub_index) {
+            case 0 : {
+                // length of this object (uint8)
+                value_size = sizeof(uint8_t);
+                EC_WRITE_U8(value, 4);
+            } break;
+            case 1 : {
+                // module index distance (uint16)
+                value_size = sizeof(uint16_t);
+                EC_WRITE_U16(value, 0x0001);
+            } break;
+            case 2 : {
+                // maximum number of modules (uint16)
+                // Gateway information limit
+                value_size = sizeof(uint16_t);
+                EC_WRITE_U16(value, 4080);
+            } break;
+            case 3 : {
+                // general configuration (uint32)
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x000000FF);
+            } break;
+            case 4 : {
+                // general information (uint32)
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x00000000);
+            } break;
+            default : { 
+                // Subindex does not exist error
+                resp_error = 1;
+                value_size = sizeof(uint32_t);
+                EC_WRITE_U32(value, 0x06090011);
+            } break;
+        }
+
+    } else {
+        // Object Not Found error
+        resp_error = 1;
+        value_size = sizeof(uint32_t);
+        EC_WRITE_U32(value, 0x06020000);
+    }
+    
+    ec_lock_up(&master->master_sem);
+    
+    
+    // do we need to allow room for a complete size field?
+    if ( (value_size > 0) && (value_size <= 4) ) {
+        total_value_size = value_size;
+    } else {
+        total_value_size = value_size + sizeof(uint32_t);
+    }
+
+    // set reply
+    if (EC_MBOX_HEADER_SIZE + EC_COE_HEADER_SIZE + 4 + total_value_size > buff_size) {
+        EC_MASTER_ERR(master, "Buffer too small.\n");
+        return -EOVERFLOW;
+    }
+    else {
+        // update data_size
+        *data_size = EC_MBOX_HEADER_SIZE + EC_COE_HEADER_SIZE + 4 + total_value_size;
+      
+        // update Mailbox Header Length (length of CoE Header onwards)
+        EC_WRITE_U16(data, *data_size - EC_MBOX_HEADER_SIZE);
+        
+        // update CoE service response or SDO command specifier on error
+        if (resp_error) {
+            // not happy, return abort SDO transfer request
+            offset = EC_MBOX_HEADER_SIZE + EC_COE_HEADER_SIZE;
+            EC_WRITE_U8(data + offset, 0x04 << 5);
+
+            // set abort value
+            memcpy(data + offset + 4, value, value_size);
+        } else {
+            // happy, return service code 3 (SDO response)
+            offset = EC_MBOX_HEADER_SIZE;
+            EC_WRITE_U16(data + offset, 0x03 << 12);
+            
+            // set SDO command specifier
+            if (sdo_req_cmd == 0x02) {
+                // upload response
+                sdo_resp_cmd = 0x02;
+            } else {
+                // download response
+                sdo_resp_cmd = 0x01;
+            }
+            
+            // set value size
+            offset = EC_MBOX_HEADER_SIZE + EC_COE_HEADER_SIZE;
+            if ( (value_size > 0) && (value_size <= 4) ) {
+                // upload response, expedited size specified
+                // bit 0      1 = size specified
+                // bit 1      1 = expedited
+                // bit 2..3   4 - size
+                // bit 5..7   command specifier
+                EC_WRITE_U8(data + offset, (sdo_resp_cmd << 5) + 
+                        ((4 - value_size) << 2) + 0x02 + 0x01);
+                
+                // set offset to data
+                offset += 4;
+            } else {
+                // upload response, size specified
+                EC_WRITE_U8(data + offset, (sdo_resp_cmd << 5) + 0x01);
+                
+                // set value size
+                offset += 4;
+                EC_WRITE_U32(data + offset, value_size);
+                
+                // set offset to value
+                offset += sizeof(uint32_t);
+            }
+            
+            // set value
+            memcpy(data + offset, value, value_size);
+        }
+    }
+    
+    
+    return 0;
+}
+
+/*****************************************************************************/
+
+int ec_master_mbox_gateway(ec_master_t *master, uint8_t *data, 
+        size_t *data_size, size_t buff_size)
+{
+    ec_mbg_request_t request;
+    uint16_t slave_posn;
+    ec_slave_t *slave;
+    int ret = 0;
+
+    // get the slave address
+    slave_posn = EC_READ_U16(data + 2);
+
+    // check if slave address is zero (master object dictionary request)
+    if (slave_posn == 0)
+    {
+        // request for master information
+        ret = ec_master_obj_dict(master, data, data_size, buff_size);
+    }
+    else if (slave_posn >= EC_MBG_SLAVE_ADDR_OFFSET)
+    {
+        // calculate the slave position address
+        slave_posn -= EC_MBG_SLAVE_ADDR_OFFSET;
+      
+        // pass on request to slave
+        ec_mbg_request_init(&request);
+        ret = ec_mbg_request_copy_data(&request, data, *data_size);
+        *data_size = 0;
+        if (ret) {
+            ec_mbg_request_clear(&request);
+            return ret;
+        }
+        ec_mbg_request_run(&request);
+
+        if (ec_lock_down_interruptible(&master->master_sem)) {
+            ec_mbg_request_clear(&request);
+            return -EINTR;
+        }
+        
+        // check for a valid slave request
+        if (!(slave = ec_master_find_slave(master, 0, slave_posn))) {
+            ec_lock_up(&master->master_sem);
+            ec_mbg_request_clear(&request);
+            EC_MASTER_ERR(master, "Slave %u does not exist!\n", slave_posn);
+            return -EINVAL;
+        }
+
+        EC_SLAVE_DBG(slave, 1, "Scheduling MBox Gateway request.\n");
+
+        // schedule request.
+        list_add_tail(&request.list, &slave->mbg_requests);
+
+        ec_lock_up(&master->master_sem);
+
+        // wait for processing through FSM
+        if (wait_event_interruptible(master->request_queue,
+                    request.state != EC_INT_REQUEST_QUEUED)) {
+            // interrupted by signal
+            ec_lock_down(&master->master_sem);
+            if (request.state == EC_INT_REQUEST_QUEUED) {
+                list_del(&request.list);
+                ec_lock_up(&master->master_sem);
+                ec_mbg_request_clear(&request);
+                return -EINTR;
+            }
+            // request already processing: interrupt not possible.
+            ec_lock_up(&master->master_sem);
+        }
+
+        // wait until master FSM has finished processing
+        wait_event(master->request_queue, request.state != EC_INT_REQUEST_BUSY);
+
+        if (request.state != EC_INT_REQUEST_SUCCESS) {
+            if (request.error_code) {
+                ret = -request.error_code;
+            } else {
+                ret = -EIO;
+            }
+        } else {
+            if (request.data_size > buff_size) {
+                EC_MASTER_ERR(master, "Buffer too small.\n");
+                ret = -EOVERFLOW;
+            }
+            else {
+                memcpy(data, request.data, request.data_size);
+                *data_size = request.data_size;
+                ret = 0;
+            }
+        }
+
+        ec_mbg_request_clear(&request);
+    } else {
+        EC_MASTER_ERR(master, "MBox Gateway: Invalid slave offset address %u!\n", slave_posn);
+        return -EINVAL;
+    }
+      
+    
+    
+    return ret;
+}
 
 /*****************************************************************************/
 

@@ -412,6 +412,9 @@ int ec_master_eoe_process(ec_master_t *);
 #endif
 #endif
 
+int ec_master_mbox_gateway(ec_master_t *master, uint8_t *data, 
+        size_t *data_size, size_t buff_size);
+
 int ec_master_debug_level(ec_master_t *, unsigned int);
 
 ec_domain_t *ecrt_master_create_domain_err(ec_master_t *);

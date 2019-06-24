@@ -47,6 +47,7 @@ ec_master-objs := \
 	fsm_foe.o \
 	fsm_reboot.o \
 	fsm_master.o \
+	fsm_mbox_gateway.o \
 	fsm_pdo.o \
 	fsm_pdo_entry.o \
 	fsm_sii.o \
@@ -57,6 +58,7 @@ ec_master-objs := \
 	ioctl.o \
 	mailbox.o \
 	master.o \
+	mbox_gateway_request.o \
 	module.o \
 	pdo.o \
 	pdo_entry.o \

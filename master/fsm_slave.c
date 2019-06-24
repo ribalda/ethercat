@@ -64,6 +64,8 @@ void ec_fsm_slave_state_soe_request(ec_fsm_slave_t *, ec_datagram_t *);
 int ec_fsm_slave_action_process_eoe(ec_fsm_slave_t *, ec_datagram_t *);
 void ec_fsm_slave_state_eoe_request(ec_fsm_slave_t *, ec_datagram_t *);
 #endif
+int ec_fsm_slave_action_process_mbg(ec_fsm_slave_t *, ec_datagram_t *);
+void ec_fsm_slave_state_mbg_request(ec_fsm_slave_t *, ec_datagram_t *);
 
 /*****************************************************************************/
 
@@ -86,6 +88,7 @@ void ec_fsm_slave_init(
 #ifdef EC_EOE
     fsm->eoe_request = NULL;
 #endif
+    fsm->mbg_request = NULL;
     fsm->dict_request = NULL;
 
     ec_dict_request_init(&fsm->int_dict_request);
@@ -97,6 +100,7 @@ void ec_fsm_slave_init(
 #ifdef EC_EOE
     ec_fsm_eoe_init(&fsm->fsm_eoe);
 #endif
+    ec_fsm_mbg_init(&fsm->fsm_mbg);
     ec_fsm_pdo_init(&fsm->fsm_pdo, &fsm->fsm_coe);
     ec_fsm_change_init(&fsm->fsm_change);
     ec_fsm_slave_config_init(&fsm->fsm_slave_config, fsm->slave,
@@ -146,6 +150,11 @@ void ec_fsm_slave_clear(
     }
 #endif
 
+    if (fsm->mbg_request) {
+        fsm->mbg_request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&fsm->slave->master->request_queue);
+    }
+
     if (fsm->dict_request) {
         fsm->dict_request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&fsm->slave->master->request_queue);
@@ -162,6 +171,7 @@ void ec_fsm_slave_clear(
 #ifdef EC_EOE
     ec_fsm_eoe_clear(&fsm->fsm_eoe);
 #endif
+    ec_fsm_mbg_clear(&fsm->fsm_mbg);
 }
 
 /*****************************************************************************/
@@ -744,6 +754,11 @@ void ec_fsm_slave_state_ready(
         return;
     }
 #endif
+    
+    // Check for pending MBox Gateway requests
+    if (ec_fsm_slave_action_process_mbg(fsm, datagram)) {
+        return;
+    }
 }
 
 /*****************************************************************************/
@@ -1115,6 +1130,93 @@ int ec_fsm_slave_action_process_soe(
     ec_fsm_soe_transfer(&fsm->fsm_soe, slave, req);
     ec_fsm_soe_exec(&fsm->fsm_soe, datagram); // execute immediately
     return 1;
+}
+
+/*****************************************************************************/
+
+/** Check for pending MBox Gateway requests and process one.
+ *
+ * \return non-zero, if a request is processed.
+ */
+int ec_fsm_slave_action_process_mbg(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_mbg_request_t *req;
+
+    if (list_empty(&slave->mbg_requests)) {
+        return 0;
+    }
+
+    // take the first request to be processed
+    req = list_entry(slave->mbg_requests.next, ec_mbg_request_t, list);
+    list_del_init(&req->list); // dequeue
+
+    if (slave->current_state & EC_SLAVE_STATE_ACK_ERR) {
+        EC_SLAVE_WARN(slave, "Aborting MBox Gateway request,"
+                " slave has error flag set.\n");
+        req->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 0;
+    }
+
+    if (slave->current_state == EC_SLAVE_STATE_INIT) {
+        EC_SLAVE_WARN(slave, "Aborting MBox Gateway request,"
+                " slave is in INIT.\n");
+        req->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->state = ec_fsm_slave_state_idle;
+        return 0;
+    }
+
+    fsm->mbg_request = req;
+    req->state = EC_INT_REQUEST_BUSY;
+
+    // Found pending request. Execute it!
+    EC_SLAVE_DBG(slave, 1, "Processing MBox Gateway request...\n");
+
+    // Start MBox Gateway transfer
+    fsm->state = ec_fsm_slave_state_mbg_request;
+    ec_fsm_mbg_transfer(&fsm->fsm_mbg, slave, req);
+    ec_fsm_mbg_exec(&fsm->fsm_mbg, datagram); // execute immediately
+    return 1;
+}
+
+/*****************************************************************************/
+
+/** Slave state: MBG_REQUEST.
+ */
+void ec_fsm_slave_state_mbg_request(
+        ec_fsm_slave_t *fsm, /**< Slave state machine. */
+        ec_datagram_t *datagram /**< Datagram to use. */
+        )
+{
+    ec_slave_t *slave = fsm->slave;
+    ec_mbg_request_t *request = fsm->mbg_request;
+
+    if (ec_fsm_mbg_exec(&fsm->fsm_mbg, datagram)) {
+        return;
+    }
+
+    if (!ec_fsm_mbg_success(&fsm->fsm_mbg)) {
+        EC_SLAVE_ERR(slave, "Failed to process MBox Gateway request.\n");
+        request->state = EC_INT_REQUEST_FAILURE;
+        wake_up_all(&slave->master->request_queue);
+        fsm->mbg_request = NULL;
+        fsm->state = ec_fsm_slave_state_ready;
+        return;
+    }
+
+    EC_SLAVE_DBG(slave, 1, "Finished MBox Gateway request.\n");
+
+    // MBox Gateway request finished
+    request->state = EC_INT_REQUEST_SUCCESS;
+    wake_up_all(&slave->master->request_queue);
+    fsm->mbg_request = NULL;
+    fsm->state = ec_fsm_slave_state_ready;
 }
 
 /*****************************************************************************/

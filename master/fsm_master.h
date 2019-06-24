@@ -42,6 +42,7 @@
 #include "foe_request.h"
 #include "sdo_request.h"
 #include "soe_request.h"
+#include "mbox_gateway_request.h"
 #include "fsm_reboot.h"
 
 /*****************************************************************************/

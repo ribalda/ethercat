@@ -99,6 +99,12 @@
 /** Mailbox header size.  */
 #define EC_MBOX_HEADER_SIZE 6
 
+/** CoE header size.  */
+#define EC_COE_HEADER_SIZE 2
+
+/** Mailbox Gateway, Mailbox header slave address offset */
+#define EC_MBG_SLAVE_ADDR_OFFSET 1000
+
 /** Word offset of first SII category. */
 #define EC_FIRST_SII_CATEGORY_OFFSET 0x40
 

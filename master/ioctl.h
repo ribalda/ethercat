@@ -186,7 +186,10 @@
 #define EC_IOCTL_EOE_DELIF            EC_IOWR(0x71, ec_ioctl_eoe_if_t)
 #endif
 
-#define EC_IOCTL_PCAP_DATA          EC_IOWR(0x72, ec_ioctl_pcap_data_t)
+#define EC_IOCTL_PCAP_DATA            EC_IOWR(0x72, ec_ioctl_pcap_data_t)
+
+// Mailbox Gateway
+#define EC_IOCTL_MBOX_GATEWAY         EC_IOWR(0x73, ec_ioctl_mbox_gateway_t)
 
 /*****************************************************************************/
 
@@ -876,6 +879,15 @@ typedef struct {
     // inputs
     uint16_t slave_position;
 } ec_ioctl_slave_dict_upload_t;
+
+/*****************************************************************************/
+
+typedef struct {
+    // input / output
+    size_t data_size;
+    size_t buff_size;
+    uint8_t *data;
+} ec_ioctl_mbox_gateway_t;
 
 /*****************************************************************************/
 

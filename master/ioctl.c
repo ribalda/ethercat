@@ -5322,6 +5322,70 @@ static ATTRIBUTES int ec_ioctl_eoe_delif(
 
 /*****************************************************************************/
 
+/** Process an EtherCAT Mailbox Gateway message.
+ *
+ * \return Zero on success, otherwise a negative error code.
+ */
+static ATTRIBUTES int ec_ioctl_mbox_gateway(
+        ec_master_t *master, /**< EtherCAT master. */
+        void *arg, /**< ioctl() argument. */
+        ec_ioctl_context_t *ctx /**< Private data structure of file handle. */
+        )
+{
+    ec_ioctl_mbox_gateway_t ioctl;
+    u8 *data;
+    int retval;
+
+    if (copy_from_user(&ioctl, (void __user *) arg, sizeof(ioctl))) {
+        return -EFAULT;
+    }
+    
+    // ensure the incoming data will be at least the size of the mailbox header
+    if (ioctl.data_size < EC_MBOX_HEADER_SIZE) {
+        return -EFAULT;
+    }
+
+    // ensure the incoming data fits into the max buffer size
+    if (ioctl.data_size > ioctl.buff_size) {
+        return -EFAULT;
+    }
+
+    data = kmalloc(ioctl.buff_size, GFP_KERNEL);
+    if (!data) {
+        EC_MASTER_ERR(master, "Failed to allocate %zu bytes of"
+                " mailbox gateway data.\n", ioctl.buff_size);
+        return -ENOMEM;
+    }
+    if (copy_from_user(data, (void __user *) ioctl.data, ioctl.data_size)) {
+        kfree(data);
+        return -EFAULT;
+    }
+    
+    // send the mailbox packet
+    retval = ec_master_mbox_gateway(master, data,
+            &ioctl.data_size, ioctl.buff_size);
+    if (retval) {
+        kfree(data);
+        return retval;
+    }
+
+    if (copy_to_user((void __user *) ioctl.data,
+                data, ioctl.data_size)) {
+        kfree(data);
+        return -EFAULT;
+    }
+    kfree(data);
+
+    if (__copy_to_user((void __user *) arg, &ioctl, sizeof(ioctl))) {
+        retval = -EFAULT;
+    }
+
+    EC_MASTER_DBG(master, 1, "Finished Mailbox Gateway request.\n");
+    return retval;
+}
+
+/*****************************************************************************/
+
 /** ioctl() function to use.
  */
 #ifdef EC_IOCTL_RTDM
@@ -5999,6 +6063,13 @@ long EC_IOCTL(
             ret = ec_ioctl_eoe_delif(master, arg, ctx);
             break;
 #endif
+        case EC_IOCTL_MBOX_GATEWAY:
+            if (!ctx->writable) {
+                ret = -EPERM;
+                break;
+            }
+            ret = ec_ioctl_mbox_gateway(master, arg, ctx);
+            break;
         default:
             ret = -ENOTTY;
             break;

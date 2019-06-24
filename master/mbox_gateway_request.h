@@ -2,7 +2,7 @@
  *
  *  $Id$
  *
- *  Copyright (C) 2006-2008  Florian Pose, Ingenieurgemeinschaft IgH
+ *  Copyright (C) 2019  Florian Pose, Ingenieurgemeinschaft IgH
  *
  *  This file is part of the IgH EtherCAT Master.
  *
@@ -29,52 +29,44 @@
 
 /**
    \file
-   Mailbox functionality.
+   EtherCAT Mailbox Gateway request structure.
 */
 
 /*****************************************************************************/
 
-#ifndef __EC_MAILBOX_H__
-#define __EC_MAILBOX_H__
+#ifndef __EC_MBG_REQUEST_H__
+#define __EC_MBG_REQUEST_H__
 
-#include "slave.h"
+#include <linux/list.h>
+
+#include "globals.h"
 
 /*****************************************************************************/
 
-/** Size of the mailbox header.
+/** EtherCAT Mailbox Gateway request.
  */
-#define EC_MBOX_HEADER_SIZE 6
-
-/** Mailbox types.
- *
- * These are used in the 'Type' field of the mailbox header.
- */
-enum {
-    EC_MBOX_TYPE_AOE = 0x01,
-    EC_MBOX_TYPE_EOE = 0x02,
-    EC_MBOX_TYPE_COE = 0x03,
-    EC_MBOX_TYPE_FOE = 0x04,
-    EC_MBOX_TYPE_SOE = 0x05,
-    EC_MBOX_TYPE_VOE = 0x0f,
-};
+typedef struct {
+    struct list_head list; /**< List item. */
+    uint8_t *data; /**< Pointer to MBox request data. */
+    size_t mem_size; /**< Size of MBox request data memory. */
+    size_t data_size; /**< Size of MBox request data. */
+    uint32_t response_timeout; /**< Maximum time in ms, the transfer is
+                                 retried, if the slave does not respond. */
+    ec_internal_request_state_t state; /**< Request state. */
+    unsigned long jiffies_sent; /**< Jiffies, when the upload/download
+                                     request was sent. */
+    uint16_t error_code; /**< MBox Gateway error code. */
+    uint8_t mbox_type; /**< Cached MBox type */
+} ec_mbg_request_t;
 
 /*****************************************************************************/
 
-/**
-   Mailbox error codes.
-*/
+void ec_mbg_request_init(ec_mbg_request_t *);
+void ec_mbg_request_clear(ec_mbg_request_t *);
 
-extern const ec_code_msg_t mbox_error_messages[];
-  
-/*****************************************************************************/
-
-uint8_t *ec_slave_mbox_prepare_send(const ec_slave_t *, ec_datagram_t *,
-                                    uint8_t, size_t);
-int      ec_slave_mbox_prepare_check(const ec_slave_t *, ec_datagram_t *);
-int      ec_slave_mbox_check(const ec_datagram_t *);
-int      ec_slave_mbox_prepare_fetch(const ec_slave_t *, ec_datagram_t *);
-uint8_t *ec_slave_mbox_fetch(const ec_slave_t *, ec_mbox_data_t *,
-                             uint8_t *, size_t *);
+int ec_mbg_request_alloc(ec_mbg_request_t *, size_t);
+int ec_mbg_request_copy_data(ec_mbg_request_t *, const uint8_t *, size_t);
+void ec_mbg_request_run(ec_mbg_request_t *);
 
 /*****************************************************************************/
 

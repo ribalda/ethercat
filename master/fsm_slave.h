@@ -42,6 +42,7 @@
 #include "sdo_request.h"
 #include "reg_request.h"
 #include "eoe_request.h"
+#include "mbox_gateway_request.h"
 #include "dict_request.h"
 #include "fsm_coe.h"
 #include "fsm_foe.h"
@@ -49,6 +50,7 @@
 #ifdef EC_EOE
 #include "fsm_eoe.h"
 #endif
+#include "fsm_mbox_gateway.h"
 #include "fsm_slave_config.h"
 #include "fsm_slave_scan.h"
 
@@ -73,6 +75,7 @@ struct ec_fsm_slave {
 #ifdef EC_EOE
     ec_eoe_request_t *eoe_request; /**< EoE request to process. */
 #endif
+    ec_mbg_request_t *mbg_request; /**< MBox Gateway request to process. */
     ec_dict_request_t *dict_request; /**< Dictionary request to process. */
 
     ec_fsm_coe_t fsm_coe; /**< CoE state machine. */
@@ -81,6 +84,7 @@ struct ec_fsm_slave {
 #ifdef EC_EOE
     ec_fsm_eoe_t fsm_eoe; /**< EoE state machine. */
 #endif
+    ec_fsm_mbg_t fsm_mbg; /**< MBox Gateway state machine. */
     ec_fsm_pdo_t fsm_pdo; /**< PDO configuration state machine. */
     ec_fsm_change_t fsm_change; /**< State change state machine */
     ec_fsm_slave_scan_t fsm_slave_scan; /**< slave scan state machine */
