@@ -1,10 +1,15 @@
 #!/bin/bash
 
-set -x
+if [ $# -ne 3 ]; then
+    echo "Need 3 arguments: 1) kernel source dir, 2) previous version, 3) version to add"
+    exit 1
+fi
 
-KERNELDIR=/data/kernel/linux-4.4.162
-PREVER=3.16
-KERNELVER=4.4
+KERNELDIR=$1
+PREVER=$2
+KERNELVER=$3
+
+set -x
 
 for f in $KERNELDIR/drivers/net/ethernet/{realtek/8139too,realtek/r8169,intel/e100}.c; do
     echo $f

@@ -25,5 +25,6 @@ for f in $FILES; do
     op=${f/\./-$PREVER-orig.}
     ep=${f/\./-$PREVER-ethercat.}
     diff -u $op $ep | patch -p1 $e
+    sed -i s/$PREVER-ethercat.h/$KERNELVER-ethercat.h/ $e
     hg add $o $e
 done
