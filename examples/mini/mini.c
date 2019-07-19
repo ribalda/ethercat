@@ -499,8 +499,7 @@ int __init init_mini_module(void)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 69)
     setup_timer(&timer, cyclic_task, 0);
 #else
-     timer_setup(&timer, cyclic_task, 0);
-#endif
+    timer_setup(&timer, cyclic_task, 0);
     timer.function = cyclic_task;
 #endif
     timer.expires = jiffies + 10;
