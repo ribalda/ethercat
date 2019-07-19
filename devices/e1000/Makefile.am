@@ -82,6 +82,8 @@ EXTRA_DIST = \
 	e1000-4.4-orig.h \
 	e1000-4.9-ethercat.h \
 	e1000-4.9-orig.h \
+	e1000-4.14-ethercat.h \
+	e1000-4.14-orig.h \
 	e1000_ethtool-2.6.13-ethercat.c \
 	e1000_ethtool-2.6.13-orig.c \
 	e1000_ethtool-2.6.18-ethercat.c \
@@ -134,6 +136,8 @@ EXTRA_DIST = \
 	e1000_ethtool-4.4-orig.c \
 	e1000_ethtool-4.9-ethercat.c \
 	e1000_ethtool-4.9-orig.c \
+	e1000_ethtool-4.14-ethercat.c \
+	e1000_ethtool-4.14-orig.c \
 	e1000_hw-2.6.13-ethercat.c \
 	e1000_hw-2.6.13-ethercat.h \
 	e1000_hw-2.6.13-orig.c \
@@ -238,6 +242,10 @@ EXTRA_DIST = \
 	e1000_hw-4.9-ethercat.h \
 	e1000_hw-4.9-orig.c \
 	e1000_hw-4.9-orig.h \
+	e1000_hw-4.14-ethercat.c \
+	e1000_hw-4.14-ethercat.h \
+	e1000_hw-4.14-orig.c \
+	e1000_hw-4.14-orig.h \
 	e1000_main-2.6.13-ethercat.c \
 	e1000_main-2.6.13-orig.c \
 	e1000_main-2.6.18-ethercat.c \
@@ -290,6 +298,8 @@ EXTRA_DIST = \
 	e1000_main-4.4-orig.c \
 	e1000_main-4.9-ethercat.c \
 	e1000_main-4.9-orig.c \
+	e1000_main-4.14-ethercat.c \
+	e1000_main-4.14-orig.c \
 	e1000_osdep-2.6.13-ethercat.h \
 	e1000_osdep-2.6.13-orig.h \
 	e1000_osdep-2.6.18-ethercat.h \
@@ -342,6 +352,8 @@ EXTRA_DIST = \
 	e1000_osdep-4.4-orig.h \
 	e1000_osdep-4.9-ethercat.h \
 	e1000_osdep-4.9-orig.h \
+	e1000_osdep-4.14-ethercat.h \
+	e1000_osdep-4.14-orig.h \
 	e1000_param-2.6.13-ethercat.c \
 	e1000_param-2.6.13-orig.c \
 	e1000_param-2.6.18-ethercat.c \
@@ -393,7 +405,9 @@ EXTRA_DIST = \
 	e1000_param-4.4-ethercat.c \
 	e1000_param-4.4-orig.c \
 	e1000_param-4.9-ethercat.c \
-	e1000_param-4.9-orig.c
+	e1000_param-4.9-orig.c \
+	e1000_param-4.14-ethercat.c \
+	e1000_param-4.14-orig.c
 
 
 BUILT_SOURCES = \
