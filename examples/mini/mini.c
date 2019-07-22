@@ -307,11 +307,7 @@ void read_voe(void)
 
 /*****************************************************************************/
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
-void cyclic_task(struct timer_list *t)
-#else
-void cyclic_task(unsigned long data)
-#endif
+static void cyclic_task(struct timer_list *ts)
 {
     // receive process data
     down(&master_sem);
@@ -358,6 +354,10 @@ void cyclic_task(unsigned long data)
     // restart timer
     timer.expires += HZ / FREQUENCY;
     add_timer(&timer);
+}
+
+static void cyclic_task_old(long unsigned int t) {
+	cyclic_task(NULL);
 }
 
 /*****************************************************************************/
@@ -496,12 +496,11 @@ int __init init_mini_module(void)
 #endif
 
     printk(KERN_INFO PFX "Starting cyclic sample thread.\n");
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 69)
-    setup_timer(&timer, cyclic_task, 0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+    timer_setup(&timer, cyclic_task, 0);
 #else
-     timer_setup(&timer, cyclic_task, 0);
-#endif
-    timer.function = cyclic_task;
+    init_timer(&timer);
+    timer.function = cyclic_task_old;
 #endif
     timer.expires = jiffies + 10;
     add_timer(&timer);
