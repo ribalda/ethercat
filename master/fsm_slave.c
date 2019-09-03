@@ -113,7 +113,7 @@ void ec_fsm_slave_clear(
     }
 
     if (fsm->eoe_request) {
-        fsm->soe_request->state = EC_INT_REQUEST_FAILURE;
+        fsm->eoe_request->state = EC_INT_REQUEST_FAILURE;
         wake_up_all(&fsm->slave->master->request_queue);
     }
 
