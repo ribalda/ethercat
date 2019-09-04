@@ -93,26 +93,17 @@ void CommandPcap::outputPcapData(
 {
     ec_ioctl_pcap_data_t data;
     unsigned char pcap_reset = getReset();
-    unsigned char *pcap_data;
-    unsigned int i;
+    vector<unsigned char> pcap_data;
 
-    if (!pcap_size)
-        return;
-      
-    pcap_data = new unsigned char[pcap_size];
-
-    try {
-        m.getPcap(&data, pcap_reset, pcap_size, pcap_data);
-    } catch (MasterDeviceException &e) {
-        delete [] pcap_data;
-        throw e;
+    if (!pcap_size) {
+        throwCommandException("Pcap logging is not enabled; set PCAP_SIZE_MB and restart master.");
     }
+      
+    pcap_data.resize(pcap_size);
+    m.getPcap(&data, pcap_reset, pcap_data.size(), pcap_data.data());
 
-    for (i = 0; i < data.data_size; i++)
-        cout << pcap_data[i];
+    cout.write(reinterpret_cast<const char*>(pcap_data.data()), data.data_size);
     cout.flush();
-
-    delete [] pcap_data;
 }
 
 /****************************************************************************/

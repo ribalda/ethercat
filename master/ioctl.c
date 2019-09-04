@@ -195,8 +195,7 @@ static ATTRIBUTES int ec_ioctl_master(
         master->dc_ref_clock ? master->dc_ref_clock->ring_position : 0xffff;
 
     if (master->pcap_data) {
-        io.pcap_size = sizeof(pcap_hdr_t) +
-                (master->pcap_curr_data - master->pcap_data);
+        io.pcap_size = sizeof(pcap_hdr_t) + pcap_size;
     } else {
         io.pcap_size = 0;
     }
@@ -699,10 +698,10 @@ static ATTRIBUTES int ec_ioctl_pcap_data(
     pcap_hdr_t pcaphdr;
     size_t data_size;
     size_t total_size;
-    void *curr_data = master->pcap_curr_data;
+    void *curr_data;
 
     if (!master->pcap_data) {
-        return -EFAULT;
+        return -EOPNOTSUPP;
     }
 
     if (copy_from_user(&data, (void __user *) arg, sizeof(data))) {
@@ -712,6 +711,7 @@ static ATTRIBUTES int ec_ioctl_pcap_data(
     if (ec_lock_down_interruptible(&master->master_sem))
         return -EINTR;
 
+    curr_data = master->pcap_curr_data;
     data_size = curr_data - master->pcap_data;
     total_size = sizeof(pcap_hdr_t) + data_size;
     if (data.data_size < sizeof(pcap_hdr_t)) {
@@ -721,10 +721,7 @@ static ATTRIBUTES int ec_ioctl_pcap_data(
         return -EFAULT;
     }
     if (data.data_size > total_size) {
-        ec_lock_up(&master->master_sem);
-        EC_MASTER_ERR(master, "Pcap data size too large %u/%zu!\n",
-                data.data_size, total_size);
-        return -EFAULT;
+        data.data_size = total_size;
     }
     
     // fill in pcap header and copy to user mem
@@ -741,10 +738,11 @@ static ATTRIBUTES int ec_ioctl_pcap_data(
         return -EFAULT;
     }
     
-    // copy pcap data, up to requested size
+    // copy pcap data, up to requested size; also copy updated data_size
     if ( (data_size > 0) &&
-         copy_to_user((void __user *) (data.target + sizeof(pcap_hdr_t)),
-                master->pcap_data, data.data_size - sizeof(pcap_hdr_t))) {
+         (copy_to_user((void __user *) (data.target + sizeof(pcap_hdr_t)),
+                master->pcap_data, data.data_size - sizeof(pcap_hdr_t)) ||
+          copy_to_user((void __user *) arg, &data, sizeof(data)))) {
         ec_lock_up(&master->master_sem);
         return -EFAULT;
     }
