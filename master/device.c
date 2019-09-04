@@ -306,6 +306,45 @@ int ec_device_close(
 
 /*****************************************************************************/
 
+/** Records a packet in the master's pcap buffer, if there is room.
+ */
+
+static void pcap_record(
+            ec_device_t *device, /**< EtherCAT device */
+            const void *data, /**< Packet data */
+            size_t size /**< Packet size */
+            )
+{
+    // check there's enough room to copy frame to pcap mem
+    if (unlikely(device->master->pcap_data)) {
+        // get current data pointer
+        void *curr_data = device->master->pcap_curr_data;
+        long available = pcap_size - (curr_data - device->master->pcap_data);
+        long reqd = size + sizeof(pcaprec_hdr_t);
+        if (unlikely(reqd <= available)) {
+            pcaprec_hdr_t *pcaphdr;
+            struct timeval t;
+          
+            // update curr data pointer
+            device->master->pcap_curr_data = curr_data + reqd;
+            
+            // fill in pcap frame header info
+            pcaphdr = curr_data;
+            jiffies_to_timeval(device->jiffies_poll, &t);
+            pcaphdr->ts_sec   = t.tv_sec;
+            pcaphdr->ts_usec  = t.tv_usec;
+            pcaphdr->incl_len = size;
+            pcaphdr->orig_len = size;
+            curr_data += sizeof(pcaprec_hdr_t);
+          
+            // copy frame
+            memcpy(curr_data, data, size);
+        }
+    }
+}
+
+/*****************************************************************************/
+
 /** Returns a pointer to the device's transmit memory.
  *
  * \return pointer to the TX socket buffer
@@ -343,33 +382,6 @@ void ec_device_send(
         EC_MASTER_DBG(device->master, 2, "Sending frame:\n");
         ec_print_data(skb->data, ETH_HLEN + size);
     }
-    // check theres enough room to copy frame to pcap mem
-    if (unlikely(device->master->pcap_data)) {
-        // get current data pointer
-        void *curr_data = device->master->pcap_curr_data;
-        int available = PCAP_SIZE - (curr_data - device->master->pcap_data);
-        int reqd = skb->len + sizeof(pcaprec_hdr_t);
-        if (unlikely(reqd <= available)) {
-            pcaprec_hdr_t *pcaphdr;
-            struct timeval t;
-            
-            // update curr data pointer
-            device->master->pcap_curr_data = curr_data + reqd;
-            
-            // fill in pcap frame header info
-            pcaphdr = curr_data;
-            jiffies_to_timeval(device->jiffies_poll, &t);
-            pcaphdr->ts_sec   = t.tv_sec;
-            pcaphdr->ts_usec  = t.tv_usec;
-            pcaphdr->incl_len = skb->len;
-            pcaphdr->orig_len = skb->len;
-            curr_data += sizeof(pcaprec_hdr_t);
-          
-            // copy frame
-            memcpy(curr_data, skb->data, skb->len);
-        }
-    }
-    
 
     // start sending
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
@@ -383,6 +395,7 @@ void ec_device_send(
         device->master->device_stats.tx_count++;
         device->tx_bytes += ETH_HLEN + size;
         device->master->device_stats.tx_bytes += ETH_HLEN + size;
+        pcap_record(device, skb->data, ETH_HLEN + size);
 #ifdef EC_DEBUG_IF
         ec_debug_send(&device->dbg, skb->data, ETH_HLEN + size);
 #endif
@@ -685,33 +698,8 @@ void ecdev_receive(
         EC_MASTER_DBG(device->master, 2, "Received frame:\n");
         ec_print_data(data, size);
     }
-    // check theres enough room to copy frame to pcap mem
-    if (unlikely(device->master->pcap_data)) {
-        // get current data pointer
-        void *curr_data = device->master->pcap_curr_data;
-        int available = PCAP_SIZE - (curr_data - device->master->pcap_data);
-        int reqd = size + sizeof(pcaprec_hdr_t);
-        if (unlikely(reqd <= available)) {
-            pcaprec_hdr_t *pcaphdr;
-            struct timeval t;
-          
-            // update curr data pointer
-            device->master->pcap_curr_data = curr_data + reqd;
-            
-            // fill in pcap frame header info
-            pcaphdr = curr_data;
-            jiffies_to_timeval(device->jiffies_poll, &t);
-            pcaphdr->ts_sec   = t.tv_sec;
-            pcaphdr->ts_usec  = t.tv_usec;
-            pcaphdr->incl_len = size;
-            pcaphdr->orig_len = size;
-            curr_data += sizeof(pcaprec_hdr_t);
-          
-            // copy frame
-            memcpy(curr_data, data, size);
-        }
-    }
 
+    pcap_record(device, data, size);
 #ifdef EC_DEBUG_IF
     ec_debug_send(&device->dbg, data, size);
 #endif

@@ -64,6 +64,7 @@ unsigned int eoe_count; /**< Number of EOE interfaces. */
 bool eoe_autocreate = 1;  /**< Auto-create EOE interfaces. */
 #endif
 static unsigned int debug_level;  /**< Debug level parameter. */
+unsigned long pcap_size;  /**< Pcap buffer size in bytes. */
 
 static ec_master_t *masters; /**< Array of masters. */
 static ec_lock_t master_sem; /**< Master semaphore. */
@@ -96,6 +97,8 @@ MODULE_PARM_DESC(eoe_autocreate, "EOE atuo create mode");
 #endif
 module_param_named(debug_level, debug_level, uint, S_IRUGO);
 MODULE_PARM_DESC(debug_level, "Debug level");
+module_param_named(pcap_size, pcap_size, ulong, S_IRUGO);
+MODULE_PARM_DESC(pcap_size, "Pcap buffer size");
 
 /** \endcond */
 

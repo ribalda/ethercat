@@ -109,6 +109,12 @@ start)
         EOE_AUTOCREATE_CMD="eoe_autocreate=${EOE_AUTOCREATE}"
     fi
 
+    # build pcap command
+    PCAP_SIZE_CMD=""
+    if [ -n "${PCAP_SIZE_MB}" ]; then
+        PCAP_SIZE_CMD="pcap_size=$(expr ${PCAP_SIZE_MB} '*' 1048576)"
+    fi
+
     # Set link state UP on selected devices
     if [ -n "${LINK_DEVICES}" ]; then
         for LINK_DEVICE in ${LINK_DEVICES}; do
@@ -119,7 +125,7 @@ start)
     # load master module
     if ! ${MODPROBE} ${MODPROBE_FLAGS} ec_master \
             main_devices=${DEVICES} backup_devices=${BACKUPS} \
-            ${EOE_INTERFACES_CMD} ${EOE_AUTOCREATE_CMD}; then
+            ${EOE_INTERFACES_CMD} ${EOE_AUTOCREATE_CMD} ${PCAP_SIZE_CMD}; then
         exit 1
     fi
 

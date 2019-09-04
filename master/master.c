@@ -233,8 +233,8 @@ int ec_master_init(ec_master_t *master, /**< EtherCAT master */
     master->stats.output_jiffies = 0;
 
     // set up pcap debugging
-    if (PCAP_SIZE > 0) {
-        master->pcap_data = vmalloc(PCAP_SIZE);
+    if (pcap_size > 0) {
+        master->pcap_data = vmalloc(pcap_size);
     } else {
         master->pcap_data = NULL;
     }
