@@ -91,7 +91,7 @@ struct ec_device
 #ifdef EC_HAVE_CYCLES
     cycles_t cycles_poll; /**< cycles of last poll */
 #endif
-#ifdef EC_DEBUG_RING
+#if defined(EC_DEBUG_RING) || !defined(EC_RTDM)
     struct timeval timeval_poll;
 #endif
     unsigned long jiffies_poll; /**< jiffies of last poll */

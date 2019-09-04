@@ -330,7 +330,11 @@ static void pcap_record(
             
             // fill in pcap frame header info
             pcaphdr = curr_data;
+#ifdef EC_RTDM
             jiffies_to_timeval(device->jiffies_poll, &t);
+#else
+            t = device->timeval_poll;
+#endif
             pcaphdr->ts_sec   = t.tv_sec;
             pcaphdr->ts_usec  = t.tv_usec;
             pcaphdr->incl_len = size;
@@ -526,6 +530,9 @@ void ec_device_poll(
     device->jiffies_poll = jiffies;
 #ifdef EC_DEBUG_RING
     do_gettimeofday(&device->timeval_poll);
+#elif !defined(EC_RTDM)
+    if (pcap_size)
+        do_gettimeofday(&device->timeval_poll);
 #endif
     device->poll(device->dev);
 }
