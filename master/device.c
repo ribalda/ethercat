@@ -445,9 +445,9 @@ void ec_device_clear_stats(
 
 static void do_gettimeofday(struct timeval *tv)
 {
-	struct timespec ts;
+	struct timespec64 ts;
 
-	ktime_get_ts(&ts);
+	ktime_get_ts64(&ts);
 	tv->tv_sec = ts.tv_sec;
 	tv->tv_usec = ts.tv_nsec / NSEC_PER_USEC;
 }
