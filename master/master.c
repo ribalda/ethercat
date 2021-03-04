@@ -1769,6 +1769,20 @@ void ec_master_nanosleep(const unsigned long nsecs)
 
 /*****************************************************************************/
 
+/* compatibility for priority changes */
+static inline void set_normal_priority(struct task_struct *p, int nice)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+    sched_set_normal(p, nice);
+#else
+    struct sched_param param = { .sched_priority = 0 };
+    sched_setscheduler(p, SCHED_NORMAL, &param);
+    set_user_nice(p, nice);
+#endif
+}
+
+/*****************************************************************************/
+
 /** Execute slave FSMs.
  */
 void ec_master_exec_slave_fsms(
@@ -1996,8 +2010,6 @@ static int ec_master_operation_thread(void *priv_data)
  */
 void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
 {
-    struct sched_param param = { .sched_priority = 0 };
-
     if (master->eoe_thread) {
         EC_MASTER_WARN(master, "EoE already running!\n");
         return;
@@ -2025,8 +2037,7 @@ void ec_master_eoe_start(ec_master_t *master /**< EtherCAT master */)
         return;
     }
 
-    sched_setscheduler(master->eoe_thread, SCHED_NORMAL, &param);
-    set_user_nice(master->eoe_thread, 0);
+    set_normal_priority(master->eoe_thread, 0);
 }
 
 /*****************************************************************************/
