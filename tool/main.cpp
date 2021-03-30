@@ -56,6 +56,7 @@ using namespace std;
 # include "CommandIp.h"
 #endif
 #include "CommandMaster.h"
+#include "CommandJson.h"
 #include "CommandPcap.h"
 #include "CommandPdos.h"
 #include "CommandRegRead.h"
@@ -268,7 +269,7 @@ list<Command *> getMatchingCommands(const string &cmdStr)
             break;
         }
     }
-    
+
     if (!res.size()) { // nothing found
         // find matching commands from beginning of the string
         for (ci = commandList.begin(); ci != commandList.end(); ci++) {
@@ -276,7 +277,7 @@ list<Command *> getMatchingCommands(const string &cmdStr)
                 res.push_back(*ci);
             }
         }
-        
+
         if (!res.size()) { // nothing found
             // find /any/ matching commands
             for (ci = commandList.begin(); ci != commandList.end(); ci++) {
@@ -322,6 +323,7 @@ int main(int argc, char **argv)
     commandList.push_back(new CommandIp());
 #endif
     commandList.push_back(new CommandMaster());
+    commandList.push_back(new CommandJson());
     commandList.push_back(new CommandPcap());
     commandList.push_back(new CommandPdos());
     commandList.push_back(new CommandRegRead());
