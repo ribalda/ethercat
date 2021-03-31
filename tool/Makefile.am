@@ -149,6 +149,7 @@ REV = `if test -s $(top_srcdir)/revision; then \
 	fi`
 
 ethercat_CXXFLAGS = \
+  -std=c++11 \
 	-I$(top_srcdir)/include \
 	-I$(top_srcdir)/master \
 	-Wall -DREV=$(REV) \
