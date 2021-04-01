@@ -89,7 +89,6 @@ void CommandJson::execute(const StringVector &args)
     // create a JSON object
     json jsonOutput = {};
 
-    jsonOutput["masterList"] = masterIndices;
 
     MasterIndexList::const_iterator mi;
     for (mi = masterIndices.begin();
@@ -106,7 +105,6 @@ void CommandJson::execute(const StringVector &args)
         jsonOutput["slaveCount"]=data.slave_count;
         for (dev_idx = EC_DEVICE_MAIN; dev_idx < data.num_devices; dev_idx++) {
           auto etherNetDev = dev_idx == EC_DEVICE_MAIN ? "Main" : "Backup";
-          // jsonOutput[etherNetDev]["MAC"]="todo";
           jsonOutput[etherNetDev]["NicState"]=data.devices[dev_idx].attached ? "attached" : "waiting...";
           jsonOutput[etherNetDev]["linkState"]=data.devices[dev_idx].link_state;
           jsonOutput[etherNetDev]["frames"]["TX"]=data.devices[dev_idx].tx_count;
@@ -114,20 +112,12 @@ void CommandJson::execute(const StringVector &args)
           jsonOutput[etherNetDev]["bytes"]["TX"]=data.devices[dev_idx].tx_bytes;
           jsonOutput[etherNetDev]["bytes"]["RX"]=data.devices[dev_idx].rx_bytes;
           jsonOutput[etherNetDev]["errors"]["TX"]=data.devices[dev_idx].tx_errors;
-          jsonOutput[etherNetDev]["frameRate"]["TX"]=data.devices[dev_idx].tx_frame_rates[0] / 1000.0;
-          jsonOutput[etherNetDev]["frameRate"]["RX"]=data.devices[dev_idx].rx_frame_rates[0] / 1000.0;
-          jsonOutput[etherNetDev]["kBytesRate"]["TX"]=data.devices[dev_idx].tx_byte_rates[0] / 1024.0;
-          jsonOutput[etherNetDev]["kBytesRate"]["RX"]=data.devices[dev_idx].rx_byte_rates[0] / 1024.0;
         }
         jsonOutput["Common"]["frames"]["TX"]=data.tx_count;
         jsonOutput["Common"]["frames"]["RX"]=data.rx_count;
         jsonOutput["Common"]["frames"]["lost"]= data.tx_count - data.rx_count;
         jsonOutput["Common"]["bytes"]["TX"]=data.tx_bytes;
         jsonOutput["Common"]["bytes"]["RX"]=data.rx_bytes;
-        jsonOutput["Common"]["frameRate"]["TX"]=data.tx_frame_rates[0] / 1000.0;
-        jsonOutput["Common"]["frameRate"]["RX"]=data.rx_frame_rates[0] / 1000.0;
-        jsonOutput["Common"]["kBytesRate"]["TX"]=data.tx_byte_rates[0] / 1024.0;
-        jsonOutput["Common"]["kBytesRate"]["RX"]=data.rx_byte_rates[0] / 1024.0;
 
         jsonOutput["DC"]["refClockSlaveID"]=data.ref_clock;
         jsonOutput["DC"]["refTime"]=data.dc_ref_time;
