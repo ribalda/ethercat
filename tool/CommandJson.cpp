@@ -128,7 +128,8 @@ void CommandJson::execute(const StringVector &args)
         jsonOutput[masterID]["DC"]["appTime"]=data.app_time;
     }
 // pretty print with indent of 4 spaces
-std::cout << std::setw(4) << jsonOutput << '\n';
+// std::cout << std::setw(4) << jsonOutput << '\n';
+std::cout << jsonOutput << '\n';
 }
 
 /*****************************************************************************/
