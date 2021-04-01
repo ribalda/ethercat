@@ -80,10 +80,15 @@ void CommandJson::execute(const StringVector &args)
         throwInvalidUsageException(err);
     }
 
+    masterIndices = getMasterIndices();
+    if (masterIndices.size()>1) {
+        err << "'" << getName() << "' must by exceutes for exactly one master!";
+        throwInvalidUsageException(err);
+    }
+
     // create a JSON object
     json jsonOutput = {};
 
-    masterIndices = getMasterIndices();
     jsonOutput["masterList"] = masterIndices;
 
     MasterIndexList::const_iterator mi;
