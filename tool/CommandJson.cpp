@@ -82,7 +82,7 @@ void CommandJson::execute(const StringVector &args)
 
     masterIndices = getMasterIndices();
     if (masterIndices.size()>1) {
-        err << "'" << getName() << "' must by exceutes for exactly one master!";
+        err << "'" << getName() << "' must by excecuted for exactly one master!";
         throwInvalidUsageException(err);
     }
 
