@@ -94,38 +94,39 @@ void CommandJson::execute(const StringVector &args)
         m.getMaster(&data);
 
         auto masterID = "master" + std::to_string(m.getIndex());
-        jsonOutput[masterID]["id"] = m.getIndex();
-        jsonOutput[masterID]["phase"] = data.phase;
-        jsonOutput[masterID]["active"]=data.active ? "yes" : "no";
-        jsonOutput[masterID]["slaveCount"]=data.slave_count;
+        jsonOutput["id"] = m.getIndex();
+        jsonOutput["master"] = masterID;
+        jsonOutput["phase"] = data.phase;
+        jsonOutput["active"]=data.active;
+        jsonOutput["slaveCount"]=data.slave_count;
         for (dev_idx = EC_DEVICE_MAIN; dev_idx < data.num_devices; dev_idx++) {
           auto etherNetDev = dev_idx == EC_DEVICE_MAIN ? "Main" : "Backup";
-          // jsonOutput[masterID][etherNetDev]["MAC"]="todo";
-          jsonOutput[masterID][etherNetDev]["NicState"]=data.devices[dev_idx].attached ? "attached" : "waiting...";
-          jsonOutput[masterID][etherNetDev]["linkState"]=data.devices[dev_idx].link_state ? "UP" : "DOWN";
-          jsonOutput[masterID][etherNetDev]["frames"]["TX"]=data.devices[dev_idx].tx_count;
-          jsonOutput[masterID][etherNetDev]["frames"]["RX"]=data.devices[dev_idx].rx_count;
-          jsonOutput[masterID][etherNetDev]["bytes"]["TX"]=data.devices[dev_idx].tx_bytes;
-          jsonOutput[masterID][etherNetDev]["bytes"]["RX"]=data.devices[dev_idx].rx_bytes;
-          jsonOutput[masterID][etherNetDev]["errors"]["TX"]=data.devices[dev_idx].tx_errors;
-          jsonOutput[masterID][etherNetDev]["frameRate"]["TX"]=data.devices[dev_idx].tx_frame_rates[0] / 1000.0;
-          jsonOutput[masterID][etherNetDev]["frameRate"]["RX"]=data.devices[dev_idx].rx_frame_rates[0] / 1000.0;
-          jsonOutput[masterID][etherNetDev]["kBytesRate"]["TX"]=data.devices[dev_idx].tx_byte_rates[0] / 1024.0;
-          jsonOutput[masterID][etherNetDev]["kBytesRate"]["RX"]=data.devices[dev_idx].rx_byte_rates[0] / 1024.0;
+          // jsonOutput[etherNetDev]["MAC"]="todo";
+          jsonOutput[etherNetDev]["NicState"]=data.devices[dev_idx].attached ? "attached" : "waiting...";
+          jsonOutput[etherNetDev]["linkState"]=data.devices[dev_idx].link_state;
+          jsonOutput[etherNetDev]["frames"]["TX"]=data.devices[dev_idx].tx_count;
+          jsonOutput[etherNetDev]["frames"]["RX"]=data.devices[dev_idx].rx_count;
+          jsonOutput[etherNetDev]["bytes"]["TX"]=data.devices[dev_idx].tx_bytes;
+          jsonOutput[etherNetDev]["bytes"]["RX"]=data.devices[dev_idx].rx_bytes;
+          jsonOutput[etherNetDev]["errors"]["TX"]=data.devices[dev_idx].tx_errors;
+          jsonOutput[etherNetDev]["frameRate"]["TX"]=data.devices[dev_idx].tx_frame_rates[0] / 1000.0;
+          jsonOutput[etherNetDev]["frameRate"]["RX"]=data.devices[dev_idx].rx_frame_rates[0] / 1000.0;
+          jsonOutput[etherNetDev]["kBytesRate"]["TX"]=data.devices[dev_idx].tx_byte_rates[0] / 1024.0;
+          jsonOutput[etherNetDev]["kBytesRate"]["RX"]=data.devices[dev_idx].rx_byte_rates[0] / 1024.0;
         }
-        jsonOutput[masterID]["Common"]["frames"]["TX"]=data.tx_count;
-        jsonOutput[masterID]["Common"]["frames"]["RX"]=data.rx_count;
-        jsonOutput[masterID]["Common"]["frames"]["lost"]= data.tx_count - data.rx_count;
-        jsonOutput[masterID]["Common"]["bytes"]["TX"]=data.tx_bytes;
-        jsonOutput[masterID]["Common"]["bytes"]["RX"]=data.rx_bytes;
-        jsonOutput[masterID]["Common"]["frameRate"]["TX"]=data.tx_frame_rates[0] / 1000.0;
-        jsonOutput[masterID]["Common"]["frameRate"]["RX"]=data.rx_frame_rates[0] / 1000.0;
-        jsonOutput[masterID]["Common"]["kBytesRate"]["TX"]=data.tx_byte_rates[0] / 1024.0;
-        jsonOutput[masterID]["Common"]["kBytesRate"]["RX"]=data.rx_byte_rates[0] / 1024.0;
+        jsonOutput["Common"]["frames"]["TX"]=data.tx_count;
+        jsonOutput["Common"]["frames"]["RX"]=data.rx_count;
+        jsonOutput["Common"]["frames"]["lost"]= data.tx_count - data.rx_count;
+        jsonOutput["Common"]["bytes"]["TX"]=data.tx_bytes;
+        jsonOutput["Common"]["bytes"]["RX"]=data.rx_bytes;
+        jsonOutput["Common"]["frameRate"]["TX"]=data.tx_frame_rates[0] / 1000.0;
+        jsonOutput["Common"]["frameRate"]["RX"]=data.rx_frame_rates[0] / 1000.0;
+        jsonOutput["Common"]["kBytesRate"]["TX"]=data.tx_byte_rates[0] / 1024.0;
+        jsonOutput["Common"]["kBytesRate"]["RX"]=data.rx_byte_rates[0] / 1024.0;
 
-        jsonOutput[masterID]["DC"]["refClockSlaveID"]=data.ref_clock;
-        jsonOutput[masterID]["DC"]["refTime"]=data.dc_ref_time;
-        jsonOutput[masterID]["DC"]["appTime"]=data.app_time;
+        jsonOutput["DC"]["refClockSlaveID"]=data.ref_clock;
+        jsonOutput["DC"]["refTime"]=data.dc_ref_time;
+        jsonOutput["DC"]["appTime"]=data.app_time;
     }
 // pretty print with indent of 4 spaces
 // std::cout << std::setw(4) << jsonOutput << '\n';
